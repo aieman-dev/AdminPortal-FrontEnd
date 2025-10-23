@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import { Menu, ChevronRight } from "lucide-react"
 import { ThemeToggle } from "./theme-toggle"
+import { APP_VERSION } from "@/lib/constants"
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -30,7 +31,10 @@ export function Header({ onMenuClick, onToggleCollapse, sidebarCollapsed }: Head
           <p className="text-sm text-muted-foreground">Manage your workspace and projects</p>
         </div>
       </div>
-      <ThemeToggle />
+      <div className="flex items-center gap-4">
+        <span className="text-xs text-muted-foreground">v{APP_VERSION}</span>
+        <ThemeToggle />
+      </div>
     </header>
   )
 }

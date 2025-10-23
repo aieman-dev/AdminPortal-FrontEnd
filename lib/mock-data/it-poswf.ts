@@ -89,6 +89,33 @@ export interface Terminal {
   modifiedDate: string
 }
 
+export interface VoidTransaction {
+  id: string
+  transactionId: string
+  invoiceNo: string
+  transactionType: "Purchase" | "Refund" | "Exchange"
+  itemType: "Ticket" | "Credit" | "Reward"
+  balanceQuantity: number
+  amount: number
+  terminal: string
+  status: "Active" | "Voided" | "Pending"
+  createdDate: string
+}
+
+export interface Package {
+  id: string
+  packageId: string
+  packageName: string
+  packageType: "Annual" | "Monthly" | "Daily" | "VIP" | "Family"
+  price: number
+  lastValidDate: string
+  description: string
+  status: "Active" | "Inactive" | "Pending"
+  createdBy: string
+  lastModifiedBy: string
+  modifiedDate: string
+}
+
 export interface Account {
   id: string
   accId: string
@@ -420,6 +447,114 @@ export const mockTerminalData: Terminal[] = [
     terminalType: "Web",
     status: "Maintenance",
     modifiedDate: "2024-01-12 14:30:00",
+  },
+]
+
+export const mockVoidTransactionData: VoidTransaction[] = [
+  {
+    id: "1",
+    transactionId: "TXN-2024-001",
+    invoiceNo: "INV-2024-001",
+    transactionType: "Purchase",
+    itemType: "Ticket",
+    balanceQuantity: 2,
+    amount: 150.0,
+    terminal: "Terminal 001 - Main Entrance",
+    status: "Active",
+    createdDate: "2024-01-15 10:30:00",
+  },
+  {
+    id: "2",
+    transactionId: "TXN-2024-002",
+    invoiceNo: "INV-2024-001",
+    transactionType: "Purchase",
+    itemType: "Credit",
+    balanceQuantity: 1,
+    amount: 50.0,
+    terminal: "Terminal 005 - Food Court",
+    status: "Active",
+    createdDate: "2024-01-15 11:45:00",
+  },
+  {
+    id: "3",
+    transactionId: "TXN-2024-003",
+    invoiceNo: "INV-2024-001",
+    transactionType: "Exchange",
+    itemType: "Reward",
+    balanceQuantity: 5,
+    amount: 200.0,
+    terminal: "Terminal 004 - VIP Lounge",
+    status: "Active",
+    createdDate: "2024-01-15 14:20:00",
+  },
+]
+
+// Mock data for Package Listing
+export const mockPackageData: Package[] = [
+  {
+    id: "1",
+    packageId: "PKG-001",
+    packageName: "Theme Park Annual Pass",
+    packageType: "Annual",
+    price: 1200.0,
+    lastValidDate: "2025-12-31",
+    description: "Full year unlimited access to all theme park attractions",
+    status: "Active",
+    createdBy: "admin@themepark.com",
+    lastModifiedBy: "manager@themepark.com",
+    modifiedDate: "2024-01-15 10:30:00",
+  },
+  {
+    id: "2",
+    packageId: "PKG-002",
+    packageName: "Water Park Day Pass",
+    packageType: "Daily",
+    price: 50.0,
+    lastValidDate: "2024-12-31",
+    description: "Single day access to water park facilities",
+    status: "Active",
+    createdBy: "admin@themepark.com",
+    lastModifiedBy: "admin@themepark.com",
+    modifiedDate: "2024-01-10 14:20:00",
+  },
+  {
+    id: "3",
+    packageId: "PKG-003",
+    packageName: "VIP Lounge Access",
+    packageType: "VIP",
+    price: 500.0,
+    lastValidDate: "2024-06-30",
+    description: "Premium lounge access with complimentary refreshments",
+    status: "Active",
+    createdBy: "manager@themepark.com",
+    lastModifiedBy: "manager@themepark.com",
+    modifiedDate: "2024-01-12 09:15:00",
+  },
+  {
+    id: "4",
+    packageId: "PKG-004",
+    packageName: "Family Package",
+    packageType: "Family",
+    price: 300.0,
+    lastValidDate: "2024-12-31",
+    description: "Special package for families up to 5 members",
+    status: "Inactive",
+    createdBy: "admin@themepark.com",
+    lastModifiedBy: "supervisor@themepark.com",
+    modifiedDate: "2024-01-08 16:45:00",
+  },
+  {
+    id: "5",
+    packageId: "PKG-005",
+    packageName: "Monthly Adventure Pass",
+    packageType: "Monthly",
+    price: 150.0,
+    lastValidDate: "2024-12-31",
+    description: "30-day unlimited access to adventure zones",
+    status: "Active",
+    createdBy: "supervisor@themepark.com",
+    lastModifiedBy: "supervisor@themepark.com",
+    modifiedDate: "2024-01-05 11:30:00",
   },
 ]
 

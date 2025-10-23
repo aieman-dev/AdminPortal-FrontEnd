@@ -1,5 +1,6 @@
 import { LoginForm } from "@/components/auth/login-form"
 import { Building2 } from "lucide-react"
+import { APP_VERSION } from "@/lib/constants"
 
 export default function LoginPage() {
   return (
@@ -25,7 +26,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground">
-          Theme Park Portal v1.0 - Secure Authentication System
+          Theme Park Portal v{APP_VERSION} - Secure Authentication System
         </p>
       </div>
     </div>

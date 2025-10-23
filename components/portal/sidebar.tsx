@@ -24,16 +24,16 @@ const navigation = [
     icon: Wallet,
     children: [
       {
-        name: "Ticket Management",
-        href: "/portal/it-poswf/ticket-management",
-      },
-      {
         name: "Search History Record",
         href: "/portal/it-poswf/search-history",
       },
       {
         name: "Search Shopify Order",
         href: "/portal/it-poswf/search-shopify-order",
+      },
+      {
+        name: "Ticket Management",
+        href: "/portal/it-poswf/ticket-management",
       },
       {
         name: "Account Management",
