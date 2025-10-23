@@ -1,4 +1,4 @@
-# Enterprise Portal
+# Theme Park Portal
 
 A production-ready, enterprise-grade web portal with authentication, protected routes, and a modern dashboard interface.
 
@@ -50,11 +50,14 @@ A production-ready, enterprise-grade web portal with authentication, protected r
 │   │   ├── page-1/         # Blank page 1
 │   │   ├── page-2/         # Blank page 2
 │   │   ├── page-3/         # Blank page 3
-│   │   └── page-4/         # Blank page 4
+│   │   ├── page-4/         # Blank page 4
+│   │   └── your-page/      # New page added
+│   │       └── page.tsx    # New page content
 │   └── layout.tsx          # Root layout
 ├── components/
 │   ├── auth/               # Authentication components
 │   ├── portal/             # Portal-specific components
+│   │   └── sidebar.tsx     # Updated with new navigation link
 │   └── ui/                 # Reusable UI components
 ├── hooks/
 │   └── use-auth.ts         # Authentication hook

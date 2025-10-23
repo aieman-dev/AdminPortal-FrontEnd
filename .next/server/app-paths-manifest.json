@@ -1,6 +1,9 @@
 {
-  "/portal/page-1/page": "app/portal/page-1/page.js",
-  "/portal/page-2/page": "app/portal/page-2/page.js",
-  "/portal/page-3/page": "app/portal/page-3/page.js",
-  "/portal/page-4/page": "app/portal/page-4/page.js"
+  "/page": "app/page.js",
+  "/portal/it-poswf/ticket-management/page": "app/portal/it-poswf/ticket-management/page.js",
+  "/portal/it-poswf/search-history/page": "app/portal/it-poswf/search-history/page.js",
+  "/portal/page": "app/portal/page.js",
+  "/portal/it-poswf/account-management/[id]/page": "app/portal/it-poswf/account-management/[id]/page.js",
+  "/portal/it-poswf/search-shopify-order/page": "app/portal/it-poswf/search-shopify-order/page.js",
+  "/portal/it-poswf/account-management/page": "app/portal/it-poswf/account-management/page.js"
 }

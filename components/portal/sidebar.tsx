@@ -3,9 +3,10 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Building2, LayoutDashboard, FileText, LogOut, ChevronLeft } from "lucide-react"
+import { Building2, LayoutDashboard, FileText, LogOut, ChevronLeft, ChevronDown, Wallet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
+import { useState } from "react"
 
 const navigation = [
   {
@@ -19,9 +20,26 @@ const navigation = [
     icon: FileText,
   },
   {
-    name: "Page 2",
-    href: "/portal/page-2",
-    icon: FileText,
+    name: "IT POSWF",
+    icon: Wallet,
+    children: [
+      {
+        name: "Ticket Management",
+        href: "/portal/it-poswf/ticket-management",
+      },
+      {
+        name: "Search History Record",
+        href: "/portal/it-poswf/search-history",
+      },
+      {
+        name: "Search Shopify Order",
+        href: "/portal/it-poswf/search-shopify-order",
+      },
+      {
+        name: "Account Management",
+        href: "/portal/it-poswf/account-management",
+      },
+    ],
   },
   {
     name: "Page 3",
@@ -43,6 +61,11 @@ interface SidebarProps {
 export function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname()
   const { user, logout } = useAuth()
+  const [openDropdowns, setOpenDropdowns] = useState<string[]>(["IT POSWF"])
+
+  const toggleDropdown = (name: string) => {
+    setOpenDropdowns((prev) => (prev.includes(name) ? prev.filter((item) => item !== name) : [...prev, name]))
+  }
 
   return (
     <div
@@ -55,7 +78,7 @@ export function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <Building2 className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-lg font-semibold">Enterprise Portal</span>
+            <span className="text-lg font-semibold">Theme Park Portal</span>
           </div>
         )}
         {collapsed && (
@@ -71,8 +94,58 @@ export function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 p-4">
+      <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
         {navigation.map((item) => {
+          if (item.children) {
+            const isOpen = openDropdowns.includes(item.name)
+            const isAnyChildActive = item.children.some((child) => pathname === child.href)
+
+            return (
+              <div key={item.name}>
+                <button
+                  onClick={() => !collapsed && toggleDropdown(item.name)}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    isAnyChildActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                    collapsed && "justify-center",
+                  )}
+                  title={collapsed ? item.name : undefined}
+                >
+                  <item.icon className="h-5 w-5 flex-shrink-0" />
+                  {!collapsed && (
+                    <>
+                      <span className="flex-1 text-left">{item.name}</span>
+                      <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
+                    </>
+                  )}
+                </button>
+                {!collapsed && isOpen && (
+                  <div className="ml-4 mt-1 space-y-1 border-l pl-4">
+                    {item.children.map((child) => {
+                      const isActive = pathname === child.href
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className={cn(
+                            "flex items-center rounded-lg px-3 py-2 text-sm transition-colors",
+                            isActive
+                              ? "bg-primary text-primary-foreground font-medium"
+                              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                          )}
+                        >
+                          {child.name}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          }
+
           const isActive = pathname === item.href
           return (
             <Link

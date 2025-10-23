@@ -2,7 +2,7 @@
  * Application-wide constants
  */
 
-export const APP_NAME = "Enterprise Portal"
+export const APP_NAME = "Theme Park Portal"
 export const APP_VERSION = "1.0.0"
 
 // API Configuration

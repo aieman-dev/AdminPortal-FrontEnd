@@ -25,7 +25,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground">
-          Enterprise Portal v1.0 - Secure Authentication System
+          Theme Park Portal v1.0 - Secure Authentication System
         </p>
       </div>
     </div>

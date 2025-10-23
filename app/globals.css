@@ -41,7 +41,7 @@
 }
 
 .dark {
-  /* Dark theme optimized for enterprise portal */
+  /* Dark theme optimized for theme park portal */
   --background: oklch(0.1 0 0);
   --foreground: oklch(0.98 0 0);
   --card: oklch(0.13 0 0);

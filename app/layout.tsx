@@ -7,8 +7,8 @@ import "./globals.css"
 import { Suspense } from "react"
 
 export const metadata: Metadata = {
-  title: "Enterprise Portal - Secure Authentication System",
-  description: "Production-ready enterprise portal with authentication and dashboard",
+  title: "Theme Park Portal - Secure Authentication System",
+  description: "Production-ready theme park portal with authentication and dashboard",
   generator: "v0.app",
 }
 

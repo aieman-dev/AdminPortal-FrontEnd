@@ -54,6 +54,60 @@ type LayoutConfig<Route extends LayoutRoutes = LayoutRoutes> = {
   type __Unused = __Check
 }
 
+// Validate ../../app/portal/it-poswf/account-management/[id]/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/portal/it-poswf/account-management/[id]">> = Specific
+  const handler = {} as typeof import("../../app/portal/it-poswf/account-management/[id]/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/portal/it-poswf/account-management/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/portal/it-poswf/account-management">> = Specific
+  const handler = {} as typeof import("../../app/portal/it-poswf/account-management/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/portal/it-poswf/activate-balance/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/portal/it-poswf/activate-balance">> = Specific
+  const handler = {} as typeof import("../../app/portal/it-poswf/activate-balance/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/portal/it-poswf/search-history/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/portal/it-poswf/search-history">> = Specific
+  const handler = {} as typeof import("../../app/portal/it-poswf/search-history/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/portal/it-poswf/search-shopify-order/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/portal/it-poswf/search-shopify-order">> = Specific
+  const handler = {} as typeof import("../../app/portal/it-poswf/search-shopify-order/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/portal/it-poswf/ticket-management/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/portal/it-poswf/ticket-management">> = Specific
+  const handler = {} as typeof import("../../app/portal/it-poswf/ticket-management/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../app/portal/page-1/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/portal/page-1">> = Specific
