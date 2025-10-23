@@ -17,7 +17,7 @@ export default function Page2() {
       <Card className="p-8">
         <EmptyState
           icon={<FileText className="h-12 w-12" />}
-          title="No content yet"
+          title="No content yett"
           description="This page is ready to add features and functionality. Start building something amazing!"
           action={{
             label: "Get Started",
