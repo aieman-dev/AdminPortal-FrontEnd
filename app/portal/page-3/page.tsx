@@ -16,12 +16,12 @@ export default function Page3() {
 
       <Card className="p-8">
         <EmptyState
-          icon={FileText}
+          icon={<FileText className="h-12 w-12" />}
           title="No content yet"
           description="This page is ready to add features and functionality. Start building something amazing!"
           action={{
             label: "Get Started",
-            onClick: () => console.log("Action clicked"),
+            href: "/portal/page-3/get-started",
           }}
         />
       </Card>

@@ -21,15 +21,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/portal/page.js"
     ],
-    "/portal/it-poswf/ticket-management/loading": [
+    "/portal/page-1/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/portal/it-poswf/ticket-management/loading.js"
-    ],
-    "/portal/it-poswf/ticket-management/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/portal/it-poswf/ticket-management/page.js"
+      "static/chunks/app/portal/page-1/page.js"
     ],
     "/portal/it-poswf/search-history/loading": [
       "static/chunks/webpack.js",
@@ -61,15 +56,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/portal/it-poswf/account-management/page.js"
     ],
-    "/portal/it-poswf/account-management/[id]/loading": [
+    "/_not-found/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/portal/it-poswf/account-management/[id]/loading.js"
-    ],
-    "/portal/it-poswf/account-management/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/portal/it-poswf/account-management/[id]/page.js"
+      "static/chunks/app/_not-found/page.js"
     ]
   }
 }
