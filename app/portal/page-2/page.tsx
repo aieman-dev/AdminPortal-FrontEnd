@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button"
 import { FileText, Plus } from "lucide-react"
 
 export default function Page2() {
-  return (
+   return (
     <div>
-      <PageHeader title="Page 2" description="This is a blank page ready for your custom features">
+      <PageHeader title="Page 1" description="This is a blank page ready for your custom features">
         <Button>
           <Plus className="h-4 w-4 mr-2" />
           Add New
@@ -16,12 +16,12 @@ export default function Page2() {
 
       <Card className="p-8">
         <EmptyState
-          icon={FileText}
+          icon={<FileText className="h-12 w-12" />}
           title="No content yet"
           description="This page is ready to add features and functionality. Start building something amazing!"
           action={{
             label: "Get Started",
-            onClick: () => console.log("Action clicked"),
+            href: "/portal/page-1/get-started",
           }}
         />
       </Card>

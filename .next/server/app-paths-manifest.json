@@ -1,5 +1,6 @@
 {
-  "/page": "app/page.js",
-  "/portal/page": "app/portal/page.js",
-  "/portal/page-1/page": "app/portal/page-1/page.js"
+  "/portal/page-1/page": "app/portal/page-1/page.js",
+  "/portal/page-2/page": "app/portal/page-2/page.js",
+  "/portal/page-3/page": "app/portal/page-3/page.js",
+  "/portal/page-4/page": "app/portal/page-4/page.js"
 }
