@@ -1,93 +1,229 @@
-# themepark-portal
+# Enterprise Portal
 
+A production-ready, enterprise-grade web portal with authentication, protected routes, and a modern dashboard interface.
 
+## Features
 
-## Getting started
+- **Secure Authentication System**
+  - Mock authentication with local storage
+  - Ready for backend API integration
+  - Protected routes with middleware
+  - Session management
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+- **Modern UI/UX**
+  - Responsive sidebar navigation
+  - Dark/light theme support
+  - Clean, minimalist design
+  - Mobile-friendly layout
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+- **Enterprise Architecture**
+  - TypeScript for type safety
+  - Modular component structure
+  - Reusable utilities and hooks
+  - Security best practices
 
-## Add your files
+- **Developer-Friendly**
+  - Well-documented code
+  - Extensible page templates
+  - API client ready for integration
+  - Comprehensive error handling
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+## Getting Started
 
-```
-cd existing_repo
-git remote add origin https://gitlab.com/5gworld/themepark-portal.git
-git branch -M main
-git push -uf origin main
-```
+### Demo Credentials
 
-## Integrate with your tools
+- **Admin Account**
+  - Email: `admin@company.com`
+  - Password: `admin123`
 
-- [ ] [Set up project integrations](https://gitlab.com/5gworld/themepark-portal/-/settings/integrations)
+- **User Account**
+  - Email: `user@company.com`
+  - Password: `user123`
 
-## Collaborate with your team
+### Project Structure
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+\`\`\`
+├── app/
+│   ├── login/              # Login page
+│   ├── portal/             # Protected portal pages
+│   │   ├── page.tsx        # Dashboard
+│   │   ├── page-1/         # Blank page 1
+│   │   ├── page-2/         # Blank page 2
+│   │   ├── page-3/         # Blank page 3
+│   │   └── page-4/         # Blank page 4
+│   └── layout.tsx          # Root layout
+├── components/
+│   ├── auth/               # Authentication components
+│   ├── portal/             # Portal-specific components
+│   └── ui/                 # Reusable UI components
+├── hooks/
+│   └── use-auth.ts         # Authentication hook
+├── lib/
+│   ├── auth.ts             # Authentication logic
+│   ├── api-client.ts       # API client for backend
+│   ├── security.ts         # Security utilities
+│   ├── constants.ts        # App constants
+│   └── logger.ts           # Logging utility
+└── middleware.ts           # Route protection middleware
+\`\`\`
 
-## Test and Deploy
+## Backend Integration Guide
 
-Use the built-in continuous integration in GitLab.
+### 1. Authentication API
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+Replace the mock authentication in `lib/auth.ts` with real API calls:
 
-***
+\`\`\`typescript
+export async function login(email: string, password: string): Promise<AuthResponse> {
+  const response = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+  
+  const data = await response.json();
+  
+  if (response.ok) {
+    localStorage.setItem(AUTH_TOKEN_KEY, data.token);
+    localStorage.setItem(USER_DATA_KEY, JSON.stringify(data.user));
+    return { success: true, user: data.user };
+  }
+  
+  return { success: false, error: data.error };
+}
+\`\`\`
 
-# Editing this README
+### 2. API Client Usage
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Use the `apiClient` for all backend requests:
 
-## Suggestions for a good README
+\`\`\`typescript
+import { apiClient } from '@/lib/api-client';
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+// GET request
+const response = await apiClient.get('/users');
 
-## Name
-Choose a self-explaining name for your project.
+// POST request
+const response = await apiClient.post('/users', { name: 'John' });
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+// PUT request
+const response = await apiClient.put('/users/1', { name: 'Jane' });
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+// DELETE request
+const response = await apiClient.delete('/users/1');
+\`\`\`
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+### 3. Environment Variables
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+Add these to your `.env.local` file:
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+\`\`\`env
+NEXT_PUBLIC_API_URL=https://api.yourcompany.com
+NEXT_PUBLIC_APP_ENV=production
+\`\`\`
+
+### 4. Middleware Enhancement
+
+Update `middleware.ts` to validate tokens with your backend:
+
+\`\`\`typescript
+const response = await fetch(`${process.env.API_URL}/auth/verify`, {
+  headers: { 'Authorization': `Bearer ${authToken}` }
+});
+
+if (!response.ok) {
+  return NextResponse.redirect(new URL('/login', request.url));
+}
+\`\`\`
+
+## Security Features
+
+- **Input Sanitization**: All user inputs are sanitized
+- **CSRF Protection**: Token-based CSRF protection utilities
+- **Rate Limiting**: Client-side rate limiting for login attempts
+- **Password Validation**: Strong password requirements
+- **Secure Token Generation**: Cryptographically secure tokens
+- **Protected Routes**: Middleware-based route protection
+
+## Extending the Portal
+
+### Adding a New Page
+
+1. Create a new folder in `app/portal/your-page/`
+2. Add a `page.tsx` file:
+
+\`\`\`typescript
+import { PageHeader } from "@/components/portal/page-header"
+import { Card } from "@/components/ui/card"
+
+export default function YourPage() {
+  return (
+    <div>
+      <PageHeader 
+        title="Your Page" 
+        description="Description of your page"
+      />
+      <Card className="p-6">
+        {/* Your content here */}
+      </Card>
+    </div>
+  )
+}
+\`\`\`
+
+3. Add navigation link in `components/portal/sidebar.tsx`
+
+### Adding API Endpoints
+
+Create route handlers in `app/api/`:
+
+\`\`\`typescript
+// app/api/users/route.ts
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  // Your logic here
+  return NextResponse.json({ users: [] });
+}
+\`\`\`
+
+## Best Practices
+
+1. **Always validate user input** on both client and server
+2. **Use TypeScript types** for all data structures
+3. **Handle errors gracefully** with try-catch blocks
+4. **Log important events** using the logger utility
+5. **Test authentication flows** before deploying
+6. **Keep secrets in environment variables**, never in code
+7. **Use the API client** for consistent error handling
+
+## Production Checklist
+
+- [ ] Replace mock authentication with real backend
+- [ ] Set up proper environment variables
+- [ ] Configure CORS policies
+- [ ] Implement server-side rate limiting
+- [ ] Add error tracking (e.g., Sentry)
+- [ ] Set up logging service
+- [ ] Enable HTTPS
+- [ ] Configure CSP headers
+- [ ] Add monitoring and analytics
+- [ ] Test all authentication flows
+- [ ] Review security configurations
+
+## Tech Stack
+
+- **Framework**: Next.js 15 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS v4
+- **UI Components**: shadcn/ui
+- **Icons**: Lucide React
+- **State Management**: React Hooks + Local Storage
 
 ## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+For questions or issues, please refer to the documentation or contact your development team.
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+---
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+Built with ❤️ for enterprise teams
