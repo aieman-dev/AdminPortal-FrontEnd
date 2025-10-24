@@ -20,46 +20,6 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/portal/page.js"
-    ],
-    "/portal/page-1/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/portal/page-1/page.js"
-    ],
-    "/portal/it-poswf/search-history/loading": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/portal/it-poswf/search-history/loading.js"
-    ],
-    "/portal/it-poswf/search-history/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/portal/it-poswf/search-history/page.js"
-    ],
-    "/portal/it-poswf/search-shopify-order/loading": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/portal/it-poswf/search-shopify-order/loading.js"
-    ],
-    "/portal/it-poswf/search-shopify-order/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/portal/it-poswf/search-shopify-order/page.js"
-    ],
-    "/portal/it-poswf/account-management/loading": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/portal/it-poswf/account-management/loading.js"
-    ],
-    "/portal/it-poswf/account-management/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/portal/it-poswf/account-management/page.js"
-    ],
-    "/_not-found/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/_not-found/page.js"
     ]
   }
 }
