@@ -1,0 +1,103 @@
+@import "react-datepicker/dist/react-datepicker.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+/* Body default */
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background-color: #F4F5F7;
+  color: #171717;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode for body */
+.dark body {
+  background-color: #0a0a0a;
+  color: #ededed;
+}
+
+/* Card shadow only */
+.card {
+  @apply shadow-md hover:shadow-xl transition-shadow rounded-lg overflow-hidden;
+}
+
+/* Login background */
+.login-bg {
+  background-image: url('/bg/theme-park.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* DatePicker dark mode */
+.dark .react-datepicker {
+  background-color: #1f2937 !important;
+  color: #f9fafb !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease-in-out;
+}
+
+.dark .react-datepicker__header {
+  background-color: #111827 !important;
+  border-bottom: 1px solid #374151 !important;
+}
+.dark .react-datepicker__navigation-icon::before {
+  border-color: #d1d5db !important;
+}
+.dark .react-datepicker__current-month,
+.dark .react-datepicker__month-read-view,
+.dark .react-datepicker__year-read-view,
+.dark .react-datepicker__day-name,
+.dark .react-datepicker__day,
+.dark .react-datepicker__time-name {
+  color: #f9fafb !important;
+}
+.dark .react-datepicker__day--outside-month {
+  color: #9ca3af !important;
+}
+.dark .react-datepicker__day:hover {
+  background-color: #374151 !important;
+}
+.dark .react-datepicker__day--selected,
+.dark .react-datepicker__day--keyboard-selected {
+  background-color: #6366f1 !important;
+  color: #ffffff !important;
+}
+.dark .react-datepicker__day--selected:hover {
+  background-color: #818cf8 !important;
+}
+.dark .react-datepicker__month-dropdown,
+.dark .react-datepicker__year-dropdown,
+.dark .react-datepicker__month-option,
+.dark .react-datepicker__year-option {
+  background-color: #1f2937 !important;
+  color: #f9fafb !important;
+  border: 1px solid #374151 !important;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hidden {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out;
+}
