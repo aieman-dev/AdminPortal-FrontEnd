@@ -15,8 +15,8 @@ const navigation = [
     icon: LayoutDashboard,
   },
   {
-    name: "Page 1",
-    href: "/portal/page-1",
+    name: "Package Management",
+    href: "/portal/packages",
     icon: FileText,
   },
   {
