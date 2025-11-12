@@ -170,3 +170,63 @@ export const DraftModal: React.FC<DraftModalProps> = ({
     </div>
   );
 };
+
+type ApprovalModalProps = {
+  isOpen: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+};
+
+export const ApprovalModal: React.FC<ApprovalModalProps> = ({
+  isOpen,
+  onConfirm,
+  onCancel,
+}) => {
+  if (!isOpen) return null;
+
+  const currentDate = new Date().toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4 animate-scale-in">
+        <h2 className="text-2xl font-bold text-center text-gray-900 mb-6">
+          Approve Package?
+        </h2>
+
+        <div className="bg-gray-100 rounded-xl p-6 mb-6 text-center space-y-2">
+          <p className="text-gray-700 text-lg">
+            Upon approval, the package will be <span className="font-bold text-green-600">active</span> to use.
+          </p>
+          <p className="text-gray-600 text-sm">
+            (Further edits will not be allowed after approval.)
+          </p>
+          <p className="text-gray-400 text-xs mt-4">
+            Action Date : {currentDate}
+          </p>
+        </div>
+
+        <div className="flex gap-4">
+          <button
+            onClick={onCancel}
+            className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors shadow-sm"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-md"
+          >
+            Confirm Approval
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

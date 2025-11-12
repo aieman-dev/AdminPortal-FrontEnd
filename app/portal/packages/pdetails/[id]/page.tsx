@@ -3,38 +3,65 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { 
-  Search, Calendar, Clock, Ticket, Globe, User, FileText, CheckCircle, ArrowLeft, X, Check 
-} from "lucide-react";
+import { Search, Calendar, Clock, Ticket, Globe, User, FileText, CheckCircle, ArrowLeft, X, Check, Loader2 } from "lucide-react";
 import { Package, PackageItem } from "@/type/packages";
+import { packageService } from "@/services/package-services"; 
+import { ApprovalModal } from "@/components/PackageModals"; 
+
+const formatDate = (dateString: string | undefined) => {
+  if (!dateString) return "—";
+  return new Date(dateString).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }); // Result: "12 Nov 2025"
+};
 
 export default function PackageDetailPage() {
   const params = useParams();
   const router = useRouter();
-
+  
+  // UI State
   const [activeTab, setActiveTab] = useState<"overview" | "items">("overview");
   const [searchQuery, setSearchQuery] = useState("");
-  const [packageData, setPackageData] = useState<Package | null>(null);
   const [rejectionNotes, setRejectionNotes] = useState("");
+  
+  // Data State
+  const [packageData, setPackageData] = useState<Package | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Toast State
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<"success" | "warning">("success");
 
-  // Load package data from localStorage
+  //Notification Pop-up State
+  const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
+
+  // Load Data
   useEffect(() => {
-    const packages: Package[] = JSON.parse(localStorage.getItem("packages") || "[]");
-    const pkg = packages.find(p => p.id === Number(params.id));
-    if (pkg) {
-      setPackageData(pkg);
-      setRejectionNotes(pkg.financeremark || "");
-    }
+    const fetchPackage = async () => {
+      if (!params.id) return;
+      try {
+        setLoading(true);
+        const data = await packageService.getPackageById(Number(params.id));
+        
+        if (data) {
+          setPackageData(data);
+          setRejectionNotes(data.financeremark || "");
+        } else {
+          showToastNotification("Failed to load package details", "warning");
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        showToastNotification("An error occurred while fetching details", "warning");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPackage();
   }, [params.id]);
-
-  const packageItems: PackageItem[] = packageData?.packageitems  || [];
-
-  const filteredItems = packageItems.filter((item: PackageItem) =>
-  item.itemName.toLowerCase().includes(searchQuery.toLowerCase())
-);
 
   const showToastNotification = (message: string, type: "success" | "warning") => {
     setToastMessage(message);
@@ -43,57 +70,65 @@ export default function PackageDetailPage() {
     setTimeout(() => setShowToast(false), 3000);
   };
 
-  const handleReject = () => {
+  // Handlers
+  const handleReject = async () => {
     if (!rejectionNotes.trim()) {
       showToastNotification("Please provide rejection notes", "warning");
       return;
     }
-
-    const packages: Package[] = JSON.parse(localStorage.getItem("packages") || "[]");
-    const updatedPackages = packages.map((p) =>
-      p.id === Number(params.id)
-        ? { 
-            ...p,
-            status: "Rejected",
-            financeremark: rejectionNotes,
-            rejectedDate: new Date().toISOString()
-          }
-        : p
-    );
-
-    localStorage.setItem("packages", JSON.stringify(updatedPackages));
-    showToastNotification("Package has been rejected", "warning");
-
-    setTimeout(() => router.push("/packages?tab=pending"), 1500);
+    // TODO: Integrate real API
+    showToastNotification("Package has been rejected (Local Simulation)", "warning");
+    setTimeout(() => router.push("/portal/packages"), 1500);
   };
 
-  const handleApprove = () => {
-    const packages: Package[] = JSON.parse(localStorage.getItem("packages") || "[]");
-    const updatedPackages = packages.map((p) =>
-      p.id === Number(params.id)
-        ? { 
-            ...p,
-            status: "Active",
-            approvedDate: new Date().toISOString()
-          }
-        : p
-    );
+  // 1. User clicks "Approve" -> Open Modal
+  const handleApproveClick = () => {
+    setIsApprovalModalOpen(true);
+  };
 
-    localStorage.setItem("packages", JSON.stringify(updatedPackages));
+  // 2. User confirms in Modal -> Run API Logic
+  const handleConfirmApprove = async () => {
+    setIsApprovalModalOpen(false); 
+    setLoading(true); 
+    // TODO: Integrate real API
+    // await packageService.approvePackage(Number(params.id));
     showToastNotification("Package has been approved successfully", "success");
+    setTimeout(() => router.push("/portal/packages"), 1500);
+  }; 
 
-    setTimeout(() => router.push("/packages?tab=pending"), 1500);
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+          <p className="text-gray-500 font-medium">Loading Package Details...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!packageData) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
-        <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+      <div className="p-8">
+        <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
+          <p className="text-red-500 font-medium">Package not found.</p>
+          <button 
+            onClick={() => router.push("/portal/packages")}
+            className="mt-4 text-blue-600 hover:underline"
+          >
+            Return to List
+          </button>
+        </div>
       </div>
     );
   }
 
   const isPending = packageData.status === "Pending";
+  const packageItems: PackageItem[] = packageData.packageitems || [];
+  
+  const filteredItems = packageItems.filter((item: PackageItem) =>
+    item.itemName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <>
@@ -137,8 +172,8 @@ export default function PackageDetailPage() {
           <div className="flex gap-6 items-start">
             <div className="w-64 flex-shrink-0">
               <img
-                src={packageData.image || "/bg/DefaultPackageImage.png"}
-                alt={packageData.title}
+                src={packageData.imageID || "/packages/DefaultPackagesImage.png"}
+                alt={packageData.PackageName}
                 className="w-full h-[300px] object-cover rounded-xl shadow-md"
               />
             </div>
@@ -147,36 +182,36 @@ export default function PackageDetailPage() {
               {/* Price and Status */}
               <div className="flex items-center gap-3">
                 <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  RM {packageData.totalPrice?.toLocaleString() ?? "-"}
+                  RM {(packageData.totalPrice ?? 0).toLocaleString()}
                 </h2>
-                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${packageData.status === "Active" ? "bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-300" : packageData.status === "Pending" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-800 dark:text-yellow-300" : "bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-300"}`}>
+                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${packageData.status === "Active" ? "bg-green-100 text-green-700" : packageData.status === "Pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
                   {packageData.status}
                 </span>
               </div>
 
               {/* Title */}
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">{packageData.title}</h3>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">{packageData.PackageName}</h3>
 
               {/* Dates */}
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300 mb-4">
                 <Calendar className="text-gray-400" size={16} />
-                <span className="font-medium">{packageData.startDate ? new Date(packageData.startDate).toLocaleDateString() : "-"}</span>
+                <span className="font-medium">{formatDate(packageData.effectiveDate)}</span>
                 <span className="text-gray-400">→</span>
                 <Calendar className="text-gray-400" size={16} />
-                <span className="font-medium">{packageData.endDate ? new Date(packageData.endDate).toLocaleDateString() : "-"}</span>
+                <span className="font-medium">{formatDate(packageData.lastValidDate)}</span>
               </div>
 
               {/* Duration */}
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300 text-sm">
                 <Clock className="text-gray-400" size={16} />
-                <span className="font-medium">{packageData.durationDays ?? "-"}</span>
+                <span className="font-medium">{packageData.durationDays} Days</span>
               </div>
 
               {/* Info Cards */}
               <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 flex flex-wrap gap-4">
                 <div className="flex items-center gap-2">
                   <Ticket className="text-indigo-600 dark:text-indigo-400" size={18} />
-                  <span className="text-gray-900 dark:text-white text-sm">{packageData.entryType ?? "-"}</span>
+                  <span className="text-gray-900 dark:text-white text-sm">{packageData.PackageType ?? "-"}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Globe className="text-indigo-600 dark:text-indigo-400" size={18} />
@@ -197,7 +232,7 @@ export default function PackageDetailPage() {
                 <div className="w-10" />
                 <div className="flex items-center gap-2">
                   <FileText className="text-gray-400" size={18} />
-                  <span>{packageData.tpremark ?? "-"}</span>
+                  <span>{packageData.tpremark || "No remarks"}</span>
                 </div>
               </div>
 
@@ -205,7 +240,7 @@ export default function PackageDetailPage() {
               {packageData.status === "Active" && (
                 <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400 mb-6">
                   <CheckCircle className="text-green-600" size={18} />
-                  <span>{packageData.approvedBy ?? "-"}</span>
+                  <span>Approved By: {packageData.approvedBy ?? "-"}</span>
                 </div>
               )}
 
@@ -223,7 +258,9 @@ export default function PackageDetailPage() {
                         rows={4}
                       />
                     ) : (
-                      <p className="text-gray-600 dark:text-gray-400 text-sm">{packageData.tpremark ?? "No notes provided"}</p>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm">
+                        <span className="font-semibold">Finance Remark:</span> {packageData.financeremark ?? "No remarks"}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -235,7 +272,7 @@ export default function PackageDetailPage() {
                   <button onClick={handleReject} className="flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
                     <X size={20} /> Reject
                   </button>
-                  <button onClick={handleApprove} className="flex-1 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+                  <button onClick={handleApproveClick} className="flex-1 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
                     <Check size={20} /> Approve / Proceed
                   </button>
                 </div>
@@ -244,36 +281,34 @@ export default function PackageDetailPage() {
           </div>
         )}
 
-        {/* Package Items Tab */}
+        {/* Items Tab */}
         {activeTab === "items" && (
           <div className="rounded-lg bg-[#ECECEC] p-2">
-            {/* Search */}
             <div className="flex justify-end mb-6">
               <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-full px-4 py-2 w-80">
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search"
+                  placeholder="Search items..."
                   className="bg-transparent outline-none flex-1 text-gray-900 dark:text-white placeholder-gray-400"
                 />
                 <Search size={18} className="text-gray-400" />
               </div>
             </div>
 
-            {/* Items Grid */}
             {filteredItems.length === 0 ? (
               <p className="text-gray-500 dark:text-gray-400 text-center py-10">
                 No items available for this package.
               </p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {filteredItems.map((item: PackageItem, index: number) => (
+                {filteredItems.map((item, index) => (
                   <div key={index} className="bg-white dark:bg-gray-700 rounded-lg px-4 py-3 border border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
                     <span className="font-medium text-gray-700 dark:text-gray-200 text-sm">{item.itemName}</span>
                     <div className="flex items-center gap-3">
-                      <span className="text-gray-600 dark:text-gray-400 text-sm">{item.price ?? "-"}</span>
-                      <span className="text-gray-500 dark:text-gray-400 text-sm">{item.entryQty ?? "-"}</span>
+                      <span className="text-gray-600 dark:text-gray-400 text-sm">RM {item.price ?? 0}</span>
+                      <span className="text-gray-500 dark:text-gray-400 text-sm">Qty: {item.entryQty ?? 1}</span>
                     </div>
                   </div>
                 ))}
@@ -283,20 +318,19 @@ export default function PackageDetailPage() {
         )}
       </div>
 
+      {/*Render the Approval Modal */}
+      <ApprovalModal 
+        isOpen={isApprovalModalOpen}
+        onConfirm={handleConfirmApprove}
+        onCancel={() => setIsApprovalModalOpen(false)}
+      />
+
       <style jsx>{`
         @keyframes slide-in {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
         }
-        .animate-slide-in {
-          animation: slide-in 0.3s ease-out;
-        }
+        .animate-slide-in { animation: slide-in 0.3s ease-out; }
       `}</style>
     </>
   );

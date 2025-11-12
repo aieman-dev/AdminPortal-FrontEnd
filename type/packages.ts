@@ -14,23 +14,21 @@
  */
 
 /* -----------------------------------------------------------
-   🧩 MAIN PACKAGE INTERFACE
+    MAIN PACKAGE INTERFACE
    Used when displaying package details or list of packages.
    ----------------------------------------------------------- */
-// src/type/packages.ts
+//type/packages.ts
 export interface Package {
   id: number;             
-  PackageName: string;          
-  totalPrice: string;          
-  category: string;       
-  startDate: string;      
-  endDate: string;        
+  PackageName: string;
+  PackageType?: string;          
+  totalPrice:  number;          
+  ageCategory: string;
+  nationality: string;       
+  effectiveDate: string;      
+  lastValidDate: string;        
   durationDays: number;   
-  status: 'Active' | 'Expired' | 'Pending' | 'Rejected' | 'Expire Soon'| 'Draft';
-  image: string;          
-  entryType?: string;     
-  nationality?: string;   
-  ageCategory?: string;   
+  status: string;    
   createdBy: string;      
   createdDate: string;    
   approvedBy?: string;    
@@ -41,13 +39,11 @@ export interface Package {
   // Added to make component compile
   packageitems?: PackageItem[];
   imageID?: string;
-  effectiveDate?: string;
-  lastValidDate?: string;
   dayPass?: string;
 }
 
 /* -----------------------------------------------------------
-   📝 PACKAGE FORM DATA
+    PACKAGE FORM DATA
    Used when submitting or editing a package form (Page 1).
    ----------------------------------------------------------- */
 export interface PackageFormData {
@@ -65,7 +61,30 @@ export interface PackageFormData {
 }
 
 /* -----------------------------------------------------------
-   🎡 AVAILABLE ATTRACTIONS
+    PACKAGE ITEM
+   Represents a user-selected attraction inside a package.
+   ----------------------------------------------------------- */
+export interface PackageItem {
+  attractionId: number;   
+  itemName: string;       
+  price?: number;         
+  entryQty?: number;       
+  itemType: string;     
+  image: string;          
+}
+
+/* -----------------------------------------------------------
+    AGE CATEGORY
+   Used for dropdown filters or input forms.
+   ----------------------------------------------------------- */
+export interface AgeCategory {
+  ageCode: string;        
+  categoryName: string;   
+  displayText: string;    
+}
+
+/* -----------------------------------------------------------
+    AVAILABLE ATTRACTIONS
    Represents attractions displayed for selection (Page 2).
    ----------------------------------------------------------- */
 export interface Attraction {
@@ -75,25 +94,3 @@ export interface Attraction {
   description?: string;   
 }
 
-/* -----------------------------------------------------------
-   🎟️ PACKAGE ITEM
-   Represents a user-selected attraction inside a package.
-   ----------------------------------------------------------- */
-export interface PackageItem {
-  attractionId: number;   /** ID of the original attraction */
-  itemName: string;       /** e.g. "Snowalk Entry" */
-  price?: number;          /** Price for this item (RM) */
-  entryQty?: number;       /** Number of entries allowed */
-  itemType: string;     /** e.g. "Entry", "Food", "Merchandise" */
-  image: string;          /** Image URL for the item */
-}
-
-/* -----------------------------------------------------------
-   👶 AGE CATEGORY
-   Used for dropdown filters or input forms.
-   ----------------------------------------------------------- */
-export interface AgeCategory {
-  ageCode: string;        
-  categoryName: string;   
-  displayText: string;    
-}

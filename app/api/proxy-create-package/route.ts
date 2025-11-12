@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get("authorization");
 
     // Forward to the REAL backend
-    const BACKEND_URL = "https://endodermal-tiffaney-scalelike.ngrok-free.dev/api/Package/create";
+    const BACKEND_URL = "https://hazel-nonpungent-yun.ngrok-free.dev/api/Package/create";
 
     const apiResponse = await fetch(BACKEND_URL, {
       method: "POST",
