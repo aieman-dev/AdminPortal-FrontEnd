@@ -5,7 +5,11 @@ import { APP_VERSION } from "@/lib/constants"
 export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md space-y-8">
+      
+      {/* Background image layer */}
+      <div className="absolute inset-0 bg-[url('/bg/theme-park.png')] bg-cover bg-center opacity-15 z-0"></div>
+
+      <div className="relative z-10 w-full max-w-md space-y-8 ">
         {/* Logo and Header */}
         <div className="text-center space-y-3">
           <div className="flex justify-center">

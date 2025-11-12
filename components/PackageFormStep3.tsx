@@ -74,13 +74,13 @@ const PackageFormStep3: React.FC<Props> = ({ form, onBack, onSubmit, onSaveDraft
               {form.imageID && typeof form.imageID !== "string" ? (
                 <img
                   src={URL.createObjectURL(form.imageID)}
-                  alt={form.name}
+                  alt={form.packageName}
                   className="w-60 h-60 rounded-xl object-cover shadow-md"
                 />
               ) : form.imageID ? (
                 <img
                   src={form.imageID}
-                  alt={form.name}
+                  alt={form.packageName}
                   className="w-60 h-60 rounded-xl object-cover shadow-md"
                 />
               ) : (
@@ -95,7 +95,7 @@ const PackageFormStep3: React.FC<Props> = ({ form, onBack, onSubmit, onSaveDraft
             {/* Package Info */}
             <div className="flex-1">
               <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                {form.name || "Untitled Package"}
+                {form.packageName || "Untitled Package"}
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-gray-700">

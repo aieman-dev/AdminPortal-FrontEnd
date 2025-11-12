@@ -20,7 +20,7 @@
 // src/type/packages.ts
 export interface Package {
   id: number;             
-  title: string;          
+  PackageName: string;          
   totalPrice: string;          
   category: string;       
   startDate: string;      
@@ -51,7 +51,7 @@ export interface Package {
    Used when submitting or editing a package form (Page 1).
    ----------------------------------------------------------- */
 export interface PackageFormData {
-  name: string;            
+  packageName: string;            
   packageType: string;     
   nationality: string;     
   ageCategory: string;     
@@ -84,6 +84,7 @@ export interface PackageItem {
   itemName: string;       /** e.g. "Snowalk Entry" */
   price?: number;          /** Price for this item (RM) */
   entryQty?: number;       /** Number of entries allowed */
+  itemType: string;     /** e.g. "Entry", "Food", "Merchandise" */
   image: string;          /** Image URL for the item */
 }
 

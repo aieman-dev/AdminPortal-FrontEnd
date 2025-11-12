@@ -1,4 +1,4 @@
-//src/components/PackageFormStep1.tsx
+// components/PackageFormStep1.tsx
 import React from "react";
 import { PackageFormData } from "../type/packages";
 
@@ -27,8 +27,8 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
             </label>
             <input
               type="text"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              value={form.packageName}
+              onChange={(e) => setForm({ ...form, packageName: e.target.value })}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 placeholder-gray-400 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="Enter package name"
             />

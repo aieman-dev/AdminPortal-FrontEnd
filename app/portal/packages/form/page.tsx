@@ -1,4 +1,4 @@
-//  src/app/(main)/packages/form/page.tsx
+// src/app/(main)/packages/form/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -8,45 +8,15 @@ import PackageFormStep1 from "@/components/PackageFormStep1";
 import PackageFormStep2 from "@/components/PackageFormStep2";
 import PackageFormStep3 from "@/components/PackageFormStep3";
 import { ConfirmationModal, DraftModal, SuccessModal } from '@/components/PackageModals';
-import { PackageFormData, Package } from "@/type/packages";
+import { PackageFormData } from "@/type/packages";
 
-// Save to localStorage
-const savePackageToLocal = (data: PackageFormData, status: "submitted" | "draft") => {
-  const existing = JSON.parse(localStorage.getItem("packages") || "[]");
+// --- Configuration ---
+// 1. Point to your Proxy for creation (This is correct)
+const CREATE_PACKAGE_URL = "/api/proxy-create-package";
+const UPLOAD_IMAGE_URL = "/api/proxy-upload";
 
-  const imageURL =
-    data.imageID instanceof File
-      ? URL.createObjectURL(data.imageID)
-      : typeof data.imageID === "string"
-      ? data.imageID
-      : "/bg/DefaultPackageImage.png";
-
-      
-  const start = new Date(data.effectiveDate || "");
-  const end = new Date(data.lastValidDate || "");
-  const durationDays = start && end ? Math.ceil((end.getTime() - start.getTime()) / (1000*60*60*24)) + 1 : 0;
-
-   // Convert PackageFormData → Package
-  const newPackage = {
-    id: Date.now(),
-    title: data.name || "Untitled Package",
-    price: data.totalPrice || 0,
-    startDate: data.effectiveDate || "",
-    endDate: data.lastValidDate || "",
-    durationDays: durationDays,
-    status: status === "submitted" ? "Pending" : "Draft",
-    image: imageURL,
-    createdDate: new Date().toISOString(),
-    createdBy: "System User", // or your logic
-    entryType: data.packageType,
-    nationality: data.nationality,
-    ageCategory: data.ageCategory,
-    tpremark: data.tpremark,
-    packageitems: data.packageitems || [],
-  };
-
-  localStorage.setItem("packages", JSON.stringify([...existing, newPackage]));
-};
+// 🔑 HARDCODED TOKEN FOR TESTING
+const TEST_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJUUEBlbWFpbC5jb20iLCJ1c2VySWQiOiIzIiwibmFtZSI6IlRQVGVzdCIsImRlcGFydG1lbnQiOiJUUF9BRE1JTiIsImp0aSI6ImE2YjQyYTgxLTFiYTAtNDQ3MS1iZWFmLTIyZWU2NTRmOTgzNiIsImV4cCI6MTc2MzAwNDczMywiaXNzIjoiaHR0cHM6Ly9sb2NhbGhvc3Q6NzAyOSIsImF1ZCI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTE3MyJ9.Xv6y4QB0xxdIT1zMKSXXnZM60uOTYfsPnOqoTm__yek";
 
 const PackageFormPage = () => {
   const router = useRouter();
@@ -54,8 +24,10 @@ const PackageFormPage = () => {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showDraft, setShowDraft] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [form, setForm] = useState<PackageFormData>({
-    name: "",
+    packageName: "",
     packageType: "",
     nationality: "",
     ageCategory: "",
@@ -65,9 +37,7 @@ const PackageFormPage = () => {
     imageID: null,
     packageitems: [],
   });
-  
 
-  // Disable Chrome scroll on this page only
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => {
@@ -77,42 +47,131 @@ const PackageFormPage = () => {
 
   const next = () => setStep((s) => Math.min(s + 1, 3));
   const back = () => setStep((s) => Math.max(s - 1, 1));
+  const handleSubmit = () => setShowConfirmation(true);
+  const handleCancelSubmit = () => setShowConfirmation(false);
 
-  const handleSubmit = () => {
-    setShowConfirmation(true);
+  // --- Helper: Upload Image ---
+  const uploadImage = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    // Added ngrok header here too
+    const res = await fetch(UPLOAD_IMAGE_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${TEST_TOKEN}`, 
+      },
+      body: formData,
+    });
+
+    if (!res.ok) {
+        let errorMessage = "Image upload failed";
+        try {
+            const errorData = await res.json();
+            errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+            errorMessage = await res.text() || errorMessage;
+        }
+        throw new Error(errorMessage);
+    }
+    
+    const data = await res.json();
+    return data.imageId; 
   };
 
-  const handleConfirmSubmit = async() => {
-    console.log(" Submitted package:", form);
-    await savePackageToLocal(form, "submitted"); // TODO: Connect API later
+  // --- Main Submit Logic ---
+  const handleConfirmSubmit = async () => {
     setShowConfirmation(false);
-    setShowSuccess(true);
+    setIsSubmitting(true);
+
+    try {
+      let finalImageID = "123"; 
+
+      // Step 1: Upload Image if one is selected
+      if (form.imageID instanceof File) {
+        try {
+          finalImageID = await uploadImage(form.imageID);
+        } catch (uploadErr) {
+          console.error("Image upload error:", uploadErr);
+          alert("Failed to upload image. Please try again.");
+          setIsSubmitting(false);
+          return; 
+        }
+      } else if (typeof form.imageID === "string") {
+        finalImageID = form.imageID;
+      }
+
+      // Step 2: Build Payload
+      const payload = {
+        name: form.packageName || "Untitled Package",
+        packageType: form.packageType || "Entry",
+        price: form.totalPrice || 0,
+        point: 0,
+        effectiveDate: form.effectiveDate ? `${form.effectiveDate}T00:00:00` : new Date().toISOString(),
+        lastValidDate: form.lastValidDate ? `${form.lastValidDate}T00:00:00` : new Date().toISOString(),
+        remark: form.tpremark || "No remarks",
+        nationality: form.nationality || "MY",
+        ageCategory: form.ageCategory || "A1",
+        imageID: finalImageID || "/bg/DefaultPackageImage.png",
+        items: form.packageitems.map((item) => ({
+          itemName: item.itemName,
+          itemType: item.itemType || "Entry",
+          value: item.price || 0, 
+          entryQty: item.entryQty || 1,
+        })),
+      };
+
+      console.log("Submitting Payload:", payload);
+
+      // Step 3: Create Package (via Proxy)
+      const res = await fetch(CREATE_PACKAGE_URL,
+        {
+        method: "POST",
+        headers: { 
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
+            "Authorization": `Bearer ${TEST_TOKEN}`, 
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || "Failed to create package");
+      }
+
+      const data = await res.json();
+      console.log("Package Created:", data);
+      setShowSuccess(true);
+
+    } catch (err) {
+      console.error("Submit error:", err);
+      alert(`Error: ${err instanceof Error ? err.message : "Failed to submit package"}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleSaveDraft = async() => {
-  console.log("Saved draft:", form);
-  await savePackageToLocal(form, "draft");
-  setShowDraft(true);
-};
-
-  const handleCancelSubmit = () => {
-    setShowConfirmation(false);
-  };
+  const handleSaveDraft = () => {
+    const existing = JSON.parse(localStorage.getItem("packages") || "[]");
+    localStorage.setItem("packages", JSON.stringify([...existing, form]));
+    setShowDraft(true);
+  }
 
   const handleViewStatus = () => {
     setShowSuccess(false);
-    router.push("/portal/packages"); 
+    router.push("/portal/packages");
   };
 
   const handleCreateNew = () => {
     setShowSuccess(false);
     setShowDraft(false);
-    // Reset form
     setForm({
-      name: "",
+      packageName: "",
       packageType: "",
       nationality: "",
       ageCategory: "",
+      dayPass: "",
       effectiveDate: "",
       lastValidDate: "",
       tpremark: "",
@@ -128,44 +187,25 @@ const PackageFormPage = () => {
 
   return (
     <>
-    <div className="h-screen flex items-start justify-center overflow-hidden">
-      {/* Unified Card Container */}
-      <div 
-        className="w-full max-w-[1300px] flex flex-col md:flex-row bg-white rounded-2xl shadow-2xl overflow-hidden" 
-        style={{ height: 'calc(100vh - 130px)' }}
-      >
-        {/* Left: Step Indicator */}
-        <StepIndicator
-          current={step}
-          onClickStep={setStep}
-          onBackClick={handleBackToList}
-        />
+      <div className="h-screen flex items-start justify-center overflow-hidden">
+        <div
+          className="w-full max-w-[1300px] flex flex-col md:flex-row bg-white rounded-2xl shadow-2xl overflow-hidden"
+          style={{ height: 'calc(100vh - 130px)' }}
+        >
+          <StepIndicator
+            current={step}
+            onClickStep={setStep}
+            onBackClick={handleBackToList}
+          />
 
-        {/* Right: Form Steps - Scrollable */}
-        <main className="flex-1 overflow-y-auto scrollbar-hide p-6">
-          {step === 1 && (
-            <PackageFormStep1 form={form} setForm={setForm} onNext={next} />
-          )}
-          {step === 2 && (
-            <PackageFormStep2
-              form={form}
-              setForm={setForm}
-              onNext={next}
-              onBack={back}
-            />
-          )}
-          {step === 3 && (
-            <PackageFormStep3 
-            form={form} 
-            onBack={back} 
-            onSubmit={handleSubmit} 
-             onSaveDraft={handleSaveDraft} />
-          )}
-        </main>
+          <main className="flex-1 overflow-y-auto scrollbar-hide p-6">
+            {step === 1 && <PackageFormStep1 form={form} setForm={setForm} onNext={next} />}
+            {step === 2 && <PackageFormStep2 form={form} setForm={setForm} onNext={next} onBack={back} />}
+            {step === 3 && <PackageFormStep3 form={form} onBack={back} onSubmit={handleSubmit} onSaveDraft={handleSaveDraft} />}
+          </main>
+        </div>
       </div>
-    </div>
 
-    {/* Modals */}
       <ConfirmationModal
         isOpen={showConfirmation}
         onConfirm={handleConfirmSubmit}
