@@ -51,15 +51,21 @@ export default function PackagesPage() {
 
         const formatted: PackageListItem[] = rawData.map((pkg: Package) => ({
           id: pkg.id,
-          name: pkg.PackageName || "Untitled", 
-          price: (pkg.totalPrice !== undefined && pkg.totalPrice !== null)
-              ? `${pkg.totalPrice}` 
-              : "0",
-          category: pkg.ageCategory || pkg.PackageType || "N/A",
+          // Map new 'name' field, fallback to old 'PackageName'
+          name: pkg.name || pkg.PackageName || "Untitled", 
+          
+          // Map new 'price' field, fallback to old 'totalPrice'
+          price: (pkg.price !== undefined ? pkg.price : pkg.totalPrice ?? 0).toString(),
+              
+          // Map 'ageCategory' or 'packageType'
+          category: pkg.ageCategory || pkg.packageType || pkg.PackageType || "N/A",
+          
           createdDate: formatDate(pkg.createdDate),
-          rawDate: new Date(pkg.createdDate), 
+          rawDate: new Date(pkg.createdDate || new Date().toISOString()), 
           status: pkg.status || "Draft",
-          image: pkg.imageID || "/packages/DefaultPackageImage.png",
+          
+          // Map new 'imageUrl', fallback to old 'imageID'
+          image: pkg.imageUrl || pkg.imageID || "/packages/DefaultPackageImage.png",
         }));
 
         setPackages(formatted);

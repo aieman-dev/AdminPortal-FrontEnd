@@ -4,13 +4,6 @@
  * ----------------------------------------------
  * Defines all TypeScript interfaces used for the
  * Package feature in the i-City SuperApp system.
- *
- * Each interface has a clear purpose:
- *  - `Package`: for displaying existing package details
- *  - `PackageFormData`: for creating or editing a package
- *  - `PackageItem`: for user-selected attractions inside a package
- *  - `Attraction`: for available attractions to choose from
- *  - `AgeCategory`: for dropdown age options
  */
 
 /* -----------------------------------------------------------
@@ -19,24 +12,35 @@
    ----------------------------------------------------------- */
 //type/packages.ts
 export interface Package {
-  id: number;             
-  PackageName: string;
+  id: number;
+  name?: string;
+  price?: number;
+  imageUrl?: string;
+  validDays?: number;
+  submittedBy?: string;
+  remark?: string;       // TP Remark
+  remark2?: string;      // Finance Remark
+  items?: PackageItem[];
+  totalEntryQty?: number;
+  point?: number;
+  packageType?: string;  // Note: lowercase 'p' in JSON
+  
+  // Legacy Fields (Maintained for backward compatibility/Forms)
+  PackageName?: string;
   PackageType?: string;          
-  totalPrice:  number;          
-  ageCategory: string;
-  nationality: string;       
-  effectiveDate: string;      
-  lastValidDate: string;        
-  durationDays: number;   
-  status: string;    
-  createdBy: string;      
-  createdDate: string;    
+  totalPrice?:  number;          
+  ageCategory?: string;
+  nationality?: string;       
+  effectiveDate?: string;      
+  lastValidDate?: string;        
+  durationDays?: number;   
+  status?: string;    
+  createdBy?: string;      
+  createdDate?: string;    
   approvedBy?: string;    
   approvedDate?: string;  
   tpremark?: string;      
   financeremark?: string; 
-
-  // Added to make component compile
   packageitems?: PackageItem[];
   imageID?: string;
   dayPass?: string;
@@ -65,12 +69,20 @@ export interface PackageFormData {
    Represents a user-selected attraction inside a package.
    ----------------------------------------------------------- */
 export interface PackageItem {
-  attractionId: number;   
+  // Common Fields
   itemName: string;       
   price?: number;         
   entryQty?: number;       
-  itemType: string;     
-  image: string;          
+
+  // New API Fields
+  point?: number;
+  nationality?: string;
+  category?: string;
+
+  // Legacy Fields
+  attractionId?: number;   
+  itemType?: string;     
+  image?: string;          
 }
 
 /* -----------------------------------------------------------
@@ -93,4 +105,3 @@ export interface Attraction {
   image: string;          
   description?: string;   
 }
-

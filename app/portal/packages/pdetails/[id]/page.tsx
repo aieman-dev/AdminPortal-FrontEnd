@@ -1,4 +1,4 @@
-// src/app/(main)/packages/pdetails/[id]/page.tsx
+//app/portal/packages/pdetails[id]/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -48,7 +48,8 @@ export default function PackageDetailPage() {
         
         if (data) {
           setPackageData(data);
-          setRejectionNotes(data.financeremark || "");
+          // Map Remark2 (Finance) or financeremark to rejection notes state
+          setRejectionNotes(data.remark2 || data.financeremark || "");
         } else {
           showToastNotification("Failed to load package details", "warning");
         }
@@ -124,7 +125,8 @@ export default function PackageDetailPage() {
   }
 
   const isPending = packageData.status === "Pending";
-  const packageItems: PackageItem[] = packageData.packageitems || [];
+  // Support both new 'items' array and old 'packageitems'
+  const packageItems: PackageItem[] = packageData.items || packageData.packageitems || [];
   
   const filteredItems = packageItems.filter((item: PackageItem) =>
     item.itemName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -172,8 +174,8 @@ export default function PackageDetailPage() {
           <div className="flex gap-6 items-start">
             <div className="w-64 flex-shrink-0">
               <img
-                src={packageData.imageID || "/packages/DefaultPackagesImage.png"}
-                alt={packageData.PackageName}
+                src={packageData.imageUrl || packageData.imageID || "/packages/DefaultPackagesImage.png"}
+                alt={packageData.name || packageData.PackageName}
                 className="w-full h-[300px] object-cover rounded-xl shadow-md"
               />
             </div>
@@ -182,7 +184,7 @@ export default function PackageDetailPage() {
               {/* Price and Status */}
               <div className="flex items-center gap-3">
                 <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  RM {(packageData.totalPrice ?? 0).toLocaleString()}
+                  RM {(packageData.price ?? packageData.totalPrice ?? 0).toLocaleString()}
                 </h2>
                 <span className={`px-3 py-1 rounded-full text-sm font-semibold ${packageData.status === "Active" ? "bg-green-100 text-green-700" : packageData.status === "Pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
                   {packageData.status}
@@ -190,7 +192,9 @@ export default function PackageDetailPage() {
               </div>
 
               {/* Title */}
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">{packageData.PackageName}</h3>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                {packageData.name || packageData.PackageName}
+              </h3>
 
               {/* Dates */}
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300 mb-4">
@@ -204,14 +208,18 @@ export default function PackageDetailPage() {
               {/* Duration */}
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300 text-sm">
                 <Clock className="text-gray-400" size={16} />
-                <span className="font-medium">{packageData.durationDays} Days</span>
+                <span className="font-medium">
+                  {packageData.validDays ?? packageData.durationDays} Days
+                </span>
               </div>
 
               {/* Info Cards */}
               <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 flex flex-wrap gap-4">
                 <div className="flex items-center gap-2">
                   <Ticket className="text-indigo-600 dark:text-indigo-400" size={18} />
-                  <span className="text-gray-900 dark:text-white text-sm">{packageData.PackageType ?? "-"}</span>
+                  <span className="text-gray-900 dark:text-white text-sm">
+                    {packageData.packageType || packageData.PackageType || "-"}
+                  </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Globe className="text-indigo-600 dark:text-indigo-400" size={18} />
@@ -227,12 +235,12 @@ export default function PackageDetailPage() {
               <div className="flex items-center text-gray-600 dark:text-gray-400 mb-4">
                 <div className="flex items-center gap-2">
                   <User className="text-gray-400" size={18} />
-                  <span>{packageData.createdBy}</span>
+                  <span>{packageData.submittedBy || packageData.createdBy}</span>
                 </div>
                 <div className="w-10" />
                 <div className="flex items-center gap-2">
                   <FileText className="text-gray-400" size={18} />
-                  <span>{packageData.tpremark || "No remarks"}</span>
+                  <span>{packageData.remark || packageData.tpremark || "No remarks"}</span>
                 </div>
               </div>
 
@@ -259,7 +267,7 @@ export default function PackageDetailPage() {
                       />
                     ) : (
                       <p className="text-gray-600 dark:text-gray-400 text-sm">
-                        <span className="font-semibold">Finance Remark:</span> {packageData.financeremark ?? "No remarks"}
+                        <span className="font-semibold">Finance Remark:</span> {packageData.remark2 || packageData.financeremark || "No remarks"}
                       </p>
                     )}
                   </div>
@@ -305,7 +313,12 @@ export default function PackageDetailPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {filteredItems.map((item, index) => (
                   <div key={index} className="bg-white dark:bg-gray-700 rounded-lg px-4 py-3 border border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
-                    <span className="font-medium text-gray-700 dark:text-gray-200 text-sm">{item.itemName}</span>
+                    <div className="flex flex-col">
+                      <span className="font-medium text-gray-700 dark:text-gray-200 text-sm">{item.itemName}</span>
+                      {item.category && (
+                        <span className="text-xs text-gray-400">{item.category}</span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-3">
                       <span className="text-gray-600 dark:text-gray-400 text-sm">RM {item.price ?? 0}</span>
                       <span className="text-gray-500 dark:text-gray-400 text-sm">Qty: {item.entryQty ?? 1}</span>
