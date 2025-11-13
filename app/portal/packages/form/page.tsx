@@ -37,7 +37,7 @@ const savePackageToLocal = (data: PackageFormData, status: "submitted" | "draft"
     status: status === "submitted" ? "Pending" : "Draft",
     image: imageURL,
     createdDate: new Date().toISOString(),
-    createdBy: "System User", // or your logic
+    createdBy: "System User - Hardcoded ", // or your logic
     entryType: data.packageType,
     nationality: data.nationality,
     ageCategory: data.ageCategory,
