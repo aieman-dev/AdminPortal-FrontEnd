@@ -4,54 +4,54 @@
  * ----------------------------------------------
  * Defines all TypeScript interfaces used for the
  * Package feature in the i-City SuperApp system.
- *
- * Each interface has a clear purpose:
- *  - `Package`: for displaying existing package details
- *  - `PackageFormData`: for creating or editing a package
- *  - `PackageItem`: for user-selected attractions inside a package
- *  - `Attraction`: for available attractions to choose from
- *  - `AgeCategory`: for dropdown age options
  */
 
 /* -----------------------------------------------------------
-   🧩 MAIN PACKAGE INTERFACE
+    MAIN PACKAGE INTERFACE
    Used when displaying package details or list of packages.
    ----------------------------------------------------------- */
-// src/type/packages.ts
+//type/packages.ts
 export interface Package {
-  id: number;             
-  title: string;          
-  totalPrice: string;          
-  category: string;       
-  startDate: string;      
-  endDate: string;        
-  durationDays: number;   
-  status: 'Active' | 'Expired' | 'Pending' | 'Rejected' | 'Expire Soon'| 'Draft';
-  image: string;          
-  entryType?: string;     
-  nationality?: string;   
-  ageCategory?: string;   
-  createdBy: string;      
-  createdDate: string;    
+  id: number;
+  name?: string;
+  price?: number;
+  imageUrl?: string;
+  validDays?: number;
+  submittedBy?: string;
+  remark?: string;       // TP Remark
+  remark2?: string;      // Finance Remark
+  items?: PackageItem[];
+  totalEntryQty?: number;
+  point?: number;
+  packageType?: string;  // Note: lowercase 'p' in JSON
+  
+  // Legacy Fields (Maintained for backward compatibility/Forms)
+  PackageName?: string;
+  PackageType?: string;          
+  totalPrice?:  number;          
+  ageCategory?: string;
+  nationality?: string;       
+  effectiveDate?: string;      
+  lastValidDate?: string;        
+  durationDays?: number;   
+  status?: string;    
+  createdBy?: string;      
+  createdDate?: string;    
   approvedBy?: string;    
   approvedDate?: string;  
   tpremark?: string;      
   financeremark?: string; 
-
-  // Added to make component compile
   packageitems?: PackageItem[];
   imageID?: string;
-  effectiveDate?: string;
-  lastValidDate?: string;
   dayPass?: string;
 }
 
 /* -----------------------------------------------------------
-   📝 PACKAGE FORM DATA
+    PACKAGE FORM DATA
    Used when submitting or editing a package form (Page 1).
    ----------------------------------------------------------- */
 export interface PackageFormData {
-  name: string;            
+  packageName: string;            
   packageType: string;     
   nationality: string;     
   ageCategory: string;     
@@ -65,7 +65,38 @@ export interface PackageFormData {
 }
 
 /* -----------------------------------------------------------
-   🎡 AVAILABLE ATTRACTIONS
+    PACKAGE ITEM
+   Represents a user-selected attraction inside a package.
+   ----------------------------------------------------------- */
+export interface PackageItem {
+  // Common Fields
+  itemName: string;       
+  price?: number;         
+  entryQty?: number;       
+
+  // New API Fields
+  point?: number;
+  nationality?: string;
+  category?: string;
+
+  // Legacy Fields
+  attractionId?: number;   
+  itemType?: string;     
+  image?: string;          
+}
+
+/* -----------------------------------------------------------
+    AGE CATEGORY
+   Used for dropdown filters or input forms.
+   ----------------------------------------------------------- */
+export interface AgeCategory {
+  ageCode: string;        
+  categoryName: string;   
+  displayText: string;    
+}
+
+/* -----------------------------------------------------------
+    AVAILABLE ATTRACTIONS
    Represents attractions displayed for selection (Page 2).
    ----------------------------------------------------------- */
 export interface Attraction {
@@ -73,26 +104,4 @@ export interface Attraction {
   name: string;           
   image: string;          
   description?: string;   
-}
-
-/* -----------------------------------------------------------
-   🎟️ PACKAGE ITEM
-   Represents a user-selected attraction inside a package.
-   ----------------------------------------------------------- */
-export interface PackageItem {
-  attractionId: number;   /** ID of the original attraction */
-  itemName: string;       /** e.g. "Snowalk Entry" */
-  price?: number;          /** Price for this item (RM) */
-  entryQty?: number;       /** Number of entries allowed */
-  image: string;          /** Image URL for the item */
-}
-
-/* -----------------------------------------------------------
-   👶 AGE CATEGORY
-   Used for dropdown filters or input forms.
-   ----------------------------------------------------------- */
-export interface AgeCategory {
-  ageCode: string;        
-  categoryName: string;   
-  displayText: string;    
 }

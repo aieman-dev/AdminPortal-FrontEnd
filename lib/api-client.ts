@@ -1,3 +1,4 @@
+// lib/api-client.ts
 import { getAuthToken } from "./auth"
 
 export interface ApiResponse<T = any> {
@@ -7,10 +8,6 @@ export interface ApiResponse<T = any> {
   message?: string
 }
 
-/**
- * Base API client with authentication headers
- * Ready for backend integration
- */
 class ApiClient {
   private baseUrl: string
 
@@ -19,60 +16,74 @@ class ApiClient {
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
-    const token = getAuthToken()
+    const token = getAuthToken(); // This might be null for now
+    const headers = new Headers(options.headers);
 
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-      ...options.headers,
+    // 1. Handle Content-Type (Skip for FormData so browser sets boundary)
+    if (!(options.body instanceof FormData)) {
+      headers.set("Content-Type", "application/json");
     }
 
-    // Add authorization header if token exists
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`
+    // 2. Auto-inject Auth Token (Only if not already provided by the caller)
+    if (token && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${token}`);
     }
 
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         ...options,
         headers,
-      })
+      });
 
-      const data = await response.json()
+      // 3. Safe JSON parsing
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
 
       if (!response.ok) {
         return {
           success: false,
-          error: data.error || "An error occurred",
-        }
+          error: data?.error || data?.message || "An error occurred",
+        };
       }
 
       return {
         success: true,
         data: data,
-      }
+      };
     } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : "Network error",
-      }
+      };
     }
   }
 
-  async get<T>(endpoint: string): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, { method: "GET" })
+  async get<T>(endpoint: string, headers?: Record<string, string>): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+       method: "GET" ,
+      headers: headers,
+    })
   }
 
-  async post<T>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
+  //  UPDATED: Checks for FormData
+  async post<T>(endpoint: string, body?: any, headers?: Record<string, string>): Promise<ApiResponse<T>> {
+    const isFormData = body instanceof FormData;
     return this.request<T>(endpoint, {
       method: "POST",
-      body: JSON.stringify(body),
+      body: isFormData ? body : JSON.stringify(body),
+      headers: headers, // Pass custom headers (like our hardcoded token)
     })
   }
 
   async put<T>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
+    const isFormData = body instanceof FormData;
     return this.request<T>(endpoint, {
       method: "PUT",
-      body: JSON.stringify(body),
+      body: isFormData ? body : JSON.stringify(body),
     })
   }
 
@@ -81,5 +92,4 @@ class ApiClient {
   }
 }
 
-// Export singleton instance
 export const apiClient = new ApiClient()

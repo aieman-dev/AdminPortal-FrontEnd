@@ -3,10 +3,10 @@ import { Calendar, User, Copy, Pencil } from "lucide-react";
 
 interface PackageCardProps {
   id: number;
-  title: string;
+  name: string;
   price: string;
   category: string;
-  dates: string;
+  createdDate: string;
   status: string;
   image: string;
   onClick?: () => void;        // For navigating to detail page
@@ -15,10 +15,10 @@ interface PackageCardProps {
 }
 
 export default function PackageCard({
-  title,
+  name,
   price,
   category,
-  dates,
+  createdDate,
   status,
   image,
   onClick,
@@ -47,7 +47,7 @@ export default function PackageCard({
     >
       {/* Image */}
       <div className="relative h-32">
-        <img src={image} alt={title} className="w-full h-full object-cover" />
+        <img src={image} alt={name} className="w-full h-full object-cover" />
         <span className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium">
           Bundle
         </span>
@@ -81,7 +81,7 @@ export default function PackageCard({
       {/* Content */}
       <div className="p-3">
         <h3 className="font-semibold text-sm text-gray-900 dark:text-white mb-1 line-clamp-2">
-          {title}
+          {name}
         </h3>
         <p className="text-sm text-blue-600 font-bold mb-2 dark:text-blue-400">
           RM {price}
@@ -97,7 +97,7 @@ export default function PackageCard({
         <div className="flex items-center justify-between text-xs">
           <div className="flex items-center gap-1 text-gray-500 dark:text-gray-300">
             <Calendar size={12} className="text-gray-400 dark:text-gray-300" />
-            <span>{dates}</span>
+            <span>{createdDate}</span>
           </div>
           <span
             className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(

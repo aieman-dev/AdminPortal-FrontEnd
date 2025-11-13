@@ -1,5 +1,7 @@
+/*app/gloabls.css*/
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "react-datepicker/dist/react-datepicker.css";
 
 @custom-variant dark (&:is(.dark *));
 
