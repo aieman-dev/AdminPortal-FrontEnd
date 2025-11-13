@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation"; // Added useSearchParams
 import { Search, Calendar, Clock, Ticket, Globe, User, FileText, CheckCircle, ArrowLeft, X, Check, Loader2 } from "lucide-react";
 import { Package, PackageItem } from "@/type/packages";
 import { packageService } from "@/services/package-services"; 
@@ -14,41 +14,40 @@ const formatDate = (dateString: string | undefined) => {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }); // Result: "12 Nov 2025"
+  });
 };
 
 export default function PackageDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams(); 
+  const sourceParam = searchParams.get("source"); 
   
-  // UI State
   const [activeTab, setActiveTab] = useState<"overview" | "items">("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [rejectionNotes, setRejectionNotes] = useState("");
   
-  // Data State
   const [packageData, setPackageData] = useState<Package | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Toast State
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<"success" | "warning">("success");
-
-  //Notification Pop-up State
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
 
-  // Load Data
   useEffect(() => {
     const fetchPackage = async () => {
       if (!params.id) return;
       try {
         setLoading(true);
-        const data = await packageService.getPackageById(Number(params.id));
+        
+        // Pass the source parameter if it exists
+        const data = await packageService.getPackageById(
+          Number(params.id), 
+          sourceParam || undefined
+        );
         
         if (data) {
           setPackageData(data);
-          // Map Remark2 (Finance) or financeremark to rejection notes state
           setRejectionNotes(data.remark2 || data.financeremark || "");
         } else {
           showToastNotification("Failed to load package details", "warning");
@@ -62,7 +61,7 @@ export default function PackageDetailPage() {
     };
 
     fetchPackage();
-  }, [params.id]);
+  }, [params.id, sourceParam]); // Re-run if ID or source changes
 
   const showToastNotification = (message: string, type: "success" | "warning") => {
     setToastMessage(message);
@@ -71,28 +70,20 @@ export default function PackageDetailPage() {
     setTimeout(() => setShowToast(false), 3000);
   };
 
-  // Handlers
   const handleReject = async () => {
     if (!rejectionNotes.trim()) {
       showToastNotification("Please provide rejection notes", "warning");
       return;
     }
-    // TODO: Integrate real API
     showToastNotification("Package has been rejected (Local Simulation)", "warning");
     setTimeout(() => router.push("/portal/packages"), 1500);
   };
 
-  // 1. User clicks "Approve" -> Open Modal
-  const handleApproveClick = () => {
-    setIsApprovalModalOpen(true);
-  };
+  const handleApproveClick = () => setIsApprovalModalOpen(true);
 
-  // 2. User confirms in Modal -> Run API Logic
   const handleConfirmApprove = async () => {
     setIsApprovalModalOpen(false); 
     setLoading(true); 
-    // TODO: Integrate real API
-    // await packageService.approvePackage(Number(params.id));
     showToastNotification("Package has been approved successfully", "success");
     setTimeout(() => router.push("/portal/packages"), 1500);
   }; 
@@ -113,10 +104,7 @@ export default function PackageDetailPage() {
       <div className="p-8">
         <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
           <p className="text-red-500 font-medium">Package not found.</p>
-          <button 
-            onClick={() => router.push("/portal/packages")}
-            className="mt-4 text-blue-600 hover:underline"
-          >
+          <button onClick={() => router.push("/portal/packages")} className="mt-4 text-blue-600 hover:underline">
             Return to List
           </button>
         </div>
@@ -125,16 +113,20 @@ export default function PackageDetailPage() {
   }
 
   const isPending = packageData.status === "Pending";
-  // Support both new 'items' array and old 'packageitems'
   const packageItems: PackageItem[] = packageData.items || packageData.packageitems || [];
   
   const filteredItems = packageItems.filter((item: PackageItem) =>
     item.itemName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const displayPrice = packageData.price ?? packageData.totalPrice ?? 0;
+  const displayPoints = packageData.point ?? 0;
+
+  // Use the new imageUrl field from the API
+  const displayImage = packageData.imageUrl || packageData.imageID || "/packages/DefaultPackagesImage.png";
+
   return (
     <>
-      {/* Toast Notification */}
       {showToast && (
         <div className="fixed top-4 right-4 z-50 animate-slide-in">
           <div className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${toastType === "success" ? "bg-green-500 text-white" : "bg-yellow-500 text-white"}`}>
@@ -145,18 +137,13 @@ export default function PackageDetailPage() {
       )}
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
-        {/* Title row */}
         <div className="flex items-center gap-3 mb-6 border-b-2 border-[#E5E7EB] pb-3">
-          <button
-            onClick={() => router.push("/portal/packages")}
-            className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-          >
+          <button onClick={() => router.push("/portal/packages")} className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition">
             <ArrowLeft size={20} className="text-gray-600 dark:text-gray-300" />
           </button>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Package Detail</h1>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-2 mb-8">
           {["overview", "items"].map((tab) => (
             <button
@@ -169,34 +156,31 @@ export default function PackageDetailPage() {
           ))}
         </div>
 
-        {/* Overview Tab */}
         {activeTab === "overview" && (
           <div className="flex gap-6 items-start">
             <div className="w-64 flex-shrink-0">
               <img
-                src={packageData.imageUrl || packageData.imageID || "/packages/DefaultPackagesImage.png"}
+                src={displayImage}
                 alt={packageData.name || packageData.PackageName}
                 className="w-full h-[300px] object-cover rounded-xl shadow-md"
+                onError={(e) => (e.currentTarget.src = "/packages/DefaultPackagesImage.png")}
               />
             </div>
 
             <div className="flex-1 space-y-4">
-              {/* Price and Status */}
               <div className="flex items-center gap-3">
                 <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  RM {(packageData.price ?? packageData.totalPrice ?? 0).toLocaleString()}
+                  {displayPrice > 0 ? `RM ${displayPrice.toLocaleString()}` : `${displayPoints} Pts`}
                 </h2>
                 <span className={`px-3 py-1 rounded-full text-sm font-semibold ${packageData.status === "Active" ? "bg-green-100 text-green-700" : packageData.status === "Pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
                   {packageData.status}
                 </span>
               </div>
 
-              {/* Title */}
               <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                 {packageData.name || packageData.PackageName}
               </h3>
 
-              {/* Dates */}
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300 mb-4">
                 <Calendar className="text-gray-400" size={16} />
                 <span className="font-medium">{formatDate(packageData.effectiveDate)}</span>
@@ -205,7 +189,6 @@ export default function PackageDetailPage() {
                 <span className="font-medium">{formatDate(packageData.lastValidDate)}</span>
               </div>
 
-              {/* Duration */}
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300 text-sm">
                 <Clock className="text-gray-400" size={16} />
                 <span className="font-medium">
@@ -213,7 +196,6 @@ export default function PackageDetailPage() {
                 </span>
               </div>
 
-              {/* Info Cards */}
               <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 flex flex-wrap gap-4">
                 <div className="flex items-center gap-2">
                   <Ticket className="text-indigo-600 dark:text-indigo-400" size={18} />
@@ -231,7 +213,6 @@ export default function PackageDetailPage() {
                 </div>
               </div>
 
-              {/* Creator / Remark */}
               <div className="flex items-center text-gray-600 dark:text-gray-400 mb-4">
                 <div className="flex items-center gap-2">
                   <User className="text-gray-400" size={18} />
@@ -244,7 +225,6 @@ export default function PackageDetailPage() {
                 </div>
               </div>
 
-              {/* Approval Info */}
               {packageData.status === "Active" && (
                 <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400 mb-6">
                   <CheckCircle className="text-green-600" size={18} />
@@ -252,7 +232,6 @@ export default function PackageDetailPage() {
                 </div>
               )}
 
-              {/* Notes / Rejection */}
               <div className="border-t border-gray-200 dark:border-gray-600 pt-6">
                 <div className="flex items-start gap-3">
                   <FileText className="text-gray-400 mt-1" size={20} />
@@ -274,7 +253,6 @@ export default function PackageDetailPage() {
                 </div>
               </div>
 
-              {/* Action Buttons */}
               {isPending && (
                 <div className="flex gap-3 pt-6">
                   <button onClick={handleReject} className="flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
@@ -289,7 +267,6 @@ export default function PackageDetailPage() {
           </div>
         )}
 
-        {/* Items Tab */}
         {activeTab === "items" && (
           <div className="rounded-lg bg-[#ECECEC] p-2">
             <div className="flex justify-end mb-6">
@@ -320,7 +297,9 @@ export default function PackageDetailPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-gray-600 dark:text-gray-400 text-sm">RM {item.price ?? 0}</span>
+                      <span className="text-gray-600 dark:text-gray-400 text-sm">
+                        {(item.price ?? 0) > 0 ? `RM ${item.price}` : `${item.point ?? 0} Pts`}
+                      </span>
                       <span className="text-gray-500 dark:text-gray-400 text-sm">Qty: {item.entryQty ?? 1}</span>
                     </div>
                   </div>
@@ -331,7 +310,6 @@ export default function PackageDetailPage() {
         )}
       </div>
 
-      {/*Render the Approval Modal */}
       <ApprovalModal 
         isOpen={isApprovalModalOpen}
         onConfirm={handleConfirmApprove}

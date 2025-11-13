@@ -105,7 +105,15 @@ export default function PackagesPage() {
     return matchesSearch && matchesDate;
   });
 
-  const handlePackageClick = (id: number) => router.push(`/portal/packages/pdetails/${id}`);
+  const handlePackageClick = (id: number) => {
+    // These statuses exist in the 'testingpending' table, so we need ?source=pending
+    if (["Pending", "Draft", "Rejected"].includes(activeFilter)) {
+      router.push(`/portal/packages/pdetails/${id}?source=pending`);
+    } else {
+      // Active, Expired, Expiring Soon, Show All (Main Table)
+      router.push(`/portal/packages/pdetails/${id}`);
+    }
+  };
   const handleEdit = (id: number) => router.push(`/portal/packages/${id}/edit`);
   const handleAddNew = () => router.push("/portal/packages/form");
   const handleDuplicate = (id: number) => console.log("Duplicate:", id);
