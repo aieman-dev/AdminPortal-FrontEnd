@@ -1,4 +1,3 @@
-// app/api/proxy-packageView/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -11,7 +10,7 @@ export async function GET(request: NextRequest) {
     const source = searchParams.get("source");
     const authHeader = request.headers.get("authorization");
 
-    // Construct Backend URL: /api/packageView?status={status}
+    // Construct Backend URL
     const backendUrl = new URL("https://endodermal-tiffaney-scalelike.ngrok-free.dev/api/packageView");
     if (status) {backendUrl.searchParams.set("status", status);}
     if (startDate) backendUrl.searchParams.set("startDate", startDate); 
@@ -21,7 +20,7 @@ export async function GET(request: NextRequest) {
     const apiResponse = await fetch(backendUrl.toString(), {
       method: "GET",
       headers: {
-        "Content-Type": "application/json",
+        // REMOVED: "Content-Type": "application/json" (This is invalid for a GET request)
         "ngrok-skip-browser-warning": "true",
         "Authorization": authHeader || "",
       },

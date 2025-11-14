@@ -1,3 +1,4 @@
+//app/portal/lay
 "use client"
 
 import type React from "react"
@@ -10,7 +11,7 @@ import { cn } from "@/lib/utils"
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
 
   return (
     <ProtectedRoute>
@@ -29,17 +30,15 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             "fixed inset-y-0 left-0 z-50 lg:static lg:z-0 transition-transform duration-300",
             sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           )}
+          onMouseEnter={() => setSidebarCollapsed(false)}
+          onMouseLeave={() => setSidebarCollapsed(true)}
         >
-          <Sidebar collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} />
+          <Sidebar collapsed={sidebarCollapsed} />
         </aside>
 
         {/* Main content */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header
-            onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-            sidebarCollapsed={sidebarCollapsed}
-          />
+          <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
           <main className="flex-1 overflow-y-auto bg-background">
             <div className="container mx-auto p-6">{children}</div>
           </main>

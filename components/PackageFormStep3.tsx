@@ -1,4 +1,3 @@
-// components/PackageFormStep3.tsx
 "use client";
 import React, { useState } from "react";
 import { PackageFormData } from "../type/packages";
@@ -71,6 +70,8 @@ const PackageFormStep3: React.FC<Props> = ({ form, onBack, onSubmit, onSaveDraft
               <p><b>Type:</b> {form.packageType || "-"}</p>
               <p><b>Nationality:</b> {form.nationality || "-"}</p>
               <p><b>Category:</b> {form.ageCategory || "-"}</p>
+              {/* + ADDED: Display the remark field */}
+              <p><b>Remark:</b> {form.tpremark || "-"}</p>
             </div>
             <div>
               <h4 className="font-semibold mb-2 text-gray-900">Validity</h4>

@@ -1,6 +1,9 @@
-// src/components/PackageFormStep2.tsx
+"use client";
+
 import React, { useState, useMemo, useEffect } from "react";
 import { PackageFormData, PackageItem } from "../type/packages";
+import { Loader2 } from "lucide-react";
+import { getAuthToken } from "@/services/package-services";
 
 type Props = {
   form: PackageFormData;
@@ -9,23 +12,61 @@ type Props = {
   onBack: () => void;
 };
 
-// Mock Items (In real app, you might fetch these too)
-const sampleImage = "https://images.unsplash.com/photo-1524338198850-8a2ff63aaceb?w=400&h=300&fit=crop";
-const sampleItems: PackageItem[] = [
-  { attractionId: 1, itemName: "Disco Walk", price: 0, point: 0, entryQty: 0, image: sampleImage },
-  { attractionId: 2, itemName: "Water World", price: 0, point: 0, entryQty: 0, image: sampleImage },
-  { attractionId: 3, itemName: "Bowl America", price: 0, point: 0, entryQty: 0, image: sampleImage },
-];
+const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1524338198850-8a2ff63aaceb?w=400&h=300&fit=crop";
 
 const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) => {
   const [query, setQuery] = useState("");
-  
+  const [items, setItems] = useState<PackageItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
   // Determine mode based on Step 1 selection
   const isPointMode = form.packageType === "Point";
 
+  useEffect(() => {
+    const fetchItems = async () => {
+      try {
+        setLoading(true);
+        const authToken = getAuthToken();
+        
+        console.log("Using Service Token");
+
+        const response = await fetch("/api/proxy-create-package/creationdata", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": authToken // Using the imported token
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const rawItems = data.attractions || [];
+          const mappedItems: PackageItem[] = rawItems.map((item: any) => ({
+            attractionId: item.terminalID || item.id,
+            itemName: item.attractionName || item.name || "Unknown",
+            price: 0, // API doesn't seem to have price, defaulting to 0
+            point: 0, 
+            entryQty: 0, 
+            image: item.imageUrl || DEFAULT_IMAGE
+          }));
+
+          setItems(mappedItems);
+        } else {
+          console.error("Failed to fetch items. Status:", response.status);
+        }
+      } catch (error) {
+        console.error("Error fetching items:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchItems();
+  }, []);
+
   const filtered = useMemo(() => 
-    sampleItems.filter((i) => i.itemName.toLowerCase().includes(query.toLowerCase())), 
-  [query]);
+    items.filter((i) => i.itemName.toLowerCase().includes(query.toLowerCase())), 
+  [query, items]);
 
   // Toggle Item Selection
   const toggleSelect = (item: PackageItem) => {
@@ -45,7 +86,7 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
 
   // Handle Input Changes
   const handleItemChange = (item: PackageItem, field: "price" | "point" | "entryQty", value: string) => {
-    if (!isSelected(item.attractionId!)) toggleSelect(item); // Auto-select on type
+    if (!isSelected(item.attractionId!)) toggleSelect(item);
 
     const numVal = Math.max(Number(value) || 0, field === "entryQty" ? 1 : 0);
 
@@ -81,59 +122,77 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto pb-4">
-          {filtered.map((item) => {
-            const activeItem = form.packageitems.find((s) => s.attractionId === item.attractionId);
-            const selected = !!activeItem;
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto pb-4 p-1 scrollbar-hide">
+          {loading ? (
+            <div className="col-span-full flex flex-col items-center justify-center py-12 text-gray-500">
+              <Loader2 className="h-8 w-8 animate-spin mb-2" />
+              <p>Loading items...</p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="col-span-full text-center py-8 text-gray-500">
+              No items found.
+            </div>
+          ) : (
+            filtered.map((item, index) => {
+              const activeItem = form.packageitems.find((s) => s.attractionId === item.attractionId);
+              const selected = !!activeItem;
 
-            return (
-              <div 
-                key={item.attractionId} 
-                onClick={() => toggleSelect(item)}
-                className={`relative cursor-pointer p-3 rounded-lg border transition-all group
-                  ${selected ? "ring-2 ring-indigo-600 shadow-md" : "hover:shadow-lg"}`}
-              >
-                <div className="h-40 bg-gray-100 rounded-md overflow-hidden relative">
-                  <img src={item.image} className="object-cover h-full w-full" alt={item.itemName} />
-                  
-                  {/* Inputs Overlay */}
-                  <div 
-                    className={`absolute inset-0 bg-white/90 flex flex-col justify-center p-4 transition-opacity duration-200
-                      ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <label className="text-xs font-bold text-gray-700 uppercase mb-1">
-                      {isPointMode ? "Points" : "Price (RM)"}
-                    </label>
-                    <input
-                      type="number"
-                      value={activeItem?.[isPointMode ? "point" : "price"] ?? ""}
-                      onChange={(e) => handleItemChange(item, isPointMode ? "point" : "price", e.target.value)}
-                      className="w-full border-b border-gray-400 text-center focus:border-indigo-600 outline-none mb-3 bg-transparent"
+              return (
+                <div 
+                  // Use index fallback if ID isn't unique, though ID is preferred
+                  key={`${item.attractionId}-${index}`} 
+                  onClick={() => toggleSelect(item)}
+                  className={`relative cursor-pointer p-3 rounded-lg border transition-all group
+                    ${selected ? "ring-2 ring-indigo-600 shadow-md" : "hover:shadow-lg"}`}
+                >
+                  <div className="h-40 bg-gray-100 rounded-md overflow-hidden relative">
+                    <img 
+                      src={item.image} 
+                      className="object-cover h-full w-full" 
+                      alt={item.itemName} 
+                      onError={(e) => (e.currentTarget.src = DEFAULT_IMAGE)}
                     />
                     
-                    <label className="text-xs font-bold text-gray-700 uppercase mb-1">Quantity</label>
-                    <input
-                      type="number"
-                      value={activeItem?.entryQty ?? ""}
-                      onChange={(e) => handleItemChange(item, "entryQty", e.target.value)}
-                      className="w-full border-b border-gray-400 text-center focus:border-indigo-600 outline-none bg-transparent"
-                    />
+                    {/* Overlay for selected state */}
+                    <div 
+                      className={`absolute inset-0 bg-white/90 flex flex-col justify-center p-4 transition-opacity duration-200
+                        ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                    >
+                      <label className="text-xs font-bold text-gray-700 uppercase mb-1">
+                        {isPointMode ? "Points" : "Price (RM)"}
+                      </label>
+                      <input
+                        type="number"
+                        value={activeItem?.[isPointMode ? "point" : "price"] ?? ""}
+                        onChange={(e) => handleItemChange(item, isPointMode ? "point" : "price", e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full border-b border-gray-400 text-center focus:border-indigo-600 outline-none mb-3 bg-transparent"
+                      />
+                      
+                      <label className="text-xs font-bold text-gray-700 uppercase mb-1">Quantity</label>
+                      <input
+                        type="number"
+                        value={activeItem?.entryQty ?? ""}
+                        onChange={(e) => handleItemChange(item, "entryQty", e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full border-b border-gray-400 text-center focus:border-indigo-600 outline-none bg-transparent"
+                      />
+                    </div>
                   </div>
+                  <div className="mt-2 text-center font-semibold text-gray-800">{item.itemName}</div>
                 </div>
-                <div className="mt-2 text-center font-semibold text-gray-800">{item.itemName}</div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
       
-      {/* Sidebar Summary (Same as before, just verifying mode) */}
       <div className="w-full lg:w-80 bg-gray-50 p-4 rounded-lg border">
         <h3 className="font-bold text-gray-700 mb-4">Selected Items</h3>
         <div className="space-y-2 max-h-[500px] overflow-y-auto">
-          {form.packageitems.map(item => (
-            <div key={item.attractionId} className="flex justify-between text-sm bg-white p-2 rounded border">
+          {form.packageitems.map((item, idx) => (
+            <div key={`${item.attractionId}-${idx}`} className="flex justify-between text-sm bg-white p-2 rounded border">
               <span>{item.itemName}</span>
               <span className="text-gray-500">
                 {item.entryQty} x {isPointMode ? `${item.point}pts` : `RM${item.price}`}

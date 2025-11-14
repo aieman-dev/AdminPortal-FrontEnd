@@ -1,4 +1,3 @@
-// app/portal/packages/form/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -23,6 +22,7 @@ const PackageFormPage = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showDraft, setShowDraft] = useState(false);
 
+  // + UPDATED: Added missing 'dayPass' and 'totalPrice' to initial state
   const [form, setForm] = useState<PackageFormData>({
     packageName: "",
     packageType: "",
@@ -33,6 +33,8 @@ const PackageFormPage = () => {
     tpremark: "",
     imageID: null,
     packageitems: [],
+    dayPass: "", // <-- This was missing
+    totalPrice: 0, // <-- This was missing
   });
 
   // Lock body scroll
@@ -49,10 +51,12 @@ const PackageFormPage = () => {
   const handleCreateNew = () => {
     setShowSuccess(false);
     setShowDraft(false);
+    // + UPDATED: Ensured 'totalPrice' is also reset
     setForm({
       packageName: "", packageType: "", nationality: "", ageCategory: "",
       dayPass: "", effectiveDate: "", lastValidDate: "", tpremark: "",
       imageID: null, packageitems: [],
+      totalPrice: 0,
     });
     setStep(1);
   };
@@ -99,8 +103,9 @@ const PackageFormPage = () => {
 
   return (
     <>
-      <div className="h-screen flex items-start justify-center overflow-hidden">
-        <div className="w-full max-w-[1300px] flex flex-col md:flex-row bg-white rounded-2xl shadow-2xl overflow-hidden" style={{ height: 'calc(100vh - 130px)' }}>
+      <div className="h-[calc(100vh-120px)] flex items-center justify-center px-8 pb-8 pt-4">
+        <div className="w-full max-w-[1300px] flex flex-col md:flex-row bg-white rounded-2xl shadow-2xl overflow-hidden "
+         style={{ height: 'calc(100vh - 130px)' }}>
           <StepIndicator
             current={step}
             onClickStep={setStep}
