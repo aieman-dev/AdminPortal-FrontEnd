@@ -1,5 +1,6 @@
 // src/app/api/proxy-packageView/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { BACKEND_API_BASE } from "@/lib/config";
 
 export async function GET(
   request: NextRequest,
@@ -14,7 +15,7 @@ export async function GET(
 
     // Construct the REAL Backend URL with the query params
     // Updated to your new domain: endodermal-tiffaney-scalelike.ngrok-free.dev
-    const BACKEND_URL = `https://endodermal-tiffaney-scalelike.ngrok-free.dev/api/packageView/${id}${
+    const BACKEND_URL = `${BACKEND_API_BASE}/api/packageView/${id}${
       searchParams ? `?${searchParams}` : ""
     }`;
 

@@ -5,11 +5,11 @@ import { PackageFormData, Package } from "@/type/packages";
 const ENDPOINTS = {
   CREATE: "/proxy-create-package",
   UPLOAD: "/proxy-upload",
-  GET_LIST: (status: string, start?: string, end?: string) => {
-    let url = `/proxy-packageView?status=${encodeURIComponent(status)}`;
+ GET_LIST: (status: string, start?: string, end?: string, page: number = 1, search: string = "") => {
+    let url = `/proxy-packageView?status=${encodeURIComponent(status)}&pageNumber=${page}`;
     if (start) url += `&startDate=${encodeURIComponent(start)}`;
     if (end) url += `&endDate=${encodeURIComponent(end)}`;
-
+    if (search) url += `&searchQuery=${encodeURIComponent(search)}`;
     if (["Pending", "Draft", "Rejected"].includes(status)) {
       url += `&source=pending`;
     }
@@ -24,6 +24,7 @@ const ENDPOINTS = {
   },
 };
 
+{/* HARDCODED TOKEN
 const TEST_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJUUEBlbWFpbC5jb20iLCJ1c2VySWQiOiIzIiwibmFtZSI6IlRQVGVzdCIsImRlcGFydG1lbnQiOiJUUF9BRE1JTiIsImp0aSI6Ijg3ZjM0M2IwLTQyODctNDgyMS04MmZkLWU0Y2U4MTRlZWMwMSIsImV4cCI6MTc2MzE4OTYyMiwiaXNzIjoiaHR0cHM6Ly9sb2NhbGhvc3Q6NzAyOSIsImF1ZCI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTE3MyJ9.H5XFgA2nGhYrAlK7Du06R4CKJIsVvk9uErWJ9QPOQBM";
 
 export const getAuthToken = () => `Bearer ${TEST_TOKEN}`;
@@ -31,6 +32,7 @@ export const getAuthToken = () => `Bearer ${TEST_TOKEN}`;
 const getHeaders = () => ({
   Authorization: getAuthToken()
 });
+*/}
 
 // ... Interface and transformToFrontend function ...
 interface BackendPackageDTO {
@@ -90,16 +92,15 @@ const transformToFrontend = (pkg: BackendPackageDTO): Package => {
 
 export const packageService = {
   uploadImage: async (file: File): Promise<string> => {
-    // ... (same as before)
     const formData = new FormData();
     formData.append("file", file);
-    const response = await apiClient.post<{ imageId: string }>(ENDPOINTS.UPLOAD, formData, getHeaders());
+    const response = await apiClient.post<{ imageId: string }>(ENDPOINTS.UPLOAD, formData);
     if (!response.success || !response.data?.imageId) throw new Error(response.error || "Image upload failed");
     return response.data.imageId;
   },
 
   createPackage: async (form: PackageFormData, imageId: string) => {
-    // + UPDATED: Construct the payload with correct item structure
+    //  Construct the payload with correct item structure
     const payload = {
       name: form.packageName,
       packageType: form.packageType || "Entry",
@@ -112,46 +113,73 @@ export const packageService = {
       ageCategory: form.ageCategory || "A1",
       imageID: imageId,
       
-      // + UPDATED: This 'items' mapping is the most likely source of the 400 error.
+      // This 'items' mapping is the most likely source of the 400 error.
       items: form.packageitems.map((item) => ({
         attractionId: item.attractionId, // <-- SEND THE ID (from terminalID)
         itemName: item.itemName,         // <-- Send name (just in case)
         itemType: item.itemType || "Entry", // <-- Default type
-        // +++ FIX: Send the correct value based on package type +++
+        //Send the correct value based on package type +++
         value: form.packageType === "Point" ? (item.point || 0) : (item.price || 0),
         entryQty: item.entryQty || 1,
       })),
     };
 
-    // + ADDED: Debug log. Check your browser console to see exactly what is being sent.
+    // Debug log. Check your browser console to see exactly what is being sent.
     console.log("🚀 Sending createPackage payload:", JSON.stringify(payload, null, 2));
 
-    const response = await apiClient.post(ENDPOINTS.CREATE, payload, getHeaders());
+    const response = await apiClient.post(ENDPOINTS.CREATE, payload);
     
     // The 400 error is caught here
     if (!response.success) {
-      // + UPDATED: Log the specific error from the backend
-      console.error("❌ Backend Error:", response.error);
+      // Log the specific error from the backend
+      console.error(" Backend Error:", response.error);
       throw new Error(response.error || "Failed to create package");
     }
     return response.data;
   },
 
-  getPackages: async (status: string, startDate?: string, endDate?: string): Promise<Package[]> => {
-    // ... (same as before)
-    const response = await apiClient.get<BackendPackageDTO[]>(ENDPOINTS.GET_LIST(status, startDate, endDate), getHeaders());
+  getPackages: async (
+    status: string, 
+    startDate?: string, 
+    endDate?: string, 
+    page: number = 1,
+    searchQuery: string = ""
+  ): Promise<{ packages: Package[], totalPages: number, totalRecords: number }> => {
+    
+    const response = await apiClient.get<any>(
+      ENDPOINTS.GET_LIST(status, startDate, endDate, page, searchQuery)
+    );
+
     if (!response.success) {
       console.error("Failed to fetch packages:", response.error);
-      return [];
+      return { packages: [], totalPages: 0, totalRecords: 0 };
     }
-    return (response.data || []).map(transformToFrontend);
+
+    // Handle response. 
+    // CASE A: Backend returns a Paginated Object (e.g. { items: [], totalPages: 5 })
+    if (response.data && Array.isArray(response.data.items)) {
+      return {
+        packages: response.data.items.map(transformToFrontend),
+        totalPages: response.data.totalPages || 1,
+        totalRecords: response.data.totalRecords || 0
+      };
+    }
+
+    // CASE B: Backend still returns just an Array (Fallback)
+    if (Array.isArray(response.data)) {
+      return {
+        packages: response.data.map(transformToFrontend),
+        totalPages: 1,
+        totalRecords: response.data.length
+      };
+    }
+
+    return { packages: [], totalPages: 0, totalRecords: 0 };
   },
 
   getPackageById: async (id: number, source?: string): Promise<Package | null> => {
-    // ... (same as before)
     const response = await apiClient.get<BackendPackageDTO>(
       ENDPOINTS.GET_ONE(id, source),
-      getHeaders()
     );
 
     if (!response.success || !response.data) {

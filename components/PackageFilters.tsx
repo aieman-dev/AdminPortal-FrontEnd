@@ -5,6 +5,8 @@ import { useState } from "react";
 import { Calendar, Search, RotateCcw, Play } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+// 1. Import the helper function
+import { canCreatePackage } from "@/lib/auth";
 
 interface PackageFiltersProps {
   activeFilter: string;
@@ -12,6 +14,7 @@ interface PackageFiltersProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   onDateFilter: (start: Date | null, end: Date | null) => void;
+  userDepartment?: string;
 }
 
 export default function PackageFilters({
@@ -20,6 +23,7 @@ export default function PackageFilters({
   searchQuery,
   setSearchQuery,
   onDateFilter,
+  userDepartment,
 }: PackageFiltersProps) {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
@@ -33,6 +37,15 @@ export default function PackageFilters({
     { label: "Draft", value: "Draft", color: "#4F46E5", hover: "#080087" },
     { label: "Show All", value: "Show All", color: "#9CA3AF", hover: "#B0B6BD" },
   ];
+
+  // 2. Use the helper function in the filter
+  const visibleFilters = filters.filter(f => {
+    if (f.value === "Draft") {
+      // Use the centralized permission check
+      return canCreatePackage(userDepartment);
+    }
+    return true;
+  });
 
   const handleRun = () => {
     onDateFilter(startDate, endDate);
@@ -108,7 +121,8 @@ export default function PackageFilters({
 
       {/* Filter Tabs */}
       <div className="flex flex-wrap gap-8 mt-3 border-b border-gray-200">
-        {filters.map((filter) => {
+        {/* 3. Render the visible filters */}
+        {visibleFilters.map((filter) => {
           const isActive = activeFilter === filter.value;
           return (
             <button

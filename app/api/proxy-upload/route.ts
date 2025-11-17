@@ -1,5 +1,6 @@
 // src/app/api/proxy-upload/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { BACKEND_API_BASE } from "@/lib/config";
 
 export async function POST(request: NextRequest) {
   try {
@@ -7,7 +8,7 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get("authorization"); // Get the token
 
     const apiResponse = await fetch(
-      " https://endodermal-tiffaney-scalelike.ngrok-free.dev/api/Package/upload", 
+      `${BACKEND_API_BASE}/api/Package/upload`, 
       {
         method: "POST",
         headers: { 

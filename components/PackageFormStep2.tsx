@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { PackageFormData, PackageItem } from "../type/packages";
 import { Loader2 } from "lucide-react";
-import { getAuthToken } from "@/services/package-services";
+import { getAuthToken } from "@/lib/auth";
 
 type Props = {
   form: PackageFormData;
@@ -14,12 +14,18 @@ type Props = {
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1524338198850-8a2ff63aaceb?w=400&h=300&fit=crop";
 
+function getProxiedImageUrl(url: string | null | undefined): string {
+  if (!url) return DEFAULT_IMAGE;
+  if (url.startsWith("https") || url.startsWith("blob:")) return url;
+  if (url.startsWith("http://")) return `/api/proxy-image?url=${encodeURIComponent(url)}`;
+  return url;
+}
+
 const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) => {
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<PackageItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Determine mode based on Step 1 selection
   const isPointMode = form.packageType === "Point";
 
   useEffect(() => {
@@ -27,14 +33,11 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
       try {
         setLoading(true);
         const authToken = getAuthToken();
-        
-        console.log("Using Service Token");
-
         const response = await fetch("/api/proxy-create-package/creationdata", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": authToken // Using the imported token
+            "Authorization": `Bearer ${authToken}`
           }
         });
 
@@ -44,15 +47,12 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
           const mappedItems: PackageItem[] = rawItems.map((item: any) => ({
             attractionId: item.terminalID || item.id,
             itemName: item.attractionName || item.name || "Unknown",
-            price: 0, // API doesn't seem to have price, defaulting to 0
+            price: 0, 
             point: 0, 
             entryQty: 0, 
-            image: item.imageUrl || DEFAULT_IMAGE
+            image: getProxiedImageUrl(item.imageURL) 
           }));
-
           setItems(mappedItems);
-        } else {
-          console.error("Failed to fetch items. Status:", response.status);
         }
       } catch (error) {
         console.error("Error fetching items:", error);
@@ -60,7 +60,6 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
         setLoading(false);
       }
     };
-
     fetchItems();
   }, []);
 
@@ -68,7 +67,6 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
     items.filter((i) => i.itemName.toLowerCase().includes(query.toLowerCase())), 
   [query, items]);
 
-  // Toggle Item Selection
   const toggleSelect = (item: PackageItem) => {
     setForm((prev) => {
       const exists = prev.packageitems.find((s) => s.attractionId === item.attractionId);
@@ -84,12 +82,9 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
 
   const isSelected = (id: number) => form.packageitems.some((s) => s.attractionId === id);
 
-  // Handle Input Changes
   const handleItemChange = (item: PackageItem, field: "price" | "point" | "entryQty", value: string) => {
     if (!isSelected(item.attractionId!)) toggleSelect(item);
-
     const numVal = Math.max(Number(value) || 0, field === "entryQty" ? 1 : 0);
-
     setForm((prev) => ({
       ...prev,
       packageitems: prev.packageitems.map((s) =>
@@ -98,7 +93,6 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
     }));
   };
 
-  // Calculate Total
   useEffect(() => {
     const total = form.packageitems.reduce((sum, item) => {
       const val = isPointMode ? (item.point || 0) : (item.price || 0);
@@ -110,27 +104,26 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
   return (
     <div className="flex flex-col xl:flex-row gap-6 h-auto xl:h-full">
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <h2 className="text-2xl font-bold mb-2 text-gray-900">2. Package Items ({form.packageitems.length})</h2>
-        <div className="text-sm text-blue-600 mb-2">Mode: <b>{isPointMode ? "Points" : "Price"}</b></div>
-        <div className="border-b border-gray-300 mb-4" />
+        <h2 className="text-2xl font-bold mb-2 text-foreground">2. Package Items ({form.packageitems.length})</h2>
+        <div className="text-sm text-blue-600 dark:text-blue-400 mb-2">Mode: <b>{isPointMode ? "Points" : "Price"}</b></div>
+        <div className="border-b border-border mb-4" />
 
         <div className="mb-4">
           <input 
             placeholder="Search items..." 
             value={query} onChange={(e) => setQuery(e.target.value)} 
-            className="w-full sm:w-1/2 rounded-full border px-4 py-2 outline-none" 
+            className="w-full sm:w-1/2 rounded-full border border-input px-4 py-2 bg-white dark:bg-gray-950 text-foreground outline-none placeholder:text-muted-foreground" 
           />
         </div>
-
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto pb-4 p-1 scrollbar-hide">
           {loading ? (
-            <div className="col-span-full flex flex-col items-center justify-center py-12 text-gray-500">
+            <div className="col-span-full flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Loader2 className="h-8 w-8 animate-spin mb-2" />
               <p>Loading items...</p>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="col-span-full text-center py-8 text-gray-500">
+            <div className="col-span-full text-center py-8 text-muted-foreground">
               No items found.
             </div>
           ) : (
@@ -140,26 +133,25 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
 
               return (
                 <div 
-                  // Use index fallback if ID isn't unique, though ID is preferred
                   key={`${item.attractionId}-${index}`} 
                   onClick={() => toggleSelect(item)}
-                  className={`relative cursor-pointer p-3 rounded-lg border transition-all group
-                    ${selected ? "ring-2 ring-indigo-600 shadow-md" : "hover:shadow-lg"}`}
+                  className={`relative cursor-pointer p-3 rounded-lg border border-border transition-all group
+                    ${selected ? "ring-2 ring-indigo-600 shadow-md" : "hover:shadow-lg bg-card"}`}
                 >
-                  <div className="h-40 bg-gray-100 rounded-md overflow-hidden relative">
+                  <div className="h-40 bg-muted rounded-md overflow-hidden relative">
                     <img 
                       src={item.image} 
                       className="object-cover h-full w-full" 
                       alt={item.itemName} 
+                      referrerPolicy="no-referrer"
                       onError={(e) => (e.currentTarget.src = DEFAULT_IMAGE)}
                     />
                     
-                    {/* Overlay for selected state */}
                     <div 
-                      className={`absolute inset-0 bg-white/90 flex flex-col justify-center p-4 transition-opacity duration-200
+                      className={`absolute inset-0 bg-white/90 dark:bg-black/80 flex flex-col justify-center p-4 transition-opacity duration-200
                         ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
                     >
-                      <label className="text-xs font-bold text-gray-700 uppercase mb-1">
+                      <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-1">
                         {isPointMode ? "Points" : "Price (RM)"}
                       </label>
                       <input
@@ -167,20 +159,20 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
                         value={activeItem?.[isPointMode ? "point" : "price"] ?? ""}
                         onChange={(e) => handleItemChange(item, isPointMode ? "point" : "price", e.target.value)}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-full border-b border-gray-400 text-center focus:border-indigo-600 outline-none mb-3 bg-transparent"
+                        className="w-full border-b border-gray-400 dark:border-gray-600 text-center focus:border-indigo-600 outline-none mb-3 bg-transparent text-foreground"
                       />
                       
-                      <label className="text-xs font-bold text-gray-700 uppercase mb-1">Quantity</label>
+                      <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-1">Quantity</label>
                       <input
                         type="number"
                         value={activeItem?.entryQty ?? ""}
                         onChange={(e) => handleItemChange(item, "entryQty", e.target.value)}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-full border-b border-gray-400 text-center focus:border-indigo-600 outline-none bg-transparent"
+                        className="w-full border-b border-gray-400 dark:border-gray-600 text-center focus:border-indigo-600 outline-none bg-transparent text-foreground"
                       />
                     </div>
                   </div>
-                  <div className="mt-2 text-center font-semibold text-gray-800">{item.itemName}</div>
+                  <div className="mt-2 text-center font-semibold text-foreground">{item.itemName}</div>
                 </div>
               );
             })
@@ -188,25 +180,25 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
         </div>
       </div>
       
-      <div className="w-full lg:w-80 bg-gray-50 p-4 rounded-lg border">
-        <h3 className="font-bold text-gray-700 mb-4">Selected Items</h3>
+      <div className="w-full lg:w-80 bg-muted/30 p-4 rounded-lg border border-border">
+        <h3 className="font-bold text-foreground mb-4">Selected Items</h3>
         <div className="space-y-2 max-h-[500px] overflow-y-auto">
           {form.packageitems.map((item, idx) => (
-            <div key={`${item.attractionId}-${idx}`} className="flex justify-between text-sm bg-white p-2 rounded border">
-              <span>{item.itemName}</span>
-              <span className="text-gray-500">
+            <div key={`${item.attractionId}-${idx}`} className="flex justify-between text-sm bg-card p-2 rounded border border-border">
+              <span className="text-foreground">{item.itemName}</span>
+              <span className="text-muted-foreground">
                 {item.entryQty} x {isPointMode ? `${item.point}pts` : `RM${item.price}`}
               </span>
             </div>
           ))}
         </div>
-        <div className="mt-4 pt-4 border-t flex justify-between font-bold text-lg">
+        <div className="mt-4 pt-4 border-t border-border flex justify-between font-bold text-lg text-foreground">
           <span>Total:</span>
           <span>{isPointMode ? "" : "RM"} {form.totalPrice?.toLocaleString()} {isPointMode ? "Pts" : ""}</span>
         </div>
         <div className="mt-6 flex gap-2">
-          <button onClick={onBack} className="flex-1 py-2 border rounded-md">Back</button>
-          <button onClick={onNext} className="flex-1 py-2 bg-indigo-600 text-white rounded-md">Next</button>
+          <button onClick={onBack} className="flex-1 py-2 border border-border rounded-md text-foreground hover:bg-muted transition">Back</button>
+          <button onClick={onNext} className="flex-1 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">Next</button>
         </div>
       </div>
     </div>

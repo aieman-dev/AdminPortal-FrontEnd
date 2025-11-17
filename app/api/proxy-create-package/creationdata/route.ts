@@ -1,11 +1,12 @@
 //app/api/proxy-create-package/creationdata/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { BACKEND_API_BASE } from "@/lib/config";
 
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
     // Use the domain from your Postman screenshot
-    const BACKEND_URL = "https://endodermal-tiffaney-scalelike.ngrok-free.dev/api/Package/creationdata";
+    const BACKEND_URL = `${BACKEND_API_BASE}/api/Package/creationdata`;
 
     const apiResponse = await fetch(BACKEND_URL, {
       method: "GET",

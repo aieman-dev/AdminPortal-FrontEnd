@@ -22,7 +22,6 @@ const PackageFormPage = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showDraft, setShowDraft] = useState(false);
 
-  // + UPDATED: Added missing 'dayPass' and 'totalPrice' to initial state
   const [form, setForm] = useState<PackageFormData>({
     packageName: "",
     packageType: "",
@@ -33,8 +32,8 @@ const PackageFormPage = () => {
     tpremark: "",
     imageID: null,
     packageitems: [],
-    dayPass: "", // <-- This was missing
-    totalPrice: 0, // <-- This was missing
+    dayPass: "",
+    totalPrice: 0,
   });
 
   // Lock body scroll
@@ -51,7 +50,6 @@ const PackageFormPage = () => {
   const handleCreateNew = () => {
     setShowSuccess(false);
     setShowDraft(false);
-    // + UPDATED: Ensured 'totalPrice' is also reset
     setForm({
       packageName: "", packageType: "", nationality: "", ageCategory: "",
       dayPass: "", effectiveDate: "", lastValidDate: "", tpremark: "",
@@ -72,22 +70,19 @@ const PackageFormPage = () => {
     setShowDraft(true);
   };
 
-  //  The Main Logic is now simplified
   const handleConfirmSubmit = async () => {
     setShowConfirmation(false);
     setIsSubmitting(true);
 
     try {
-      let finalImageID = "123"; // Default/Fallback ID
+      let finalImageID = "123"; 
 
-      // 1. Upload Image
       if (form.imageID instanceof File) {
         finalImageID = await packageService.uploadImage(form.imageID);
       } else if (typeof form.imageID === "string") {
         finalImageID = form.imageID;
       }
 
-      // 2. Create Package
       await packageService.createPackage(form, finalImageID);
       
       console.log("Package created successfully");
@@ -104,7 +99,8 @@ const PackageFormPage = () => {
   return (
     <>
       <div className="h-[calc(100vh-120px)] flex items-center justify-center px-8 pb-8 pt-4">
-        <div className="w-full max-w-[1300px] flex flex-col md:flex-row bg-white rounded-2xl shadow-2xl overflow-hidden "
+        {/* UPDATED: Changed bg-white to bg-card and added text-card-foreground */}
+        <div className="w-full max-w-[1300px] flex flex-col md:flex-row bg-white dark:bg-gray-900 text-card-foreground rounded-2xl shadow-2xl overflow-hidden border border-border"
          style={{ height: 'calc(100vh - 130px)' }}>
           <StepIndicator
             current={step}

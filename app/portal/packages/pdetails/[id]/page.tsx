@@ -7,6 +7,7 @@ import { Search, Calendar, Clock, Ticket, Globe, User, FileText, CheckCircle, Ar
 import { Package, PackageItem } from "@/type/packages";
 import { packageService } from "@/services/package-services"; 
 import { ApprovalModal } from "@/components/PackageModals"; 
+import { useAuth } from "@/hooks/use-auth";
 
 const formatDate = (dateString: string | undefined) => {
   if (!dateString) return "—";
@@ -22,6 +23,9 @@ export default function PackageDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams(); 
   const sourceParam = searchParams.get("source"); 
+
+  const { user } = useAuth(); // Get Current User
+  const isFinance = user?.department === "FINANCE"; // Define Permission
   
   const [activeTab, setActiveTab] = useState<"overview" | "items">("overview");
   const [searchQuery, setSearchQuery] = useState("");
@@ -236,7 +240,7 @@ export default function PackageDetailPage() {
                 <div className="flex items-start gap-3">
                   <FileText className="text-gray-400 mt-1" size={20} />
                   <div className="flex-1">
-                    {isPending ? (
+                    {isPending && isFinance? (
                       <textarea
                         value={rejectionNotes}
                         onChange={(e) => setRejectionNotes(e.target.value)}
@@ -253,7 +257,8 @@ export default function PackageDetailPage() {
                 </div>
               </div>
 
-              {isPending && (
+              {/* Only show buttons if Pending AND Finance */}
+              {isPending && isFinance && (
                 <div className="flex gap-3 pt-6">
                   <button onClick={handleReject} className="flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
                     <X size={20} /> Reject

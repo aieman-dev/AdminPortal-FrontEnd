@@ -1,8 +1,7 @@
-//app/portal/lay
+//app/portal/layout
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Sidebar } from "@/components/portal/sidebar"
 import { Header } from "@/components/portal/header"

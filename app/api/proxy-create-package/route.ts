@@ -1,5 +1,6 @@
 // src/app/api/proxy-create-package/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { BACKEND_API_BASE } from "@/lib/config";
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +10,7 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get("authorization");
 
     // Forward to the REAL backend
-    const BACKEND_URL = "https://endodermal-tiffaney-scalelike.ngrok-free.dev/api/Package/create";
+    const BACKEND_URL = `${BACKEND_API_BASE}/api/Package/create`;
 
     const apiResponse = await fetch(BACKEND_URL, {
       method: "POST",

@@ -3,20 +3,13 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
+import { useTheme } from "next-themes"
 import { cn } from "@/lib/utils"
-import { 
-  Building2, 
-  LayoutDashboard, 
-  Ticket, 
-  LogOut, 
-  ChevronDown, 
-  ServerCog, 
-  Users, 
-  Settings 
-} from "lucide-react"
+import { LayoutDashboard, Ticket, LogOut, ChevronDown, ServerCog, Users, Settings } from "lucide-react" 
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
-import { useState } from "react"
+import { useState, useEffect } from "react" 
+import { canViewITPOSWF } from "@/lib/auth" 
 
 const navigation = [
   {
@@ -70,13 +63,40 @@ interface SidebarProps {
 export function Sidebar({ collapsed = false }: SidebarProps) {
   const pathname = usePathname()
   const { user, logout } = useAuth()
-  const [openDropdowns, setOpenDropdowns] = useState<string[]>(["IT POSWF"])
+  const { resolvedTheme } = useTheme()
+  
+  // FIX 1: Start with an empty array (closed by default)
+  const [openDropdowns, setOpenDropdowns] = useState<string[]>([]) 
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+  
+  // FIX 2: Automatically open the dropdown ONLY if the current URL belongs to it
+  useEffect(() => {
+    // Check if the current path matches any child of the dropdowns
+    const activeItem = navigation.find(item => 
+      item.children && item.children.some(child => pathname.startsWith(child.href))
+    )
+
+    if (activeItem) {
+      setOpenDropdowns(prev => {
+        // Only add if not already open
+        if (!prev.includes(activeItem.name)) {
+          return [...prev, activeItem.name]
+        }
+        return prev
+      })
+    }
+  }, [pathname]) // Re-run whenever the URL changes
+
+  const isDarkMode = mounted && resolvedTheme === "dark"
 
   const toggleDropdown = (name: string) => {
     setOpenDropdowns((prev) => (prev.includes(name) ? prev.filter((item) => item !== name) : [...prev, name]))
   }
 
-  // Common classes for both Links and Buttons to ensure they look identical
   const itemBaseClass = (isActive: boolean) => cn(
     "group flex items-center w-full rounded-lg py-3 transition-all duration-300 ease-in-out",
     isActive 
@@ -85,6 +105,13 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
     collapsed ? "justify-center px-0" : "justify-start px-3"
   )
 
+  const filteredNavigation = navigation.filter((item) => {
+    if (item.name === "IT POSWF") {
+      return canViewITPOSWF(user?.department); 
+    }
+    return true;
+  });
+
   return (
     <div
       className={cn(
@@ -92,45 +119,47 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
         collapsed ? "w-20" : "w-64"
       )}
     >
-      {/* Logo */}
-      <div className="flex h-[85px] items-center justify-center border-b py-6 transition-all duration-300 flex-shrink-0">
+      {/* Logo Section */}
+      <div className={cn(
+        "flex h-16 items-center justify-center border-b py-6 transition-all duration-300 flex-shrink-0",
+        isDarkMode ? "border-gray-700" : "border-gray-200"
+      )}>
         <div
           className={cn(
             "relative h-[51px] transition-all duration-300 ease-in-out overflow-hidden",
             collapsed ? "w-[60px]" : "w-[145px]"
           )}
         >
-           {/* FIXED: Reverted to Solid Primary Color */}
-           <div className="flex items-center justify-center w-full h-full bg-primary rounded-lg text-primary-foreground">
-              <Building2 className="h-8 w-8" />
-           </div>
+          {mounted && (
+            <Image
+              src={isDarkMode ? "/logo/icity-logo-white.svg" : "/logo/icity-logo.svg"}
+              alt="I-City Logo"
+              fill
+              priority
+              className="object-contain transition-all duration-300 ease-in-out"
+            />
+          )}
         </div>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 flex flex-col w-full px-4 mt-6 overflow-y-auto overflow-x-hidden">
-        {navigation.map((item) => {
+        {filteredNavigation.map((item) => {
           const isActive = pathname === item.href || (item.children && item.children.some(child => pathname === child.href));
           const isOpen = openDropdowns.includes(item.name);
 
           return (
             <div key={item.name} className="relative mb-2">
-              {/* LOGIC FIX: 
-                  If it has children -> Render a <button> to toggle dropdown
-                  If it has NO children -> Render a <Link> to navigate
-              */}
               {item.children ? (
                 <button
                   onClick={() => !collapsed && toggleDropdown(item.name)}
                   className={itemBaseClass(!!isActive)}
                   title={collapsed ? item.name : undefined}
                 >
-                  {/* Icon */}
                   <div className="flex-shrink-0 flex items-center justify-center w-6 h-6">
                      <item.icon className="w-5 h-5" />
                   </div>
 
-                  {/* Text */}
                   <div 
                     className={cn(
                       "overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap flex items-center flex-1",
@@ -152,12 +181,10 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
                   className={itemBaseClass(pathname === item.href)}
                   title={collapsed ? item.name : undefined}
                 >
-                  {/* Icon */}
                   <div className="flex-shrink-0 flex items-center justify-center w-6 h-6">
                      <item.icon className="w-5 h-5" />
                   </div>
 
-                  {/* Text */}
                   <div 
                     className={cn(
                       "overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap flex items-center flex-1",
@@ -203,7 +230,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
         })}
       </nav>
 
-      {/* Footer / User Profile */}
+      {/* Footer */}
       <div className={cn(
         "border-t p-4 transition-all duration-300",
         collapsed ? "items-center" : "items-start"
