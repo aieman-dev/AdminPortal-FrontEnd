@@ -1,13 +1,13 @@
-//app/portal/packages/pdetails[id]/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation"; // Added useSearchParams
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Search, Calendar, Clock, Ticket, Globe, User, FileText, CheckCircle, ArrowLeft, X, Check, Loader2 } from "lucide-react";
 import { Package, PackageItem } from "@/type/packages";
 import { packageService } from "@/services/package-services"; 
 import { ApprovalModal } from "@/components/PackageModals"; 
 import { useAuth } from "@/hooks/use-auth";
+import { isFinanceApprover } from "@/lib/auth";
 
 const formatDate = (dateString: string | undefined) => {
   if (!dateString) return "—";
@@ -18,14 +18,25 @@ const formatDate = (dateString: string | undefined) => {
   });
 };
 
+// Helper function to proxy HTTP images
+function getProxiedImageUrl(url: string | null | undefined): string {
+  const DEFAULT_IMAGE = "/packages/DefaultPackagesImage.png";
+  if (!url) return DEFAULT_IMAGE;
+  if (url.startsWith("https") || url.startsWith("blob:") || url.startsWith("/")) return url;
+  if (url.startsWith("http://")) return `/api/proxy-image?url=${encodeURIComponent(url)}`;
+  return url;
+}
+
 export default function PackageDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams(); 
   const sourceParam = searchParams.get("source"); 
 
-  const { user } = useAuth(); // Get Current User
-  const isFinance = user?.department === "FINANCE"; // Define Permission
+  const { user } = useAuth();
+  
+  // Permission check using the helper
+  const isFinance = isFinanceApprover(user?.department);
   
   const [activeTab, setActiveTab] = useState<"overview" | "items">("overview");
   const [searchQuery, setSearchQuery] = useState("");
@@ -44,7 +55,6 @@ export default function PackageDetailPage() {
       try {
         setLoading(true);
         
-        // Pass the source parameter if it exists
         const data = await packageService.getPackageById(
           Number(params.id), 
           sourceParam || undefined
@@ -65,7 +75,7 @@ export default function PackageDetailPage() {
     };
 
     fetchPackage();
-  }, [params.id, sourceParam]); // Re-run if ID or source changes
+  }, [params.id, sourceParam]);
 
   const showToastNotification = (message: string, type: "success" | "warning") => {
     setToastMessage(message);
@@ -116,6 +126,8 @@ export default function PackageDetailPage() {
     );
   }
 
+  // --- SAFE AREA: packageData is guaranteed to be present here ---
+
   const isPending = packageData.status === "Pending";
   const packageItems: PackageItem[] = packageData.items || packageData.packageitems || [];
   
@@ -126,8 +138,9 @@ export default function PackageDetailPage() {
   const displayPrice = packageData.price ?? packageData.totalPrice ?? 0;
   const displayPoints = packageData.point ?? 0;
 
-  // Use the new imageUrl field from the API
-  const displayImage = packageData.imageUrl || packageData.imageID || "/packages/DefaultPackagesImage.png";
+  // Calculate image URL safely now that data is loaded
+  const rawImage = packageData.imageUrl || packageData.imageID;
+  const displayImage = getProxiedImageUrl(rawImage);
 
   return (
     <>
@@ -240,7 +253,7 @@ export default function PackageDetailPage() {
                 <div className="flex items-start gap-3">
                   <FileText className="text-gray-400 mt-1" size={20} />
                   <div className="flex-1">
-                    {isPending && isFinance? (
+                    {isPending && isFinance ? (
                       <textarea
                         value={rejectionNotes}
                         onChange={(e) => setRejectionNotes(e.target.value)}

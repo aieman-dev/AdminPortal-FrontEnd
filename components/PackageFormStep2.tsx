@@ -1,3 +1,4 @@
+//components/PackageFormStep2
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
@@ -50,7 +51,7 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
             price: 0, 
             point: 0, 
             entryQty: 0, 
-            image: getProxiedImageUrl(item.imageURL) 
+            image: getProxiedImageUrl(item.ImageURL || item.imageUrl || item.imageURL)
           }));
           setItems(mappedItems);
         }
@@ -136,7 +137,10 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
                   key={`${item.attractionId}-${index}`} 
                   onClick={() => toggleSelect(item)}
                   className={`relative cursor-pointer p-3 rounded-lg border border-border transition-all group
-                    ${selected ? "ring-2 ring-indigo-600 shadow-md" : "hover:shadow-lg bg-card"}`}
+                    ${selected 
+                      ? "ring-2 ring-indigo-600 bg-indigo-50/10 dark:bg-indigo-900/20 border-indigo-600 dark:border-indigo-500 shadow-md" 
+                      : "bg-card dark:bg-secondary/10 border-border dark:border-white/5 hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-700"
+                    }`}
                 >
                   <div className="h-40 bg-muted rounded-md overflow-hidden relative">
                     <img 
@@ -148,7 +152,7 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
                     />
                     
                     <div 
-                      className={`absolute inset-0 bg-white/90 dark:bg-black/80 flex flex-col justify-center p-4 transition-opacity duration-200
+                      className={`absolute inset-0 bg-white/90 dark:bg-gray-950/90 flex flex-col justify-center p-4 transition-opacity duration-200
                         ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
                     >
                       <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-1">
@@ -159,7 +163,7 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
                         value={activeItem?.[isPointMode ? "point" : "price"] ?? ""}
                         onChange={(e) => handleItemChange(item, isPointMode ? "point" : "price", e.target.value)}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-full border-b border-gray-400 dark:border-gray-600 text-center focus:border-indigo-600 outline-none mb-3 bg-transparent text-foreground"
+                        className="w-full border-b border-gray-400 dark:border-gray-600 text-center focus:border-indigo-600 outline-none mb-3 bg-transparent text-foreground dark:text-white"
                       />
                       
                       <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-1">Quantity</label>

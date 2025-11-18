@@ -1,3 +1,4 @@
+// app/portal/packages/form/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -99,15 +100,27 @@ const PackageFormPage = () => {
   return (
     <>
       <div className="h-[calc(100vh-120px)] flex items-center justify-center px-8 pb-8 pt-4">
-        {/* UPDATED: Changed bg-white to bg-card and added text-card-foreground */}
-        <div className="w-full max-w-[1300px] flex flex-col md:flex-row bg-white dark:bg-gray-900 text-card-foreground rounded-2xl shadow-2xl overflow-hidden border border-border"
-         style={{ height: 'calc(100vh - 130px)' }}>
+        {/* UPDATED CONTAINER STYLES:
+           - bg-white (Light Mode)
+           - dark:bg-slate-900/50 (Dark Mode): Deep semi-transparent background
+           - dark:backdrop-blur-md: Adds a modern glass effect
+           - dark:border-white/10: Adds a subtle border to define the card against the black page
+        */}
+        <div 
+          className="w-full max-w-[1300px] flex flex-col md:flex-row 
+                     bg-white dark:bg-slate-900/50 dark:backdrop-blur-md 
+                     text-card-foreground rounded-2xl shadow-2xl overflow-hidden 
+                     border border-border dark:border-white/10 transition-colors duration-300"
+          style={{ height: 'calc(100vh - 130px)' }}
+        >
+          {/* Sidebar Indicator */}
           <StepIndicator
             current={step}
             onClickStep={setStep}
             onBackClick={() => router.push("/portal/packages")}
           />
 
+          {/* Main Form Area */}
           <main className="flex-1 overflow-y-auto scrollbar-hide p-6">
             {step === 1 && <PackageFormStep1 form={form} setForm={setForm} onNext={next} />}
             {step === 2 && <PackageFormStep2 form={form} setForm={setForm} onNext={next} onBack={back} />}

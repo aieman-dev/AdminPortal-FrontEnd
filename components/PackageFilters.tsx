@@ -92,7 +92,7 @@ export default function PackageFilters({
           {/* Run Button */}
           <button 
             onClick={handleRun}
-            className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium rounded-full px-4 py-1.5 shadow transition"
+            className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 dark:bg-white dark:hover:bg-gray-200 text-primary-foreground  text-sm font-medium rounded-full px-4 py-1.5 shadow transition"
           >
             <Play size={14} /> Run
           </button>

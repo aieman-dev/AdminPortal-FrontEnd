@@ -70,16 +70,21 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
   };
 
   // Common classes for inputs to reuse
-  const inputClass = "w-full border border-input rounded-md px-3 py-2  bg-white dark:bg-gray-950 text-foreground focus:ring-2 focus:ring-indigo-500 outline-none placeholder:text-muted-foreground";
+  const inputClass = "w-full border border-input rounded-md px-3 py-2 text-sm " 
+    "bg-white dark:bg-secondary/20 " 
+    "text-foreground dark:text-gray-100 " 
+    "dark:border-white/10 "  // Subtle border in dark mode
+    "focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none " 
+    "placeholder:text-muted-foreground transition-all";
 
   return (
-    <div className="flex-1">
-      <h2 className="text-2xl font-bold mb-4 text-foreground">1. Package Details</h2>
-      <div className="border-b border-border mb-6 scrollbar-hide" />
+    <div className="flex-1 text-foreground">
+      <h2 className="text-2xl font-bold mb-4 text-foreground dark:text-white">1. Package Details</h2>
+      <div className="border-b border-border dark:border-white/10 mb-6 scrollbar-hide" />
 
       <div className="grid grid-cols-2 gap-8">
         <div>
-          <label className="block text-sm font-medium text-foreground mb-1">Package Name</label>
+          <label className="block text-sm font-medium text-foreground/80 dark:text-gray-300 mb-1">Package Name</label>
           <input
             type="text"
             value={form.packageName}
@@ -90,34 +95,34 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-foreground mb-1">Package Type</label>
+          <label className="block text-sm font-medium text-foreground/80 dark:text-gray-300 mb-1">Package Type</label>
           <select
             value={form.packageType}
             onChange={(e) => setForm({ ...form, packageType: e.target.value })}
             className={inputClass}
           >
-            <option value="">Select Type</option>
-            <option value="Price">Price</option>
-            <option value="Point">Point</option>
+            <option value="" className="dark:bg-gray-900">Select Type</option>
+            <option value ="Price" className="dark:bg-gray-900">Price</option>
+            <option value="Point" className="dark:bg-gray-900">Point</option>
           </select>
           <p className="text-xs text-muted-foreground mt-1">This determines if items use RM or Points.</p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-foreground mb-1">Nationality</label>
+          <label className="block text-sm font-medium text-foreground/80 dark:text-gray-300 mb-1">Nationality</label>
           <select
             value={form.nationality}
             onChange={(e) => setForm({ ...form, nationality: e.target.value })}
             className={inputClass}
           >
-            <option value="">Select Nationality</option>
-            <option value="Malaysian">Malaysian</option>
-            <option value="Non-Malaysian">Non-Malaysian</option>
+            <option value="" className="dark:bg-gray-900">Select Nationality</option>
+            <option value="Malaysian" className="dark:bg-gray-900">Malaysian</option>
+            <option value="Non-Malaysian" className="dark:bg-gray-900">Non-Malaysian</option>
           </select>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-foreground mb-1">Age Category</label>
+          <label className="block text-sm font-medium text-foreground/80 dark:text-gray-300 mb-1">Age Category</label>
           <select
             value={form.ageCategory}
             onChange={(e) => setForm({ ...form, ageCategory: e.target.value })}
@@ -132,7 +137,7 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-foreground mb-1">Effective Date</label>
+          <label className="block text-sm font-medium text-foreground/80 dark:text-gray-300 mb-1">Effective Date</label>
           <div className="relative">
             <DatePicker
               selected={form.effectiveDate ? new Date(form.effectiveDate) : null}
@@ -146,7 +151,7 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-foreground mb-1">Last Valid Date</label>
+          <label className="block text-sm font-medium text-foreground/80 dark:text-gray-300 mb-1">Last Valid Date</label>
           <div className="relative">
             <DatePicker
               selected={form.lastValidDate ? new Date(form.lastValidDate) : null}
@@ -161,7 +166,7 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-foreground mb-1">Day Pass</label>
+          <label className="block text-sm font-medium text-foreground/80 dark:text-gray-300 mb-1">Day Pass</label>
           <input
             type="text"
             value={form.dayPass || ""}
@@ -172,7 +177,7 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
         </div>
 
         <div className="col-span-2 space-y-3">
-          <label className="block text-sm font-medium text-foreground mb-1">Package Image</label>
+          <label className="block text-sm font-medium text-foreground/80 dark:text-gray-300 mb-1">Package Image</label>
           
           {imagePreviewUrl ? (
             <div className="flex items-center gap-4">
@@ -196,13 +201,16 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
               type="file"
               accept="image/*"
               onChange={(e) => setForm({ ...form, imageID: e.target.files?.[0] || null })}
-              className="w-full border border-input rounded-md px-3 py-2 bg-muted/30 text-muted-foreground focus:ring-2 focus:ring-indigo-500 outline-none file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-900/30 dark:file:text-indigo-300"
-            />
+              className={`file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold 
+                  file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 
+                  dark:file:bg-indigo-500/20 dark:file:text-indigo-300 dark:hover:file:bg-indigo-500/30
+                  ${inputClass}`}
+                  />
           )}
         </div>
 
         <div className="col-span-2">
-          <label className="block text-sm font-medium text-foreground mb-1">Remark</label>
+          <label className="block text-sm font-medium text-foreground/80 dark:text-gray-300 mb-1">Remark</label>
           <textarea
             value={form.tpremark || ""}
             onChange={(e) => setForm({ ...form, tpremark: e.target.value })}

@@ -8,6 +8,7 @@ import PackageCard from "@/components/PackageCard";
 import { packageService } from "@/services/package-services"; 
 import { Package } from "@/type/packages"; 
 import { useAuth } from "@/hooks/use-auth";
+import { canCreatePackage } from "@/lib/auth"; 
 
 interface PackageListItem {
   id: number;
@@ -31,7 +32,10 @@ const formatDate = (dateString: string | undefined) => {
 
 export default function PackagesPage() {
   const { user } = useAuth();
-  const canCreate = user?.department === "THEMEPARK" || user?.department === "MIS";
+  
+  // FIX 2: Use the helper function logic instead of hardcoding
+  // This ensures IT_ADMIN, MIS_SUPERADMIN, and TP_ADMIN are all covered automatically
+  const canCreate = canCreatePackage(user?.department);
   
   // Match backend default
   const ITEMS_PER_PAGE = 30; 
@@ -148,12 +152,9 @@ export default function PackagesPage() {
     return pages;
   };
 
-  const shouldShowPagination = totalPages > 1 || packages.length === ITEMS_PER_PAGE;
-
   return (
     <div className="min-h-screen flex p-8 transition-colors duration-300 text-foreground">
       <div className="w-full">
-        {/* UPDATED: Changed bg-white/dark:bg-gray-800 to bg-card and added text-card-foreground */}
         <div className="rounded-lg shadow-sm border p-6 transition-colors duration-300 bg-card border-border text-card-foreground">
           <h2 className="text-xl font-bold mb-6">
             Package Status
@@ -197,7 +198,6 @@ export default function PackagesPage() {
                 ))}
               </div>
 
-              {/* UPDATED: Changed bg-gray-50/dark:bg-gray-700 to bg-muted/50 */}
               {(totalPages > 1 || packages.length === ITEMS_PER_PAGE) && (
                 <div className="mt-8 flex items-center justify-between bg-muted/50 rounded-lg px-6 py-4 border border-border">
                   <div className="text-sm text-muted-foreground">
@@ -208,7 +208,6 @@ export default function PackagesPage() {
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    {/* Pagination Buttons: Use standard button styles instead of hardcoded colors */}
                     <button onClick={() => goToPage(1)} disabled={currentPage === 1} className="p-2 rounded-lg border border-input hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                       <ChevronsLeft className="w-5 h-5" />
                     </button>
@@ -253,7 +252,6 @@ export default function PackagesPage() {
               )}
             </>
           ) : (
-            // UPDATED: Changed empty state background to bg-muted
             <p className="text-center text-muted-foreground mt-12 py-10 bg-muted/30 rounded-lg border border-border border-dashed">
               No packages found in <strong>{activeFilter}</strong>.
             </p>
@@ -261,10 +259,11 @@ export default function PackagesPage() {
         </div>
       </div>
 
+      {/* Add New Button - Only shown if user has permission */}
       {canCreate && (
         <button
           onClick={handleAddNew}
-          className="fixed bottom-8 right-8 bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-full shadow-lg flex items-center gap-2 font-semibold transition-all hover:shadow-xl z-10"
+          className="fixed bottom-8 right-8  bg-indigo-500 hover:bg-indigo-600 dark:bg-white dark:hover:bg-gray-200 text-primary-foreground px-6 py-3 rounded-full shadow-lg flex items-center gap-2 font-semibold transition-all hover:shadow-xl z-10"
         >
           <Plus size={20} />
           Add New

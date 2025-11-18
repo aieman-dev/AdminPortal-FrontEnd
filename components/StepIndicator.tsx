@@ -1,4 +1,4 @@
-//  src/components/StepIndicator.tsx
+// src/components/StepIndicator.tsx
 import React, { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
@@ -13,7 +13,6 @@ const steps = ["Package Type & Details", "Package Item", "Package Summary"];
 const StepIndicator: React.FC<Props> = ({ current, onClickStep, onBackClick }) => {
   const [isMobile, setIsMobile] = useState(false);
 
-  // Watch window width safely
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     handleResize();
@@ -24,11 +23,11 @@ const StepIndicator: React.FC<Props> = ({ current, onClickStep, onBackClick }) =
   // -------- MOBILE (Top Bar) Layout --------
   if (isMobile) {
     return (
-      <div className="sticky top-0 z-50 bg-[linear-gradient(135deg,#E7E7FE_0%,#484BBC_80%)] text-white shadow-md">
+      <div className="sticky top-0 z-50 bg-[linear-gradient(135deg,#E7E7FE_0%,#484BBC_80%)] dark:bg-[linear-gradient(135deg,#0f172a_0%,#1e1b4b_90%)]  dark:bg-background dark:border-b dark:border-border text-white dark:text-foreground shadow-md">
         <div className="flex items-center justify-between px-4 py-3">
           <button
             onClick={onBackClick}
-            className="flex items-center gap-2 text-white/80 hover:text-white transition"
+            className="flex items-center gap-2 text-white/100 dark:text-muted-foreground hover:text-white dark:hover:text-foreground transition"
           >
             <ArrowLeft size={18} />
             <span className="font-medium text-sm">Back</span>
@@ -44,18 +43,17 @@ const StepIndicator: React.FC<Props> = ({ current, onClickStep, onBackClick }) =
                   key={i}
                   className={`w-8 h-2 rounded-full transition-all duration-300 ${
                     isActive
-                      ? "bg-white w-10"
+                      ? "bg-white dark:bg-primary w-10"
                       : isDone
-                      ? "bg-[#6D28D9]"
-                      : "bg-white/40"
+                      ? "bg-[#6D28D9] dark:bg-primary/50"
+                      : "bg-white/40 dark:bg-muted"
                   }`}
                 />
               );
             })}
           </div>
         </div>
-
-        <div className="text-center text-xs font-medium pb-2">
+        <div className="text-center text-xs font-medium pb-2 text-white dark:text-foreground">
           {steps[current - 1]}
         </div>
       </div>
@@ -64,40 +62,37 @@ const StepIndicator: React.FC<Props> = ({ current, onClickStep, onBackClick }) =
 
   // -------- DESKTOP / TABLET (Sidebar) Layout --------
   return (
-    <aside className="sticky top-4 h-[calc(100vh-2rem)] w-60 md:w-64 lg:w-60 rounded-l-2xl bg-[linear-gradient(135deg,#E7E7FE_0%,#484BBC_80%)] text-white p-6 flex flex-col justify-between shadow-lg">
-      {/* Top section */}
+    // CHANGE 1: Updated Sidebar Background Gradient for Dark Mode
+    <aside className="sticky top-4 h-[calc(100vh-2rem)] w-60 md:w-64 lg:w-60 rounded-l-2xl 
+      bg-[linear-gradient(135deg,#E7E7FE_0%,#484BBC_80%)] 
+      dark:bg-[linear-gradient(135deg,#0f172a_0%,#1e1b4b_90%)] 
+      dark:border-r dark:border-white/10
+      text-white p-6 flex flex-col justify-between shadow-lg transition-colors duration-300">
+      
       <div className="mb-8">
-        {/* Back button */}
         <button
           onClick={onBackClick}
           className="group relative flex items-center gap-2 text-white/80 hover:text-white transition-all duration-200 mb-6 ml-1"
         >
-          {/* Hover circle effect */}
           <span
             className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center justify-center
-                      w-8 h-8 rounded-full bg-white/25
+                      w-8 h-8 rounded-full bg-white/25 dark:bg-white/10
                       opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100
                       transition-all duration-300"
           ></span>
-
-          {/* Arrow icon */}
           <ArrowLeft
             size={18}
-            className="relative z-10 ml-[10px] translate-y-[0.5px] drop-shadow-[0_0_3px_rgba(0,0,0,0.25)]"
+            className="relative z-10 ml-[10px] translate-y-[0.5px]"
           />
-
-          {/* Label */}
           <span className="font-medium text-sm relative z-10">Back</span>
         </button>
 
-        {/* Steps */}
         <div className="relative flex flex-col items-start gap-8 ml-2 mt-2">
-          {/* Background vertical line */}
-          <div className="absolute left-[1.25rem] top-[2.5rem] bottom-[2.5rem] w-[2px] " />
+          <div className="absolute left-[1.25rem] top-[2.5rem] bottom-[2.5rem] w-[2px] dark:bg-white/5" />
 
-          {/* Progress line */}
+          {/* CHANGE 2: Updated Progress Bar Color */}
           <div
-            className="absolute left-[1.25rem] top-[2.5rem] w-[2px] bg-[#6D28D9] transition-all duration-500"
+            className="absolute left-[1.25rem] top-[2.5rem] w-[2px] bg-[#6D28D9] dark:bg-indigo-400 transition-all duration-500"
             style={{ height: `${(current - 1) * 72}px` }}
           />
 
@@ -115,25 +110,27 @@ const StepIndicator: React.FC<Props> = ({ current, onClickStep, onBackClick }) =
                   index > current ? "cursor-not-allowed opacity-50" : "hover:translate-x-1"
                 }`}
               >
+                {/* CHANGE 3: Circle Colors */}
                 <div
                   className={`flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full font-semibold shadow-md transition-all duration-300 ${
                     isActive
-                      ? "bg-white text-[#6D28D9] ring-2 ring-white/70"
+                      ? "bg-white text-[#6D28D9] ring-2 ring-white/70 dark:bg-indigo-500 dark:text-white dark:ring-indigo-400/50"
                       : isDone
-                      ? "bg-[#6D28D9] text-white"
-                      : "bg-white/30 text-white"
+                      ? "bg-[#6D28D9] text-white dark:bg-indigo-900 dark:text-indigo-200"
+                      : "bg-white/30 text-white dark:bg-slate-800 dark:text-slate-400"
                   }`}
                 >
                   {index}
                 </div>
 
+                {/* CHANGE 4: Text Colors */}
                 <div
                   className={`transition-colors duration-200 ${
                     isActive
-                      ? "font-semibold text-white drop-shadow-md"
+                      ? "font-semibold text-white dark:text-white drop-shadow-md"
                       : isDone
-                      ? "text-[#6D28D9]"
-                      : "text-white/70"
+                      ? "text-[#6D28D9] dark:text-indigo-300"
+                      : "text-white/70 dark:text-slate-400"
                   }`}
                 >
                   {label}
@@ -144,8 +141,7 @@ const StepIndicator: React.FC<Props> = ({ current, onClickStep, onBackClick }) =
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="text-xs text-purple-100 text-center opacity-75">
+      <div className="text-xs text-purple-100 dark:text-slate-500 text-center opacity-75">
         i-City Package Form Wizard
       </div>
     </aside>

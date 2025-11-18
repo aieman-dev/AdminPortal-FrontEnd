@@ -1,11 +1,19 @@
 // lib/auth.ts
 
+export type Department = 
+  "MIS_SUPERADMIN" 
+  "MIS_SUPPORT" 
+  "IT_ADMIN" 
+  "IT_SUPPORT" 
+  "TP_ADMIN" 
+  "FINANCE_ADMIN";
+
 export interface User {
   id: string;
   email: string;
   name: string;
   role: string;
-  department: "MIS" | "IT" | "THEMEPARK" | "FINANCE";
+  department: Department;
 }
 
 export interface AuthResponse {
@@ -19,26 +27,13 @@ export interface AuthResponse {
 const AUTH_TOKEN_KEY = "auth_token";
 const USER_DATA_KEY = "user_data";
 
-// Helper to clean up department names from API
-// API returns "FINANCE_ADMIN" -> we convert to "FINANCE"
-function normalizeDepartment(rawDept: string): "MIS" | "IT" | "THEMEPARK" | "FINANCE" {
-  const d = rawDept?.toUpperCase() || "";
-  if (d.includes("FINANCE")) return "FINANCE";
-  if (d.includes("MIS")) return "MIS";
-  if (d.includes("IT")) return "IT";
-  if (d.includes("THEME") || d.includes("TP")) return "THEMEPARK";
-  return "MIS"; // Default fallback
-}
-
 // Real API Login Function
 export async function login(email: string, password: string): Promise<AuthResponse> {
   try {
     // STEP 1: Login to get the Token
     const loginResponse = await fetch("/api/proxy-login", {
       method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json",},
       body: JSON.stringify({ email, password }),
     });
 
@@ -72,11 +67,11 @@ export async function login(email: string, password: string): Promise<AuthRespon
     
     // Map the API data to your User object
     const user: User = {
-      id: meData.id || "1", 
-      email: meData.email || email,
-      name: meData.name || "User",
-      role: "User", // 'me' endpoint didn't show a role, default to User
-      department: normalizeDepartment(meData.department) // Handle "FINANCE_ADMIN" -> "FINANCE"
+      id: meData.id || "0",
+      email: meData.email,
+      name: meData.name,
+      role: "User",
+      department: meData.department as Department
     };
 
     
@@ -88,18 +83,11 @@ export async function login(email: string, password: string): Promise<AuthRespon
       document.cookie = `token=${token}; path=/; secure; samesite=strict`;
     }
 
-    return {
-      success: true,
-      user,
-      token,
-    };
+    return {success: true,user,token,};
 
   } catch (error) {
     console.error("Login Error:", error);
-    return {
-      success: false,
-      error: "Network error or server unreachable",
-    };
+    return {success: false,error: "Network error or server unreachable",};
   }
 }
 
@@ -138,15 +126,29 @@ export function getAuthToken(): string | null {
 }
 
 // --- PERMISSION HELPERS ---
+// Since the API doesn't send "canViewPackages: true", we define the rules here.
 
-export function canCreatePackage(department?: string): boolean {
-  const dept = department || getCurrentUser()?.department;
-  // Only THEMEPARK and MIS can create packages
-  return dept === "THEMEPARK" || dept === "MIS";
+export function canViewPackageManagement(department?: string): boolean {
+  if (!department) return false;
+  // Rules: Everyone EXCEPT MIS_SUPPORT and IT_SUPPORT
+  const restricted = ["MIS_SUPPORT", "IT_SUPPORT"];
+  return !restricted.includes(department);
 }
 
 export function canViewITPOSWF(department?: string): boolean {
-  const dept = department || getCurrentUser()?.department;
-  // Only IT and MIS can see IT POSWF
-  return dept === "IT" || dept === "MIS";
+  if (!department) return false;
+  // Rules: Only MIS and IT roles
+  const allowed = ["MIS_SUPERADMIN", "MIS_SUPPORT", "IT_ADMIN", "IT_SUPPORT"];
+  return allowed.includes(department);
+}
+
+export function canCreatePackage(department?: string): boolean {
+  if (!department) return false;
+  // Rules: Admins only (Finance usually approves, doesn't create)
+  const allowed = ["MIS_SUPERADMIN", "TP_ADMIN"];
+  return allowed.includes(department);
+}
+
+export function isFinanceApprover(department?: string): boolean {
+  return department === "FINANCE_ADMIN";
 }
