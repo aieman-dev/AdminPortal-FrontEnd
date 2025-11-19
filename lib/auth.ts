@@ -1,11 +1,11 @@
 // lib/auth.ts
 
 export type Department = 
-  "MIS_SUPERADMIN" 
-  "MIS_SUPPORT" 
-  "IT_ADMIN" 
-  "IT_SUPPORT" 
-  "TP_ADMIN" 
+  "MIS_SUPERADMIN" |
+  "MIS_SUPPORT" |
+  "IT_ADMIN" |
+  "IT_SUPPORT" |
+  "TP_ADMIN" |
   "FINANCE_ADMIN";
 
 export interface User {

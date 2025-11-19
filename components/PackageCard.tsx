@@ -1,5 +1,5 @@
-// src/components/PackageCard.tsx
-import { Calendar, User, Copy, Pencil } from "lucide-react";
+// components/PackageCard.tsx
+import { Calendar, User, Copy, Pencil, Trash2 } from "lucide-react"; // Import Trash2
 
 interface PackageCardProps {
   id: number;
@@ -12,6 +12,7 @@ interface PackageCardProps {
   onClick?: () => void;        // For navigating to detail page
   onDuplicate?: () => void;    // For duplicate action
   onEdit?: () => void;         // For edit action
+  onDelete?: () => void;       // For delete action
 }
 
 export default function PackageCard({
@@ -24,6 +25,7 @@ export default function PackageCard({
   onClick,
   onDuplicate,
   onEdit,
+  onDelete,
 }: PackageCardProps) {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -35,10 +37,19 @@ export default function PackageCard({
         return "bg-yellow-100 text-yellow-700 dark:bg-yellow-800 dark:text-yellow-300";
       case "rejected":
         return "bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-300";
+      case "draft":
+        return "bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300";
       default:
         return "bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300";
     }
   };
+
+  const statusLower = status.toLowerCase();
+  
+  // Logic for action visibility based on the user's rules:
+  const canEdit = statusLower === "draft";
+  const canDuplicate = ["pending", "draft", "rejected"].includes(statusLower);
+  const canDelete = statusLower === "draft";
 
   return (
     <div
@@ -52,29 +63,50 @@ export default function PackageCard({
           Bundle
         </span>
 
-        {/* Hover Action Icons */}
+        {/* Hover Action Icons - CONDITIONALLY DISPLAYED */}
         <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          {/* Duplicate */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDuplicate?.();
-            }}
-            className="bg-white/80 dark:bg-gray-800 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-gray-700"
-          >
-            <Copy size={14} className="text-blue-600 dark:text-blue-300" />
-          </button>
+          
+          {/* Edit Button - Only available for Draft */}
+          {canEdit && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit?.();
+              }}
+              className="bg-white/80 dark:bg-gray-800 p-1 rounded-full hover:bg-yellow-100 dark:hover:bg-gray-700"
+              title="Edit"
+            >
+              <Pencil size={14} className="text-yellow-600 dark:text-yellow-300" />
+            </button>
+          )}
 
-          {/* Edit */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit?.();
-            }}
-            className="bg-white/80 dark:bg-gray-800 p-1 rounded-full hover:bg-yellow-100 dark:hover:bg-gray-700"
-          >
-            <Pencil size={14} className="text-yellow-600 dark:text-yellow-300" />
-          </button>
+          {/* Duplicate Button - Available for Pending, Draft, Rejected */}
+          {canDuplicate && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDuplicate?.();
+              }}
+              className="bg-white/80 dark:bg-gray-800 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-gray-700"
+              title="Duplicate"
+            >
+              <Copy size={14} className="text-blue-600 dark:text-blue-300" />
+            </button>
+          )}
+
+          {/* Trash Button - Only available for Draft */}
+          {canDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete?.();
+              }}
+              className="bg-white/80 dark:bg-gray-800 p-1 rounded-full hover:bg-red-100 dark:hover:bg-gray-700"
+              title="Delete Draft"
+            >
+              <Trash2 size={14} className="text-red-600 dark:text-red-300" />
+            </button>
+          )}
         </div>
       </div>
 

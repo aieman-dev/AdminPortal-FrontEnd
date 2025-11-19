@@ -1,16 +1,14 @@
-// src/app/api/proxy-create-package/route.ts
+// app/api/(packages)/proxy-create-package/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { BACKEND_API_BASE } from "@/lib/config";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-
-    // Get auth header from the client request
     const authHeader = request.headers.get("authorization");
-
-    // Forward to the REAL backend
-    const BACKEND_URL = `${BACKEND_API_BASE}/api/Package/create`;
+    
+    // This file is dedicated to the CREATE operation
+    const BACKEND_URL = `${BACKEND_API_BASE}/api/Package/create`; // Original create endpoint
 
     const apiResponse = await fetch(BACKEND_URL, {
       method: "POST",

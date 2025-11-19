@@ -1,3 +1,4 @@
+// app/portal/packages/pages
 "use client";
 
 import { useState, useEffect } from "react";
@@ -124,16 +125,58 @@ export default function PackagesPage() {
   };
 
   const handlePackageClick = (id: number) => {
-    if (["Pending", "Draft", "Rejected"].includes(activeFilter)) {
-      router.push(`/portal/packages/pdetails/${id}?source=pending`);
+    const pendingStatuses = ["Pending", "Draft", "Rejected"];
+    if (pendingStatuses.includes(activeFilter)) {
+    router.push(`/portal/packages/pdetails/requests/${id}`);
     } else {
-      router.push(`/portal/packages/pdetails/${id}`);
+    router.push(`/portal/packages/pdetails/package/${id}`);
     }
   };
 
   const handleEdit = (id: number) => router.push(`/portal/packages/${id}/edit`);
   const handleAddNew = () => router.push("/portal/packages/form");
-  const handleDuplicate = (id: number) => console.log("Duplicate:", id);
+  
+  // --- NEW HANDLER (Type error resolved by updating service) ---
+  const handleDuplicate = async (id: number) => {
+    try {
+      setIsLoading(true);
+      // 'response' is now correctly typed as PackageDuplicateResponse
+      const response = await packageService.duplicatePackage(id);
+      alert(`Package duplicated successfully! New ID: ${response.newPackageId}. Status: Draft.`);
+      // After duplication, refresh the list and switch to 'Draft' filter to show the new package
+      setActiveFilter("Draft");
+    } catch (error) {
+      console.error("Error duplicating package:", error);
+      alert("Failed to duplicate package.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  // --- ADDED DELETE HANDLER ---
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this draft package? This action cannot be undone.")) {
+        return;
+    }
+
+    try {
+        setIsLoading(true);
+        // Logical delete: set status to 'Inactive' in the pending table
+        await packageService.updateStatus(id, "Inactive"); 
+        alert("Draft package deleted successfully.");
+        
+        // Force a re-fetch of the Draft tab content
+        // This ensures the deleted item disappears immediately
+        setActiveFilter(prev => (prev === "Draft" ? "Active" : "Draft"));
+        setActiveFilter("Draft");
+        
+    } catch (error) {
+        console.error("Error deleting package:", error);
+        alert("Failed to delete draft package.");
+    } finally {
+        setIsLoading(false);
+    }
+  };
 
   // Original Page Numbers Logic
   const getPageNumbers = () => {
@@ -194,6 +237,7 @@ export default function PackagesPage() {
                     onClick={() => handlePackageClick(pkg.id)}
                     onDuplicate={() => handleDuplicate(pkg.id)}
                     onEdit={() => handleEdit(pkg.id)}
+                    onDelete={() => handleDelete(pkg.id)}
                   />
                 ))}
               </div>
@@ -263,7 +307,7 @@ export default function PackagesPage() {
       {canCreate && (
         <button
           onClick={handleAddNew}
-          className="fixed bottom-8 right-8  bg-indigo-500 hover:bg-indigo-600 dark:bg-white dark:hover:bg-gray-200 text-primary-foreground px-6 py-3 rounded-full shadow-lg flex items-center gap-2 font-semibold transition-all hover:shadow-xl z-10"
+          className="fixed bottom-8 right-8 bg-indigo-500 hover:bg-indigo-600 dark:bg-white dark:hover:bg-gray-200 text-primary-foreground px-6 py-3 rounded-full shadow-lg flex items-center gap-2 font-semibold transition-all hover:shadow-xl z-10"
         >
           <Plus size={20} />
           Add New

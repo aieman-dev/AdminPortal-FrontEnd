@@ -105,3 +105,12 @@ export interface Attraction {
   image: string;          
   description?: string;   
 }
+
+/* -----------------------------------------------------------
+    PACKAGE DUPLICATE RESPONSE (NEW)
+   Expected structure from POST /api/package/duplicate
+   ----------------------------------------------------------- */
+export interface PackageDuplicateResponse {
+  message: string;
+  newPackageId: number;
+}

@@ -1,38 +1,18 @@
 // services/package-services.ts
 import { apiClient } from "@/lib/api-client";
-import { PackageFormData, Package } from "@/type/packages"; 
+import { PackageFormData, Package, PackageDuplicateResponse } from "@/type/packages"; 
 
 const ENDPOINTS = {
-  CREATE: "/proxy-create-package",
+  // Existing/Unchanged
+  CREATE: "/proxy-create-package",       
   UPLOAD: "/proxy-upload",
- GET_LIST: (status: string, start?: string, end?: string, page: number = 1, search: string = "") => {
-    let url = `/proxy-packageView?status=${encodeURIComponent(status)}&pageNumber=${page}`;
-    if (start) url += `&startDate=${encodeURIComponent(start)}`;
-    if (end) url += `&endDate=${encodeURIComponent(end)}`;
-    if (search) url += `&searchQuery=${encodeURIComponent(search)}`;
-    if (["Pending", "Draft", "Rejected"].includes(status)) {
-      url += `&source=pending`;
-    }
-    return url;
-  },
-  GET_ONE: (id: string | number, source?: string) => {
-    let url = `/proxy-packageView/${id}`;
-    if (source) {
-      url += `?source=${encodeURIComponent(source)}`;
-    }
-    return url;
-  },
+  
+  // NEW ENDPOINTS - Mapped to non-dynamic proxies
+  UPDATE_STATUS: "/proxy-package-status/[id]",  // Retaining existing file name proxy
+  GET_LIST: "/proxy-packageView",               // Mapped to proxy-packageView/route.ts
+  GET_ONE: "/proxy-packageView/[id]",           // Mapped to proxy-packageView/[id]/route.ts
+  DUPLICATE: "/proxy-package-duplicate",        // Mapped to new dedicated proxy route
 };
-
-{/* HARDCODED TOKEN
-const TEST_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJUUEBlbWFpbC5jb20iLCJ1c2VySWQiOiIzIiwibmFtZSI6IlRQVGVzdCIsImRlcGFydG1lbnQiOiJUUF9BRE1JTiIsImp0aSI6Ijg3ZjM0M2IwLTQyODctNDgyMS04MmZkLWU0Y2U4MTRlZWMwMSIsImV4cCI6MTc2MzE4OTYyMiwiaXNzIjoiaHR0cHM6Ly9sb2NhbGhvc3Q6NzAyOSIsImF1ZCI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTE3MyJ9.H5XFgA2nGhYrAlK7Du06R4CKJIsVvk9uErWJ9QPOQBM";
-
-export const getAuthToken = () => `Bearer ${TEST_TOKEN}`;
-
-const getHeaders = () => ({
-  Authorization: getAuthToken()
-});
-*/}
 
 // ... Interface and transformToFrontend function ...
 interface BackendPackageDTO {
@@ -99,6 +79,24 @@ export const packageService = {
     return response.data.imageId;
   },
 
+  // --- UPDATED: updateStatus (Payload matches UpdateStatusRequestModel) ---
+ updateStatus: async (id: number, status: "Approved" | "Rejected" | "Draft" | "Inactive", remark?: string) => {
+    // Payload matches the C# UpdateStatusRequestModel structure
+    const payload = { 
+      Id: id, // Mandatory ID
+      Status: status, // Mandatory Status
+      Remark2: remark // Optional Remark2
+    };
+    
+    // The proxy file at [id] now handles the fixed backend URL
+    const response = await apiClient.put(ENDPOINTS.UPDATE_STATUS, payload);
+
+    if (!response.success) {
+      throw new Error(response.error || `Failed to ${status} package`);
+    }
+    return response.data;
+  },
+
   createPackage: async (form: PackageFormData, imageId: string) => {
     //  Construct the payload with correct item structure
     const payload = {
@@ -138,6 +136,7 @@ export const packageService = {
     return response.data;
   },
 
+  // --- UPDATED: getPackages uses POST (Payload matches PackageFilterModel) ---
   getPackages: async (
     status: string, 
     startDate?: string, 
@@ -146,41 +145,46 @@ export const packageService = {
     searchQuery: string = ""
   ): Promise<{ packages: Package[], totalPages: number, totalRecords: number }> => {
     
-    const response = await apiClient.get<any>(
-      ENDPOINTS.GET_LIST(status, startDate, endDate, page, searchQuery)
-    );
+    // Payload matches the C# PackageFilterModel structure
+    const payload = {
+        Status: status,
+        SearchQuery: searchQuery || null,
+        PageNumber: page,
+        PageSize: 30, 
+        StartDate: startDate || null,
+        EndDate: endDate || null,
+    };
+    
+    // Use POST method for the new search endpoint
+    const response = await apiClient.post<any>(ENDPOINTS.GET_LIST, payload);
 
     if (!response.success) {
       console.error("Failed to fetch packages:", response.error);
       return { packages: [], totalPages: 0, totalRecords: 0 };
     }
 
-    // Handle response. 
-    // CASE A: Backend returns a Paginated Object (e.g. { items: [], totalPages: 5 })
-    if (response.data && Array.isArray(response.data.items)) {
-      return {
-        packages: response.data.items.map(transformToFrontend),
-        totalPages: response.data.totalPages || 1,
-        totalRecords: response.data.totalRecords || 0
-      };
+    // Since PackageController.cs returns a List<PackageSummaryViewModel>, we assume no pagination metadata is returned yet.
+    if (response.data && Array.isArray(response.data)) {
+        return {
+            packages: response.data.map(transformToFrontend),
+            totalPages: 1, 
+            totalRecords: response.data.length,
+        };
     }
-
-    // CASE B: Backend still returns just an Array (Fallback)
-    if (Array.isArray(response.data)) {
-      return {
-        packages: response.data.map(transformToFrontend),
-        totalPages: 1,
-        totalRecords: response.data.length
-      };
-    }
-
+    
     return { packages: [], totalPages: 0, totalRecords: 0 };
   },
 
+  // --- UPDATED: getPackageById uses POST (Payload matches PackageDetailRequestModel) ---
   getPackageById: async (id: number, source?: string): Promise<Package | null> => {
-    const response = await apiClient.get<BackendPackageDTO>(
-      ENDPOINTS.GET_ONE(id, source),
-    );
+    // Payload matches the C# PackageDetailRequestModel structure
+    const payload = {
+        Id: id,
+        Source: source || null, // 'pending' or null
+    };
+
+    // Use POST method for the new detail endpoint
+    const response = await apiClient.post<BackendPackageDTO>(ENDPOINTS.GET_ONE, payload);
 
     if (!response.success || !response.data) {
       console.error("Failed to fetch package:", response.error);
@@ -188,5 +192,19 @@ export const packageService = {
     }
 
     return transformToFrontend(response.data);
+  },
+
+  // --- NEW FUNCTION: duplicatePackage (Typed to PackageDuplicateResponse) ---
+  duplicatePackage: async (id: number): Promise<PackageDuplicateResponse> => {
+      // Payload matches the C# PackageIdRequestModel structure
+      const payload = { Id: id }; 
+      
+      // Use POST method and specify the expected response type
+      const response = await apiClient.post<PackageDuplicateResponse>(ENDPOINTS.DUPLICATE, payload);
+      
+      if (!response.success || !response.data) {
+          throw new Error(response.error || "Failed to duplicate package");
+      }
+      return response.data;
   }
 };
