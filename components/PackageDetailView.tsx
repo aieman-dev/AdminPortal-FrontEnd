@@ -3,15 +3,13 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { 
-  Search, Calendar, Clock, Ticket, Globe, User, FileText, 
-  CheckCircle, ArrowLeft, X, Check, Loader2 
-} from "lucide-react";
+import { Search, Calendar, Clock, Ticket, Globe, User, FileText, CheckCircle, ArrowLeft, X, Check, Loader2 } from "lucide-react";
 import { Package, PackageItem } from "@/type/packages";
 import { packageService } from "@/services/package-services"; 
 import { ApprovalModal } from "@/components/PackageModals"; 
 import { useAuth } from "@/hooks/use-auth";
 import { isFinanceApprover } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
 
 // Props: We accept ID and Source from the parent page wrapper
 interface PackageDetailViewProps {
@@ -40,6 +38,8 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
   const { user } = useAuth();
   const isFinance = isFinanceApprover(user?.department);
   
+  const { toast } = useToast();
+
   const [activeTab, setActiveTab] = useState<"overview" | "items">("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [rejectionNotes, setRejectionNotes] = useState("");
@@ -49,10 +49,6 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
   // Modal State
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   
-  // Toast State (Simple local implementation for demo)
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
-  const [toastType, setToastType] = useState<"success" | "warning">("success");
 
   useEffect(() => {
     const fetchPackage = async () => {
@@ -70,11 +66,19 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
           setPackageData(data);
           setRejectionNotes(data.remark2 || data.financeremark || "");
         } else {
-          showToastNotification("Failed to load package details", "warning");
+          toast({
+              title: "Error",
+              description: "Failed to load package details.",
+              variant: "destructive"
+          });
         }
       } catch (error) {
         console.error("Error:", error);
-        showToastNotification("An error occurred while fetching details", "warning");
+        toast({
+            title: "Error",
+            description: "An unexpected error occurred while fetching details.",
+            variant: "destructive"
+        });
       } finally {
         setLoading(false);
       }
@@ -83,27 +87,33 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
     fetchPackage();
   }, [id, source]);
 
-  const showToastNotification = (message: string, type: "success" | "warning") => {
-    setToastMessage(message);
-    setToastType(type);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
-  };
 
   const handleReject = async () => {
     if (!rejectionNotes.trim()) {
-      showToastNotification("Please provide rejection notes", "warning");
+      toast({
+          title: "Rejection Required",
+          description: "Please provide rejection notes.",
+          variant: "default"
+      });
       return;
     }
       try {
         setLoading(true); 
         await packageService.updateStatus(packageData!.id, "Rejected", rejectionNotes);
         
-        showToastNotification("Package rejected successfully", "success");
+        toast({
+            title: "Package Rejected",
+            description: `Package ID ${packageData!.id} was successfully rejected.`,
+            variant: "destructive" // Using destructive for rejection feedback
+        });
         setTimeout(() => router.push("/portal/packages"), 1500);
       } catch (error) {
         console.error(error);
-        showToastNotification("Failed to reject package", "warning");
+        toast({
+            title: "Rejection Failed",
+            description: "Failed to reject package. Please try again.",
+            variant: "destructive"
+        });
       } finally {
         setLoading(false);
     }
@@ -117,11 +127,19 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
         setLoading(true); 
         await packageService.updateStatus(packageData!.id, "Approved");
 
-        showToastNotification("Package has been approved successfully", "success");
+        toast({
+            title: "Package Approved!",
+            description: `Package ID ${packageData!.id} is now Active.`,
+            variant: "default" // Default or primary for success
+        });
         setTimeout(() => router.push("/portal/packages"), 1500);
         } catch (error) {
         console.error(error);
-        showToastNotification("Failed to approve package", "warning");
+        toast({
+            title: "Approval Failed",
+            description: "Failed to approve package. Please check the network.",
+            variant: "destructive"
+        });
     } finally {
         setLoading(false);
     }
@@ -161,16 +179,6 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
 
   return (
     <>
-      {/* Toast Notification */}
-      {showToast && (
-        <div className="fixed top-4 right-4 z-50 animate-slide-in">
-          <div className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${toastType === "success" ? "bg-green-500 text-white" : "bg-yellow-500 text-white"}`}>
-            {toastType === "success" ? <CheckCircle size={20} /> : <X size={20} />}
-            <span className="font-medium">{toastMessage}</span>
-          </div>
-        </div>
-      )}
-
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
         {/* Header Navigation */}
         <div className="flex items-center gap-3 mb-6 border-b-2 border-[#E5E7EB] pb-3">

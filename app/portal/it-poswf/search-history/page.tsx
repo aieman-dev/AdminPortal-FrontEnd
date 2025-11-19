@@ -1,3 +1,4 @@
+// app/portal/it-poswf/search-history/page.tsx
 "use client"
 
 import { useState } from "react"
@@ -8,54 +9,78 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SearchField } from "@/components/it-poswf/search-field"
 import { DataTable, type TableColumn } from "@/components/it-poswf/data-table"
 import { StatusBadge } from "@/components/it-poswf/status-badge"
-import { mockHistoryData, mockTicketHistory, type HistoryRecord, type TicketHistory } from "@/lib/mock-data/it-poswf"
+import { HistoryRecord, TicketHistory } from "@/type/it-poswf"; 
+import { itPoswfService } from "@/services/it-poswf-services"; 
+import { useToast } from "@/hooks/use-toast";
+
 
 export default function SearchHistoryPage() {
   const [searchType, setSearchType] = useState<"email" | "mobile" | "invoice">("email")
   const [searchTerm, setSearchTerm] = useState("")
-  const [historyData, setHistoryData] = useState(mockHistoryData)
-  const [ticketData, setTicketData] = useState(mockTicketHistory)
+  // Initialize with empty arrays instead of mock data
+  const [historyData, setHistoryData] = useState<HistoryRecord[]>([])
+  const [ticketData, setTicketData] = useState<TicketHistory[]>([])
   const [isSearching, setIsSearching] = useState(false)
 
-  const handleSearch = async () => {
-    setIsSearching(true)
-    setTimeout(() => {
-      if (searchTerm) {
-        const filtered = mockHistoryData.filter((record) => {
-          const term = searchTerm.toLowerCase()
-          switch (searchType) {
-            case "email":
-              return record.email.toLowerCase().includes(term)
-            case "mobile":
-              return record.mobile.toLowerCase().includes(term)
-            case "invoice":
-              return record.invoiceNo.toLowerCase().includes(term)
-            default:
-              return false
-          }
-        })
-        setHistoryData(filtered)
+  const { toast } = useToast();
 
-        const filteredTickets = mockTicketHistory.filter((ticket) => {
-          const term = searchTerm.toLowerCase()
-          switch (searchType) {
-            case "email":
-              return ticket.transactionId.toLowerCase().includes(term)
-            case "mobile":
-              return ticket.ticketNo.toLowerCase().includes(term)
-            case "invoice":
-              return ticket.transactionId.toLowerCase().includes(term)
-            default:
-              return false
-          }
-        })
-        setTicketData(filteredTickets)
-      } else {
-        setHistoryData(mockHistoryData)
-        setTicketData(mockTicketHistory)
-      }
-      setIsSearching(false)
-    }, 500)
+  // --- UPDATED handleSearch function to rely on response.success ---
+  const handleSearch = async () => {
+    if (!searchTerm) {
+        setHistoryData([]);
+        setTicketData([]);
+        toast({
+            title: "Search Required",
+            description: "Please enter a search term.",
+            variant: "default", // Use default style for input validation
+        });
+        return;
+    }
+    
+    setIsSearching(true);
+    
+    try {
+        const response = await itPoswfService.searchHistory(searchType, searchTerm);
+
+        // CHECK 1: If the overall API call (HTTP status) succeeded and data structure is present.
+        if (response.success && response.data) { 
+            // SUCCESS PATH (200 OK): Data received, even if the arrays are empty.
+            
+            // Set the state with the received (potentially empty) arrays
+            setHistoryData(response.data.transactionHistory); 
+            setTicketData(response.data.ticketHistory);
+
+            // Optional: Log a status message for clarity (not an error)
+            if (response.data.transactionHistory.length === 0 && response.data.ticketHistory.length === 0) {
+                 toast({
+                    title: "Search Complete",
+                    description: "No transaction records found for the given value.",
+                    variant: "default",
+                });
+            }
+
+        } else {
+            // ERROR PATH: Only reached if the API Client detected a genuine network error or non-200 status (e.g., 401, 500).
+            // We now safely use the message returned by the service/backend.
+            console.error("API Error:", response.error);
+            setHistoryData([]);
+            setTicketData([]);
+            toast({
+                title: "Search Failed",
+                description: response.error || "Server error occurred.",
+                variant: "destructive", // Use destructive variant for backend errors
+            });
+        }
+    } catch (error) {
+        console.error("Network Error:", error);
+        toast({
+            title: "Error",
+            description: "A network error occurred during the search.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsSearching(false);
+    }
   }
 
   const getPlaceholder = () => {
@@ -78,27 +103,30 @@ export default function SearchHistoryPage() {
       cell: (value) => <span className="font-medium">{value}</span>,
     },
     { header: "Invoice No", accessor: "invoiceNo" },
-    { header: "Attraction", accessor: "attraction" },
+    // Corrected accessor field name to match API payload
+    { header: "Attraction", accessor: "attractionName" }, 
     { header: "Amount", accessor: "amount" },
-    { header: "Transaction Type", accessor: "transactionType", cell: (value) => <StatusBadge status={value} /> },
+    // Corrected accessor field name to match API payload
+    { header: "Transaction Type", accessor: "trxType", cell: (value) => <StatusBadge status={value} /> },
     { header: "Created Date", accessor: "createdDate" },
   ]
 
   const ticketColumns: TableColumn<TicketHistory>[] = [
+    // Use ticketNo as primary key, as it appears unique in the API payload
     {
-      header: "Transaction ID",
-      accessor: "transactionId",
+      header: "Ticket No",
+      accessor: "ticketNo",
       cell: (value) => <span className="font-medium">{value}</span>,
     },
     { header: "Package Name", accessor: "packageName" },
-    { header: "Package ID", accessor: "packageId" },
+    // Corrected accessor field name
+    { header: "Package ID", accessor: "packageID" },
     { header: "Qty", accessor: "qty" },
     { header: "Start Date", accessor: "startDate" },
     { header: "Expiry Date", accessor: "expiryDate" },
     { header: "Last Valid Date", accessor: "lastValidDate" },
     { header: "Valid Days", accessor: "validDays" },
     { header: "Status", accessor: "status", cell: (value) => <StatusBadge status={value} /> },
-    { header: "Ticket No", accessor: "ticketNo" },
     { header: "Created Date", accessor: "createdDate" },
   ]
 
@@ -142,13 +170,13 @@ export default function SearchHistoryPage() {
             value="transaction"
             className="rounded-t-lg rounded-b-none bg-card px-6 py-2.5 text-sm font-medium border border-border data-[state=active]:border-b-transparent data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:relative data-[state=active]:z-10 data-[state=inactive]:bg-muted/30 data-[state=inactive]:text-muted-foreground data-[state=inactive]:border-b-border"
           >
-            Transaction History
+            Transaction History ({historyData.length})
           </TabsTrigger>
           <TabsTrigger
             value="ticket"
             className="rounded-t-lg rounded-b-none bg-card px-6 py-2.5 text-sm font-medium border border-border -ml-px data-[state=active]:border-b-transparent data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:relative data-[state=active]:z-10 data-[state=inactive]:bg-muted/30 data-[state=inactive]:text-muted-foreground data-[state=inactive]:border-b-border"
           >
-            Ticket History
+            Ticket History ({ticketData.length})
           </TabsTrigger>
         </TabsList>
 
@@ -158,8 +186,12 @@ export default function SearchHistoryPage() {
               <DataTable
                 columns={historyColumns}
                 data={historyData}
-                keyExtractor={(row) => row.id}
-                emptyMessage="No records found"
+                // FINAL FIX: Use a composite key (InvoiceNo + Index) to guarantee uniqueness for React.
+                keyExtractor={(row, index) => 
+                    // Fallback to a placeholder if invoiceNo is falsy, then append index
+                    (row.invoiceNo || `no-invoice-${index}`) + `-${index}`
+                } 
+                emptyMessage={isSearching ? "Searching..." : "No transaction records found"}
               />
             </CardContent>
           </Card>
@@ -171,8 +203,10 @@ export default function SearchHistoryPage() {
               <DataTable
                 columns={ticketColumns}
                 data={ticketData}
-                keyExtractor={(row) => row.id}
-                emptyMessage="No ticket records found"
+                // Ticket History should use ticketNo (which is unique per ticket), 
+                // combined with index for safety/empty fields.
+                keyExtractor={(row, index) => (row.ticketNo || `tk-${index}`).toString()}
+                emptyMessage={isSearching ? "Searching..." : "No ticket records found"}
               />
             </CardContent>
           </Card>

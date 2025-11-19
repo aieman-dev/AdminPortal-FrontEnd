@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/portal/sidebar"
 import { Header } from "@/components/portal/header"
 import { ProtectedRoute } from "@/components/portal/protected-route"
 import { cn } from "@/lib/utils"
+import { Toaster } from "@/components/ui/toaster"
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -43,6 +44,9 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           </main>
         </div>
       </div>
+
+      <Toaster />
+      
     </ProtectedRoute>
   )
 }

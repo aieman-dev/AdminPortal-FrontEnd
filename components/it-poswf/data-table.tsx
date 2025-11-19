@@ -10,7 +10,8 @@ export interface TableColumn<T> {
 interface DataTableProps<T> {
   columns: TableColumn<T>[]
   data: T[]
-  keyExtractor: (row: T) => string
+  // FIX 1: Update keyExtractor to accept index
+  keyExtractor: (row: T, index: number) => string 
   emptyMessage?: string
 }
 
@@ -30,10 +31,11 @@ export function DataTable<T>({ columns, data, keyExtractor, emptyMessage = "No d
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((row) => (
-            <TableRow key={keyExtractor(row)}>
+          {/* FIX 2: Pass index to data.map and use it for keyExtractor */}
+          {data.map((row, index) => (
+            <TableRow key={keyExtractor(row, index)}>
               {columns.map((column, colIndex) => {
-                const value = typeof column.accessor === "function" ? column.accessor(row) : row[column.accessor]
+                const value = typeof column.accessor === "function" ? column.accessor(row) : (row[column.accessor] as any)
                 const cellContent = column.cell ? column.cell(value, row) : value
 
                 return <TableCell key={colIndex}>{cellContent}</TableCell>

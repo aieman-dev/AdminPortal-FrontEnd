@@ -1,3 +1,5 @@
+/*
+
 export interface Transaction {
   invoiceNo: string
   name: string
@@ -657,3 +659,4 @@ export const mockAccountData: Account[] = [
     transactions: [],
   },
 ]
+*/
