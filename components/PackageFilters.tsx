@@ -31,7 +31,7 @@ export default function PackageFilters({
   const filters = [
     { label: "Active", value: "Active", color: "#006100", hover: "#008000" },
     { label: "Expired", value: "Expired", color: "#6D28D9", hover: "#4900BA" },
-    { label: "Expiring Soon", value: "Expiring Soon", color: "#FF9800", hover: "#FFB84D" },
+    { label: "Expiring Soon", value: "ExpiringSoon", color: "#FF9800", hover: "#FFB84D" },
     { label: "Pending", value: "Pending", color: "#9C6500", hover: "#C27C00" },
     { label: "Rejected", value: "Rejected", color: "#9C0005", hover: "#C40007" },
     { label: "Draft", value: "Draft", color: "#4F46E5", hover: "#080087" },
@@ -124,12 +124,28 @@ export default function PackageFilters({
         {/* 3. Render the visible filters */}
         {visibleFilters.map((filter) => {
           const isActive = activeFilter === filter.value;
+          const hoverStyle = isActive ? {} : {
+              color: filter.hover,
+              '--active-color': filter.color // Optional utility if we were using tailwind custom properties
+          };
           return (
             <button
               key={filter.value}
               onClick={() => setActiveFilter(filter.value)}
-              className={`relative pb-2 text-[15px] font-semibold transition-all`}
+              className={`relative pb-2 text-[15px] font-semibold transition-all duration-150`}
               style={{ color: isActive ? filter.color : "#88888D" }}
+              
+              // 🌟 FIX: Implement hover effect using mouse events
+              onMouseEnter={(e) => {
+                  if (!isActive) {
+                      e.currentTarget.style.color = filter.hover;
+                  }
+              }}
+              onMouseLeave={(e) => {
+                  if (!isActive) {
+                      e.currentTarget.style.color = "#88888D";
+                  }
+              }}
             >
               {filter.label}
               {isActive && (

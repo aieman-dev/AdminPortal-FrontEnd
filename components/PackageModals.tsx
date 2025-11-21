@@ -202,7 +202,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
 
         <div className="bg-gray-100 rounded-xl p-6 mb-6 text-center space-y-2">
           <p className="text-gray-700 text-lg">
-            Upon approval, the package will be <span className="font-bold text-green-600">active</span> to use.
+            Upon approval, the package will be <span className="font-bold text-gray-900">active</span> to use.
           </p>
           <p className="text-gray-600 text-sm">
             (Further edits will not be allowed after approval.)
@@ -221,7 +221,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-md"
+            className="flex-1 px-6 py-3 bg-[#5B5FEF] hover:bg-[#7C83FF] text-white font-semibold rounded-lg transition-colors shadow-md"
           >
             Confirm Approval
           </button>

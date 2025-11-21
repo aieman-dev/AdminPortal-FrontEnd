@@ -37,8 +37,8 @@ export interface Package {
   status?: string;    
   createdBy?: string;      
   createdDate?: string;    
-  approvedBy?: string;    
-  approvedDate?: string;  
+  reviewedBy?: string;    
+  reviewedDate?: string;  
   tpremark?: string;      
   financeremark?: string; 
   packageitems?: PackageItem[];

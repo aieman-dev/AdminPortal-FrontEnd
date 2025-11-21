@@ -20,8 +20,8 @@ export interface PasswordData {
   currentPassword: string
 }
 
-export interface HistoryRecord {
-  id?: string | number // Made optional and generic to handle unreliable API payload
+export interface TransactionHistory {
+  trxID: number 
   transactionId: string
   invoiceNo: string
   email: string
@@ -52,12 +52,12 @@ export interface TicketHistory {
 }
 
 export interface ShopifyOrder {
-  id: string
-  orderName: string
-  orderEmail: string
-  totalPrice: string
-  paymentStatus: "paid" | "pending" | "failed"
-  createdDate: string
+  trxId: number;
+  amount: number;
+  email: string;
+  invoiceNo: string;
+  purchasedDate: string;
+  financialStatus : string;
 }
 
 export interface AvailableTicket {

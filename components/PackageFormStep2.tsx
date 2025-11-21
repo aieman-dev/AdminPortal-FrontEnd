@@ -27,7 +27,8 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
   const [items, setItems] = useState<PackageItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const isPointMode = form.packageType === "Point";
+  // FIX 3: Check if the package type is point-based (Point or Reward P)
+  const isPointMode = form.packageType === "Point" || form.packageType === "Reward P";
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -96,17 +97,41 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
 
   useEffect(() => {
     const total = form.packageitems.reduce((sum, item) => {
+      // FIX 3: Calculation logic based on isPointMode
       const val = isPointMode ? (item.point || 0) : (item.price || 0);
       return sum + val * (item.entryQty || 0);
     }, 0);
     setForm((prev) => ({ ...prev, totalPrice: total }));
   }, [form.packageitems, isPointMode, setForm]);
 
+  // Helper to determine display text for mode
+  const getModeDisplayText = () => {
+    switch (form.packageType) {
+      case "Entry":
+        return "Price (RM)";
+      case "Point":
+        return "Points";
+      case "Reward P":
+        return "Reward Points";
+      default:
+        return "N/A";
+    }
+  };
+
+  const getCurrencyDisplay = () => {
+    return form.packageType === "Entry" ? "RM" : "Pts";
+  };
+  
+  const getValueField = () => {
+    return isPointMode ? "point" : "price";
+  };
+  
   return (
     <div className="flex flex-col xl:flex-row gap-6 h-auto xl:h-full">
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         <h2 className="text-2xl font-bold mb-2 text-foreground">2. Package Items ({form.packageitems.length})</h2>
-        <div className="text-sm text-blue-600 dark:text-blue-400 mb-2">Mode: <b>{isPointMode ? "Points" : "Price"}</b></div>
+        {/* FIX 3: Display current mode based on packageType */}
+        <div className="text-sm text-blue-600 dark:text-blue-400 mb-2">Mode: <b>{getModeDisplayText()}</b></div>
         <div className="border-b border-border mb-4" />
 
         <div className="mb-4">
@@ -131,6 +156,7 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
             filtered.map((item, index) => {
               const activeItem = form.packageitems.find((s) => s.attractionId === item.attractionId);
               const selected = !!activeItem;
+              const valueField = getValueField(); // Determine field once
 
               return (
                 <div 
@@ -160,8 +186,8 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
                       </label>
                       <input
                         type="number"
-                        value={activeItem?.[isPointMode ? "point" : "price"] ?? ""}
-                        onChange={(e) => handleItemChange(item, isPointMode ? "point" : "price", e.target.value)}
+                        value={activeItem?.[valueField] ?? ""}
+                        onChange={(e) => handleItemChange(item, valueField as "price" | "point", e.target.value)}
                         onClick={(e) => e.stopPropagation()}
                         className="w-full border-b border-gray-400 dark:border-gray-600 text-center focus:border-indigo-600 outline-none mb-3 bg-transparent text-foreground dark:text-white"
                       />
@@ -198,7 +224,8 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
         </div>
         <div className="mt-4 pt-4 border-t border-border flex justify-between font-bold text-lg text-foreground">
           <span>Total:</span>
-          <span>{isPointMode ? "" : "RM"} {form.totalPrice?.toLocaleString()} {isPointMode ? "Pts" : ""}</span>
+          {/* FIX 3: Display currency based on packageType */}
+          <span>{getCurrencyDisplay()} {form.totalPrice?.toLocaleString()}</span>
         </div>
         <div className="mt-6 flex gap-2">
           <button onClick={onBack} className="flex-1 py-2 border border-border rounded-md text-foreground hover:bg-muted transition">Back</button>

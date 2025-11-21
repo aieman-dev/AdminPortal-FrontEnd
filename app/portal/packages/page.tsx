@@ -33,6 +33,12 @@ const formatDate = (dateString: string | undefined) => {
 
 export default function PackagesPage() {
   const { user } = useAuth();
+
+  // Determine if the current user belongs to the Finance department
+  const isFinanceUser = user?.department?.toUpperCase().includes('FINANCE');
+
+  // Set the default filter: 'Pending' for Finance, 'Active' for others
+  const defaultFilter = isFinanceUser ? "Pending" : "Active";
   
   // FIX 2: Use the helper function logic instead of hardcoding
   // This ensures IT_ADMIN, MIS_SUPERADMIN, and TP_ADMIN are all covered automatically
@@ -41,7 +47,7 @@ export default function PackagesPage() {
   // Match backend default
   const ITEMS_PER_PAGE = 30; 
   
-  const [activeFilter, setActiveFilter] = useState("Active");
+  const [activeFilter, setActiveFilter] = useState(defaultFilter);
   const [searchQuery, setSearchQuery] = useState("");
   const [packages, setPackages] = useState<PackageListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);

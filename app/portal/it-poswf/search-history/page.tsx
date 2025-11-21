@@ -9,16 +9,36 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SearchField } from "@/components/it-poswf/search-field"
 import { DataTable, type TableColumn } from "@/components/it-poswf/data-table"
 import { StatusBadge } from "@/components/it-poswf/status-badge"
-import { HistoryRecord, TicketHistory } from "@/type/it-poswf"; 
+import { TransactionHistory, TicketHistory } from "@/type/it-poswf"; 
 import { itPoswfService } from "@/services/it-poswf-services"; 
 import { useToast } from "@/hooks/use-toast";
 
+// --- NEW DATE FORMATTING HELPER ---
+function formatHistoryDate(dateString: string): string {
+    if (!dateString) return "—";
+    
+    // Create a Date object from the string (e.g., "2024-01-15 10:30:00")
+    const date = new Date(dateString);
+
+    if (isNaN(date.getTime())) {
+        return dateString; // Return original if invalid
+    }
+    // Extract components and ensure two digits
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
 
 export default function SearchHistoryPage() {
   const [searchType, setSearchType] = useState<"email" | "mobile" | "invoice">("email")
   const [searchTerm, setSearchTerm] = useState("")
   // Initialize with empty arrays instead of mock data
-  const [historyData, setHistoryData] = useState<HistoryRecord[]>([])
+  const [historyData, setHistoryData] = useState<TransactionHistory[]>([])
   const [ticketData, setTicketData] = useState<TicketHistory[]>([])
   const [isSearching, setIsSearching] = useState(false)
 
@@ -96,19 +116,21 @@ export default function SearchHistoryPage() {
     }
   }
 
-  const historyColumns: TableColumn<HistoryRecord>[] = [
+  const historyColumns: TableColumn<TransactionHistory >[] = [
     {
       header: "Transaction ID",
-      accessor: "transactionId",
-      cell: (value) => <span className="font-medium">{value}</span>,
+      accessor: "trxID",
+      cell: (value) => <span className="font-mono text-sm">{value}</span>,
     },
     { header: "Invoice No", accessor: "invoiceNo" },
     // Corrected accessor field name to match API payload
     { header: "Attraction", accessor: "attractionName" }, 
     { header: "Amount", accessor: "amount" },
     // Corrected accessor field name to match API payload
-    { header: "Transaction Type", accessor: "trxType", cell: (value) => <StatusBadge status={value} /> },
-    { header: "Created Date", accessor: "createdDate" },
+    { header: "Transaction Type", accessor: "trxType", 
+      cell: (value) => <StatusBadge status={value} /> },
+    { header: "Created Date", accessor: "createdDate", 
+      cell: (value) => <span className="font-mono text-sm">{formatHistoryDate(value as string)}</span>},
   ]
 
   const ticketColumns: TableColumn<TicketHistory>[] = [
@@ -126,8 +148,11 @@ export default function SearchHistoryPage() {
     { header: "Expiry Date", accessor: "expiryDate" },
     { header: "Last Valid Date", accessor: "lastValidDate" },
     { header: "Valid Days", accessor: "validDays" },
-    { header: "Status", accessor: "status", cell: (value) => <StatusBadge status={value} /> },
-    { header: "Created Date", accessor: "createdDate" },
+    { header: "Status", accessor: "status",
+       cell: (value) => <StatusBadge status={value} /> },
+    { header: "Created Date", accessor: "createdDate" ,
+      cell: (value) => <span className="font-mono text-sm">{formatHistoryDate(value as string)}</span>
+    },
   ]
 
   return (

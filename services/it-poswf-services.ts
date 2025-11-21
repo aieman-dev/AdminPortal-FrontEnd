@@ -1,14 +1,15 @@
 // services/it-poswf-service.ts
 import { apiClient, ApiResponse } from "@/lib/api-client";
-import { HistoryRecord, TicketHistory } from "../type/it-poswf"; 
+import { TransactionHistory, ShopifyOrder, TicketHistory } from "../type/it-poswf"; 
 
 const ENDPOINTS = {
   SEARCH_HISTORY: "/proxy-search-history",
+  SEARCH_SHOPIFY_ORDER: "/proxy-search-shopify-order",
 };
 
 // Interface for the data returned *directly* at the root of a 200 OK response
 interface HistorySearchData {
-  transactionHistory: HistoryRecord[]; 
+  transactionHistory: TransactionHistory[]; 
   ticketHistory: TicketHistory[];       
 }
 
@@ -58,4 +59,31 @@ export const itPoswfService = {
         data: response.data, 
     };
   },
+
+// ADDED NEW SERVICE FUNCTION
+  searchShopifyOrder: async (orderId: string): Promise<ApiResponse<ShopifyOrder>> => {
+      const payload = {
+          orderId: orderId,
+      };
+
+      const response = await apiClient.post<ShopifyOrder>(ENDPOINTS.SEARCH_SHOPIFY_ORDER, payload);
+
+      if (!response.success) {
+          // Handle explicit "Not Found" case, which should translate to an empty result
+          const notFoundMessage = "No transaction found for the given order ID";
+          if (response.error && response.error.includes(notFoundMessage)) {
+              // Return success with undefined data for a "no results" found scenario
+              return { success: true, data: undefined, message: notFoundMessage };
+          }
+          
+          // General error
+          return {
+              success: false,
+              error: response.error || "Failed to search Shopify order."
+          };
+      }
+      
+      // Successful API call (data may be present or undefined if backend returns 200 OK with no body)
+      return response;
+  }
 };

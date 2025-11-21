@@ -11,6 +11,21 @@ type Props = {
   onNext: () => void;
 };
 
+// FIX 4: Helper to format date to ISO string at T00:00:00.000Z to prevent timezone rollback
+const convertDateForSubmission = (date: Date): string => {
+  if (!date) return "";
+  const d = new Date(date);
+  
+  // Get components for the selected date
+  const year = d.getFullYear();
+  const month = d.getMonth() + 1; // getMonth() is 0-indexed
+  const day = d.getDate();
+
+  // Construct ISO string for the start of the selected day in UTC (00:00:00Z)
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00.000Z`;
+};
+
+
 const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
   const [ageOptions, setAgeOptions] = useState<{ value: string; label: string }[]>([]);
   const [loadingAges, setLoadingAges] = useState(false);
@@ -31,12 +46,14 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
         });
         
         if (res.ok) {
-          const data = await res.json();
-          const categories = data.ageCategories || [];
-          setAgeOptions(categories.map((c: any) => ({
-            value: c.ageCode,
-            label: c.displayText
-          })));
+          const data = await res.json();
+          const categories = data.ageCategories || [];
+          setAgeOptions(categories.map((c: any) => ({
+            // FIX 1: Set the option's HTML value to the descriptive text (c.displayText).
+            // This ensures the <select> element's visual state is correctly bound to the form value.
+            value: c.displayText, 
+            label: c.displayText
+          })));
         }
       } catch (err) {
         console.error("Failed to load age categories", err);
@@ -96,16 +113,18 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
 
         <div>
           <label className="block text-sm font-medium text-foreground/80 dark:text-gray-300 mb-1">Package Type</label>
+          {/* FIX 2: Updated dropdown options for Package Type */}
           <select
             value={form.packageType}
             onChange={(e) => setForm({ ...form, packageType: e.target.value })}
             className={inputClass}
           >
             <option value="" className="dark:bg-gray-900">Select Type</option>
-            <option value ="Price" className="dark:bg-gray-900">Price</option>
-            <option value="Point" className="dark:bg-gray-900">Point</option>
+            <option value="Entry" className="dark:bg-gray-900">Entry </option>
+            <option value="Point" className="dark:bg-gray-900">Point </option>
+            <option value="Reward P" className="dark:bg-gray-900">Reward P</option>
           </select>
-          <p className="text-xs text-muted-foreground mt-1">This determines if items use RM or Points.</p>
+          <p className="text-xs text-muted-foreground mt-1">This determines if items use RM, Points, or Reward Points.</p>
         </div>
 
         <div>
@@ -125,13 +144,18 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
           <label className="block text-sm font-medium text-foreground/80 dark:text-gray-300 mb-1">Age Category</label>
           <select
             value={form.ageCategory}
-            onChange={(e) => setForm({ ...form, ageCategory: e.target.value })}
+            onChange={(e) => {
+            // e.target.value is the descriptive label, since we set it that way above.
+              const selectedLabel = e.target.value;
+              setForm({ ...form, ageCategory: selectedLabel });
+            }}
             disabled={loadingAges}
             className={`${inputClass} disabled:opacity-50`}
           >
             <option value="">{loadingAges ? "Loading..." : "Select Age Category"}</option>
             {ageOptions.map((opt, idx) => (
-              <option key={idx} value={opt.value}>{opt.label}</option>
+            // FIX 3: opt.value is the descriptive label, ensuring the select works correctly.
+            <option key={idx} value={opt.value} className="dark:bg-gray-900">{opt.label}</option>
             ))}
           </select>
         </div>
@@ -141,7 +165,8 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
           <div className="relative">
             <DatePicker
               selected={form.effectiveDate ? new Date(form.effectiveDate) : null}
-              onChange={(date) => setForm({ ...form, effectiveDate: date ? date.toISOString() : "" })}
+              // FIX 4: Use conversion helper
+              onChange={(date) => setForm({ ...form, effectiveDate: date ? convertDateForSubmission(date) : "" })}
               dateFormat="dd/MM/yyyy"
               className={`${inputClass} pl-10 cursor-pointer`}
               placeholderText="Select Date"
@@ -155,7 +180,8 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
           <div className="relative">
             <DatePicker
               selected={form.lastValidDate ? new Date(form.lastValidDate) : null}
-              onChange={(date) => setForm({ ...form, lastValidDate: date ? date.toISOString() : "" })}
+              // FIX 4: Use conversion helper
+              onChange={(date) => setForm({ ...form, lastValidDate: date ? convertDateForSubmission(date) : "" })}
               dateFormat="dd/MM/yyyy"
               className={`${inputClass} pl-10 cursor-pointer`}
               placeholderText="Select Date"

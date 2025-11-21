@@ -32,15 +32,17 @@ export default function PackageCard({
       case "active":
         return "bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-300";
       case "expired":
-        return "bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-300";
+        return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
       case "pending":
         return "bg-yellow-100 text-yellow-700 dark:bg-yellow-800 dark:text-yellow-300";
       case "rejected":
-        return "bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-300";
+        return "bg-red-100 text-red-700 dark:bg-red-600 dark:text-red-300";
       case "draft":
         return "bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300";
+        case "expiringsoon":
+        return "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300";
       default:
-        return "bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300";
+        return "bg-orange-100 text-orange-700 dark:bg-orange-800 dark:text-orange-300";
     }
   };
 
@@ -136,7 +138,7 @@ export default function PackageCard({
               status
             )}`}
           >
-            {status}
+            {status === "ExpiringSoon" ? "Expiring Soon" : status}
           </span>
         </div>
       </div>

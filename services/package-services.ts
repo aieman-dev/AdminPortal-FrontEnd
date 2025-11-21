@@ -34,13 +34,41 @@ interface BackendPackageDTO {
   items?: any[];
   point?: number;
   validDays?: number;
+  ageCategory?: string; 
+  
+  //NEW BACKEND FIELDS MAPPED HERE 
+  reviewedDate?: string;
+  approvedBy?: string;
+  
 }
 
 const transformToFrontend = (pkg: BackendPackageDTO): Package => {
-  const start = new Date(pkg.effectiveDate || new Date());
-  const end = new Date(pkg.lastValidDate || new Date());
-  const diffTime = Math.abs(end.getTime() - start.getTime());
-  const calculatedDuration = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+  // FIX 1: Last Valid Date logic (Next Day at 3AM)
+  const start = new Date(pkg.effectiveDate ? pkg.effectiveDate.split('T')[0] : new Date());
+  let end = new Date(pkg.lastValidDate ? pkg.lastValidDate.split('T')[0] : new Date());
+  end.setDate(end.getDate() + 1); // Advance by 1 day
+  end.setHours(3, 0, 0, 0); // Set time to 3 AM
+  const diffTime = Math.abs(end.getTime() - start.getTime());
+  const calculatedDuration = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+
+  const rawAgeCode = pkg.ageCategory; // e.g. "C" (The code stored in the DB)
+  const rawCategoryName = pkg.category; // e.g. "Child" (The descriptive name from DB)
+
+  const displayAgeCategory = (() => {
+    // If the ageCategory field already contains a full label (like "A1 - Adult"), use it.
+    if (rawAgeCode && rawAgeCode.includes(' - ')) return rawAgeCode; 
+    
+    // If we have both a short code and a name, combine them (e.g., "C" + "Child" -> "C - Child").
+    if (rawAgeCode && rawCategoryName && rawAgeCode.length <= 2) {
+        return `${rawAgeCode} - ${rawCategoryName}`;
+    }
+    // Otherwise, fall back to whatever is most descriptive.
+    return rawAgeCode || rawCategoryName || "N/A";
+  })();
+
+  // 🌟 MAPPING LOGIC: Prioritize new fields for last action details
+  const finalReviewer = pkg.approvedBy ;
+  const finalReviewDate = pkg.reviewedDate ;
 
   return {
     id: pkg.id,
@@ -55,7 +83,8 @@ const transformToFrontend = (pkg: BackendPackageDTO): Package => {
     PackageName: pkg.name || "Untitled Package", 
     PackageType: pkg.packageType || "N/A",
     totalPrice: pkg.price || 0,
-    ageCategory: pkg.category || "N/A",
+    // FIX 2: Use the most descriptive age category field, falling back to the generic category
+    ageCategory: displayAgeCategory,
     nationality: pkg.nationality || "N/A",
     effectiveDate: pkg.effectiveDate || new Date().toISOString(),
     lastValidDate: pkg.lastValidDate || new Date().toISOString(),
@@ -65,8 +94,18 @@ const transformToFrontend = (pkg: BackendPackageDTO): Package => {
     durationDays: pkg.validDays ?? calculatedDuration, 
     createdBy: pkg.submittedBy || "System", 
     packageitems: pkg.items || [], 
-    tpremark: pkg.remark || ""
+    tpremark: pkg.remark || "",
+    reviewedBy: finalReviewer, 
+    reviewedDate: finalReviewDate
   };
+};
+
+// FIX 3: Helper to extract code from the display label (e.g., "A1 - Adult" -> "A1")
+const extractAgeCode = (ageCategory: string | undefined): string => {
+    if (!ageCategory) return "";
+    // Match: starts with one or more alphanumeric/hyphen characters, followed by a space and a hyphen
+    const match = ageCategory.match(/^([A-Za-z0-9\-]+)\s*-/);
+    return match ? match[1].trim() : ageCategory;
 };
 
 
@@ -98,17 +137,21 @@ export const packageService = {
   },
 
   createPackage: async (form: PackageFormData, imageId: string) => {
+    // FIX 3: Get the machine-readable code for API submission
+    const ageCode = extractAgeCode(form.ageCategory);
+    
     //  Construct the payload with correct item structure
     const payload = {
       name: form.packageName,
-      packageType: form.packageType || "Entry",
-      price: form.packageType === "Price" ? (form.totalPrice || 0) : 0,
+      packageType: form.packageType ,
+      price: form.packageType === "Entry" ? (form.totalPrice || 0) : 0,
       point: form.packageType === "Point" ? (form.totalPrice || 0) : 0,
       effectiveDate: form.effectiveDate ? new Date(form.effectiveDate).toISOString() : new Date().toISOString(),
       lastValidDate: form.lastValidDate ? new Date(form.lastValidDate).toISOString() : new Date().toISOString(),
       remark: form.tpremark || "No remarks",
-      nationality: form.nationality || "MY",
-      ageCategory: form.ageCategory || "A1",
+      nationality: form.nationality ,
+      // FIX 3: Use the extracted code for the API
+      ageCategory: ageCode, 
       imageID: imageId,
       
       // This 'items' mapping is the most likely source of the 400 error.

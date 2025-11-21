@@ -35,13 +35,6 @@ import { StatusBadge } from "@/components/it-poswf/status-badge"
 import { BalanceCard } from "@/components/it-poswf/balance-card"
 import { PasswordDisplay } from "@/components/it-poswf/password-display"
 import {
-  mockManualConsumeData,
-  mockTerminals,
-  mockExtendTicketData,
-  mockPasswordData,
-  mockTerminalData,
-  mockVoidTransactionData,
-  mockPackageData,
   type ManualConsumeData,
   type AvailableTicket,
   type ExtendTicketData,
@@ -49,7 +42,7 @@ import {
   type Terminal,
   type VoidTransaction,
   type Package,
-} from "@/lib/mock-data/it-poswf"
+} from "@/type/it-poswf"
 import { useToast } from "@/hooks/use-toast"
 import { Pencil } from "lucide-react"
 

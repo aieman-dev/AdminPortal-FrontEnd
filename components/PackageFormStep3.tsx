@@ -11,8 +11,10 @@ type Props = {
 
 function calculateValidDays(effectiveDate: string, lastValidDate: string): number {
   if (!effectiveDate || !lastValidDate) return 0;
-  const start = new Date(effectiveDate);
-  const end = new Date(lastValidDate);
+  const start = new Date(effectiveDate.split('T')[0]);
+  const end = new Date(lastValidDate.split('T')[0]);
+  end.setDate(end.getDate() + 1); // Advance by 1 day
+  end.setHours(3, 0, 0, 0); // Set time to 3 AM
   const diffTime = end.getTime() - start.getTime();
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
