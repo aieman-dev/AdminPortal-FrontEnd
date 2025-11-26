@@ -23,7 +23,7 @@ const PackageFormStep3: React.FC<Props> = ({ form, onBack, onSubmit, onSaveDraft
   const [activeTab, setActiveTab] = useState<"overview" | "items">("overview");
   const isPointMode = form.packageType === "Point";
   const validDays = calculateValidDays(form.effectiveDate, form.lastValidDate);
-  const DEFAULT_IMAGE = "https://endodermal-tiffaney-scalelike.ngrok-free.dev/images/wynsnow.jpg";
+  const DEFAULT_IMAGE = "https://endodermal-tiffaney-scalelike.ngrok-free.dev/images/aieman.jpg";
 
   return (
     <div className="px-4 md:px-8 py-6">
@@ -60,25 +60,62 @@ const PackageFormStep3: React.FC<Props> = ({ form, onBack, onSubmit, onSaveDraft
             />
           </div>
 
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 text-muted-foreground">
-            <div>
-              <h4 className="font-semibold mb-2 text-foreground">Package Info</h4>
-              <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mb-2">
-                {isPointMode ? `${form.totalPrice} Pts` : `RM ${form.totalPrice?.toFixed(2)}`}
-              </p>
-              <p><b className="text-foreground">Package Name:</b> {form.packageName || "-"}</p>
-              <p><b className="text-foreground">Type:</b> {form.packageType || "-"}</p>
-              <p><b className="text-foreground">Nationality:</b> {form.nationality || "-"}</p>
-              <p><b className="text-foreground">Category:</b> {form.ageCategory || "-"}</p>
-              <p><b className="text-foreground">Remark:</b> {form.tpremark || "-"}</p>
+          <div className="flex-1 flex flex-col space-y-4">
+            
+            {/* 🌟 1. Price/Point (Now correctly placed outside the detail grid) */}
+            <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+              {isPointMode ? `${form.totalPrice} Pts` : `RM ${form.totalPrice?.toFixed(2)}`}
+            </p>
+
+            {/* 🌟 2. Detail Grid (Titles and Details start on the same line) */}
+            <div className="grid grid-cols-2 gap-x-12 gap-y-4 text-muted-foreground">
+              
+              {/* Package Info (Column 1) */}
+              <div>
+                {/* Titles now align vertically */}
+                <h4 className="font-semibold mb-3 text-foreground border-b border-border pb-1">Package Info</h4>
+                
+                {/* Details: Fixed width w-[150px] for colon alignment */}
+                <p className="mb-2">
+                  <b className="text-foreground inline-block w-[150px] text-left">Package Name:</b> {form.packageName || "-"}
+                </p>
+                <p className="mb-2">
+                  <b className="text-foreground inline-block w-[150px] text-left">Type:</b> {form.packageType || "-"}
+                </p>
+                <p className="mb-2">
+                  <b className="text-foreground inline-block w-[150px] text-left">Nationality:</b> {form.nationality || "-"}
+                </p>
+                <p className="mb-2">
+                  <b className="text-foreground inline-block w-[150px] text-left">Category:</b> {form.ageCategory || "-"}
+                </p>
+                <p className="mt-4">
+                  <b className="text-foreground inline-block w-[150px] text-left">Remark:</b> {form.tpremark || "-"}
+                </p>
+              </div>
+              
+              {/* Validity (Column 2) */}
+              <div>
+                {/* Titles now align vertically */}
+                <h4 className="font-semibold mb-3 text-foreground border-b border-border pb-1">Validity</h4>
+                
+                {/* REMOVED: The unnecessary vertical space */}
+                
+                {/* Details: Shorter fixed width w-[100px] */}
+                <p className="mb-2">
+                  <b className="text-foreground inline-block w-[100px]">Effective:</b> {form.effectiveDate ? new Date(form.effectiveDate).toLocaleDateString("en-GB") : "-"}
+                </p>
+                <p className="mb-2">
+                  <b className="text-foreground inline-block w-[100px]">Expires:</b> {form.lastValidDate ? new Date(form.lastValidDate).toLocaleDateString("en-GB") : "-"}
+                </p>
+                <p className="mb-2">
+                  <b className="text-foreground inline-block w-[100px]">Duration:</b> {validDays} Days
+                </p>
+                <p className="mb-2">
+                  <b className="text-foreground inline-block w-[100px]">Day Pass:</b> {form.dayPass || "-"}
+                </p>
+              </div>
             </div>
-            <div>
-              <h4 className="font-semibold mb-2 text-foreground">Validity</h4>
-              <p><b className="text-foreground">Effective:</b> {form.effectiveDate ? new Date(form.effectiveDate).toLocaleDateString("en-GB") : "-"}</p>
-              <p><b className="text-foreground">Expires:</b> {form.lastValidDate ? new Date(form.lastValidDate).toLocaleDateString("en-GB") : "-"}</p>
-              <p><b className="text-foreground">Duration:</b> {validDays} Days</p>
-              <p><b className="text-foreground">Day Pass:</b> {form.dayPass || "-"}</p>
-            </div>
+            
           </div>
         </div>
       )}

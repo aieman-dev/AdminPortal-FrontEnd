@@ -15,21 +15,30 @@ interface PackageListItem {
   id: number;
   name: string;
   price: string;
-  category: string;
-  createdDate: string; 
+  category: string; 
+  nationality: string;
   status: string;
   image: string;
-  rawDate: Date; 
+  effectiveDate: string | undefined;
+  lastValidDate: string | undefined;
+  // ADDED: Field for created date, for card display
+  createdDate: string | undefined; 
 }
 
-const formatDate = (dateString: string | undefined) => {
+
+// NEW HELPER: Formats a raw date string to a short display format (e.g., "24 Nov 2025")
+const formatShortDate = (dateString: string | undefined) => {
   if (!dateString) return "—";
-  return new Date(dateString).toLocaleDateString("en-GB", {
+  // Safely grab the date part to avoid timezone issues
+  const date = new Date(dateString.split('T')[0]);
+  return date.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
   });
 };
+
+// REMOVED: formatValidityRange helper
 
 export default function PackagesPage() {
   const { user } = useAuth();
@@ -84,8 +93,11 @@ export default function PackagesPage() {
           name: pkg.name || pkg.PackageName || "Untitled", 
           price: (pkg.price !== undefined ? pkg.price : pkg.totalPrice ?? 0).toString(),
           category: pkg.ageCategory || pkg.packageType || pkg.PackageType || "N/A",
-          createdDate: formatDate(pkg.createdDate),
-          rawDate: new Date(pkg.createdDate || new Date().toISOString()), 
+          // 🌟 MAPPED: Map createdDate from Package interface
+          createdDate: pkg.createdDate,
+          nationality: pkg.nationality || "N/A",
+          effectiveDate: pkg.effectiveDate,
+          lastValidDate: pkg.lastValidDate,
           status: pkg.status || "Draft",
           image: pkg.imageUrl || pkg.imageID || "/packages/DefaultPackageImage.png",
         }));
@@ -237,7 +249,9 @@ export default function PackagesPage() {
                     name={pkg.name} 
                     price={pkg.price}
                     category={pkg.category}
-                    createdDate={pkg.createdDate} 
+                    // 🌟 UPDATED: Pass the formatted Created Date
+                    dateDisplay={formatShortDate(pkg.createdDate)} 
+                    nationality={pkg.nationality}
                     status={pkg.status}
                     image={pkg.image}
                     onClick={() => handlePackageClick(pkg.id)}

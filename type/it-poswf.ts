@@ -77,6 +77,37 @@ export interface ManualConsumeData {
   totalRewardCredit: number
 }
 
+export interface ManualConsumeSearchPayload {
+    searchType: string;
+    email: string;
+    mobileNo: string;
+    invoiceNo: string;
+    terminalId: string;
+    ticketType: string;
+    ticketStatus: string;
+}
+
+export interface ConsumeExecuteItem {
+    itemID: number; 
+    quantity: number;
+    unitPrice: number;
+    amtBeforeTax: number; 
+    amount: number;
+}
+
+export interface ConsumeExecutePayload {
+    consumeBySuperApp: boolean;
+    accID: number; 
+    rrQRID: string; 
+    terminalID: number;
+    totalAmount: number;
+    items: ConsumeExecuteItem[];
+    custEmail: string;
+    txtMobileNo: string;
+    creditBalance: number;
+    itemNamesForEmail: string;
+}
+
 export interface ExtendTicketData {
   ticketNo: string
   ticketName: string
@@ -94,9 +125,13 @@ export interface Terminal {
   modifiedDate: string
 }
 
+export interface TerminalSearchPayload {
+    SearchQuery: string | null;
+}
+
 export interface VoidTransaction {
   id: string
-  transactionId: string
+  trxID: string
   invoiceNo: string
   transactionType: "Purchase" | "Refund" | "Exchange"
   itemType: "Ticket" | "Credit" | "Reward"
@@ -130,4 +165,19 @@ export interface Account {
   createdDate: string
   accountStatus: "Active" | "Inactive" | "Suspended"
   transactions: Transaction[]
+}
+
+export interface ItPoswfPackage {
+  id: string | number; 
+  packageId: string | number;
+  packageName: string;
+  packageType: string;
+  price: number;
+  lastValidDate: string;
+  description: string;
+  status: string; // Mapped from recordStatus
+  createdBy?: string;
+  lastModifiedBy?: string;
+  createdDate?: string;
+  modifiedDate?: string;
 }

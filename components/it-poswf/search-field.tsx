@@ -42,7 +42,7 @@ export function SearchField({
         />
       </div>
       <div className="flex items-end">
-        <Button onClick={onSearch} disabled={isSearching || disabled || !value} className="h-11">
+        <Button onClick={onSearch} disabled={isSearching || disabled} className="h-11">
           <Search className="h-4 w-4 mr-2" />
           {isSearching ? "Searching..." : "Search"}
         </Button>

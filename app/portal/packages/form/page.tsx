@@ -76,11 +76,13 @@ const PackageFormPage = () => {
     setIsSubmitting(true);
 
     try {
-      let finalImageID = "123"; 
+      let finalImageID : string | null = null;
 
       if (form.imageID instanceof File) {
+        // Case 1: A new image was uploaded. Call API to upload, and store the returned string ID.
         finalImageID = await packageService.uploadImage(form.imageID);
-      } else if (typeof form.imageID === "string") {
+      } else if (typeof form.imageID === "string" && form.imageID) {
+        // Case 2: An existing string ID (from editing/duplicating) is present.
         finalImageID = form.imageID;
       }
 

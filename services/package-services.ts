@@ -1,6 +1,8 @@
 // services/package-services.ts
 import { apiClient } from "@/lib/api-client";
 import { PackageFormData, Package, PackageDuplicateResponse } from "@/type/packages"; 
+import { ItPoswfPackage } from "@/type/it-poswf";
+
 
 const ENDPOINTS = {
   // Existing/Unchanged
@@ -8,10 +10,12 @@ const ENDPOINTS = {
   UPLOAD: "/proxy-upload",
   
   // NEW ENDPOINTS - Mapped to non-dynamic proxies
-  UPDATE_STATUS: "/proxy-package-status/[id]",  // Retaining existing file name proxy
-  GET_LIST: "/proxy-packageView",               // Mapped to proxy-packageView/route.ts
-  GET_ONE: "/proxy-packageView/[id]",           // Mapped to proxy-packageView/[id]/route.ts
-  DUPLICATE: "/proxy-package-duplicate",        // Mapped to new dedicated proxy route
+  UPDATE_STATUS: "/proxy-package-status/[id]",  
+  GET_LIST: "/proxy-packageView",               
+  GET_ONE: "/proxy-packageView/[id]",           
+  DUPLICATE: "/proxy-package-duplicate",        
+  GET_ITPOSWF_LIST: "/proxy-package-group/list",
+  UPDATE_ITPOSWF: "/proxy-package-group/update",
 };
 
 // ... Interface and transformToFrontend function ...
@@ -35,10 +39,16 @@ interface BackendPackageDTO {
   point?: number;
   validDays?: number;
   ageCategory?: string; 
-  
-  //NEW BACKEND FIELDS MAPPED HERE 
   reviewedDate?: string;
   approvedBy?: string;
+
+  // from IT-POSWF list response
+  recordStatus?: string; 
+  packageID?: string | number;
+  packageName?: string;
+  modifiedDate?: string;
+  createdUserEmail?: string; 
+  modifiedUserEmail?: string;
   
 }
 
@@ -106,6 +116,23 @@ const extractAgeCode = (ageCategory: string | undefined): string => {
     // Match: starts with one or more alphanumeric/hyphen characters, followed by a space and a hyphen
     const match = ageCategory.match(/^([A-Za-z0-9\-]+)\s*-/);
     return match ? match[1].trim() : ageCategory;
+};
+
+const transformToItPoswfPackage = (pkg: BackendPackageDTO): ItPoswfPackage => {
+  return {
+    id: pkg.id ? String(pkg.id) : pkg.packageID ? String(pkg.packageID) : "N/A", 
+    packageId: (pkg.packageID ?? pkg.id) as string | number, 
+    packageName: pkg.packageName || pkg.name || "Untitled Package", 
+    packageType: pkg.packageType || "N/A",
+    price: pkg.price ?? 0,
+    lastValidDate: pkg.lastValidDate || "N/A",
+    description: pkg.remark || "No description", 
+    status: pkg.recordStatus || pkg.status || "Unknown",
+    createdBy: pkg.createdUserEmail,
+    lastModifiedBy: pkg.modifiedUserEmail,
+    createdDate: pkg.createdDate,
+    modifiedDate: pkg.modifiedDate
+  };
 };
 
 
@@ -198,6 +225,7 @@ export const packageService = {
         EndDate: endDate || null,
     };
     
+    
     // Use POST method for the new search endpoint
     const response = await apiClient.post<any>(ENDPOINTS.GET_LIST, payload);
 
@@ -217,6 +245,70 @@ export const packageService = {
     
     return { packages: [], totalPages: 0, totalRecords: 0 };
   },
+
+  // --- ----------------------------ItPoswfPackage------------------------------------- ---
+  
+  getItPoswfPackages: async ( // <--- NEW FUNCTION
+    searchQuery: string = ""
+  ): Promise<{ packages: ItPoswfPackage[], totalPages: number, totalRecords: number }> => {
+    
+    // CRITICAL FIX: Explicitly set Status to "Active" (as required by the backend for searching)
+    const statusFilter = "Active"; 
+    
+    const payload = {
+        Status: statusFilter, // Required for the IT POSWF search to return results
+        SearchQuery: searchQuery || null,
+        PageNumber: 1, 
+        PageSize: 30, 
+        StartDate: null,
+        EndDate: null,
+    };
+    
+    const response = await apiClient.post<any>(ENDPOINTS.GET_ITPOSWF_LIST, payload);
+
+    if (!response.success) {
+      console.error("Failed to fetch IT POSWF packages:", response.error);
+      return { packages: [], totalPages: 0, totalRecords: 0 };
+    }
+
+    const rawPackages = response.data?.data || [];
+    const totalPages = response.data?.totalPages || 1;
+    const totalRecords = response.data?.totalItems || rawPackages.length;
+
+    if (Array.isArray(rawPackages)) {
+        return {
+            packages: rawPackages.map(transformToItPoswfPackage), // <--- USE NEW TRANSFORMER
+            totalPages: totalPages, 
+            totalRecords: totalRecords,
+        };
+    }
+    
+    return { packages: [], totalPages: 0, totalRecords: 0 };
+  },
+
+  updateItPoswfPackage: async (
+    id: string | number,
+    lastValidDate: string, // ISO string from the input
+    remark: string
+  ): Promise<any> => {
+    const payload = {
+      id: Number(id), // Ensure ID is sent as a number
+      // FIX: Send only the date part, matching the successful Postman structure
+      newLastValidDate: lastValidDate.split('T')[0], 
+      remark: remark,
+    };
+
+    // Use POST method for the update
+    const response = await apiClient.post(ENDPOINTS.UPDATE_ITPOSWF, payload);
+
+    if (!response.success) {
+      throw new Error(response.error || `Failed to update package ID ${id}`);
+    }
+    // Returns { "message": "Updated Successfully" } or similar
+    return response.data; 
+  },
+
+  // --- ----------------------------------------------------------------- ---
 
   // --- UPDATED: getPackageById uses POST (Payload matches PackageDetailRequestModel) ---
   getPackageById: async (id: number, source?: string): Promise<Package | null> => {

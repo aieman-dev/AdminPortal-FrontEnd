@@ -1,7 +1,6 @@
-// app/portal/it-poswf/ticket-management/page.tsx
 "use client"
 
-import { useState, useEffect } from "react" // Added useEffect
+import { useState } from "react"
 import { PageHeader } from "@/components/portal/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -30,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Search, Wallet, TrendingUp, CheckCircle2, Calendar, Key, Settings, XCircle, PackageIcon, Pencil } from "lucide-react"
+import { Search, Wallet, TrendingUp, CheckCircle2, Calendar, Key, Settings, XCircle, PackageIcon } from "lucide-react"
 import { DataTable, type TableColumn } from "@/components/it-poswf/data-table"
 import { StatusBadge } from "@/components/it-poswf/status-badge"
 import { BalanceCard } from "@/components/it-poswf/balance-card"
@@ -42,16 +41,14 @@ import {
   type PasswordData,
   type Terminal,
   type VoidTransaction,
+  type Package,
   type ManualConsumeSearchPayload,
-  type ConsumeExecuteItem,
-  type ConsumeExecutePayload,
+  type ConsumeExecuteItem,
+  type ConsumeExecutePayload,
 } from "@/type/it-poswf"
-import { type Package } from "@/type/packages"
-import {ItPoswfPackage } from "@/type/it-poswf"
 import { itPoswfService } from "@/services/it-poswf-services"
-import { packageService } from "@/services/package-services"
 import { useToast } from "@/hooks/use-toast"
-
+import { Pencil } from "lucide-react"
 
 export default function TicketManagementPage() {
   const { toast } = useToast()
@@ -94,18 +91,15 @@ export default function TicketManagementPage() {
   const [voidingTransaction, setVoidingTransaction] = useState<VoidTransaction | null>(null)
   const [isVoiding, setIsVoiding] = useState(false)
 
-  // Package Listing states
   const [packageSearchTerm, setPackageSearchTerm] = useState("")
-  const [packages, setPackages] = useState<ItPoswfPackage[]>([])
+  const [packages, setPackages] = useState(mockPackageData)
   const [isPackageSearching, setIsPackageSearching] = useState(false)
-  const [editingPackage, setEditingPackage] = useState<ItPoswfPackage | null>(null)
+  const [editingPackage, setEditingPackage] = useState<Package | null>(null)
   const [isPackageDialogOpen, setIsPackageDialogOpen] = useState(false)
   const [isPackageUpdating, setIsPackageUpdating] = useState(false)
   const [packageRemark, setPackageRemark] = useState("")
 
-  // Update Terminal states
   const [terminalSearchTerm, setTerminalSearchTerm] = useState("")
-  const [terminals, setTerminals] = useState<Terminal[]>([]);
   const [allTerminals, setAllTerminals] = useState<Terminal[]>([]);
   const [isTerminalSearching, setIsTerminalSearching] = useState(false)
   const [editingTerminal, setEditingTerminal] = useState<Terminal | null>(null)
@@ -114,7 +108,7 @@ export default function TicketManagementPage() {
 
 
   // NEW useEffect: Fetch all terminals on mount for the Manual Consume dropdown
-  useEffect(() => {
+  React.useEffect(() => {
     const fetchTerminalsList = async () => {
         try {
             const response = await itPoswfService.fetchAllTerminals();
@@ -129,25 +123,7 @@ export default function TicketManagementPage() {
         }
     };
     fetchTerminalsList();
-  }, []); 
-
-  const formatDateTime = (dateString: string | undefined): string => {
-    // Return N/A for null, undefined, or the sentinel "0001-01-01..." date
-    if (!dateString || dateString === '0001-01-01T00:00:00') return 'N/A';
-    
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString; // Return original if invalid date
-
-    // Format to a user-friendly display including date and time
-    return date.toLocaleString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    }).replace(',', ''); // Remove comma for cleaner display (e.g., 24 Nov 2025 3:45 PM)
-  };
+  }, []);
 
   // Update QR Password handlers
   const handleQrSearch = async () => {
@@ -220,27 +196,27 @@ export default function TicketManagementPage() {
   // Manual Consume handlers
   const handleConsumeSearch = async () => {
     // All fields are currently required to start the search
-    //const allFields = consumeType && email && invoiceNo && terminalId && ticketType && ticketStatus;
-    //if (!allFields) {
-        //toast({
-            //title: "Input Required",
-            //description: "Please fill in all required search criteria.",
-            //variant: "default",
-        //});
-        //return;
-    //}
+    const allFields = consumeType && email && invoiceNo && terminalId && ticketType && ticketStatus;
+    if (!allFields) {
+        toast({
+            title: "Input Required",
+            description: "Please fill in all required search criteria.",
+            variant: "default",
+        });
+        return;
+    }
     
     setIsConsumeSearching(true);
     setConsumeSearchResult(null);
 
     const searchPayload: ManualConsumeSearchPayload = {
-        searchType: consumeType.toUpperCase(),
+        consumeType,
         email: email.trim(),
         mobileNo: mobileNo.trim() || "", // Send empty string if optional field is empty
         invoiceNo: invoiceNo.trim(),
         terminalId: terminalId,
-        ticketType: ticketType.toUpperCase(),
-        ticketStatus: ticketStatus.toUpperCase(),
+        ticketType: ticketType,
+        ticketStatus: ticketStatus,
     };
 
     try {
@@ -295,8 +271,7 @@ export default function TicketManagementPage() {
         // NOTE: accID, rrQRID, totalAmount, creditBalance must come from search/context
         const MOCK_ACC_ID = 1; 
         const MOCK_RRQRID = "1825076"; 
-        // FIX: The terminal ID is a string (e.g., "terminal-001"), so we convert it to a number or fall back.
-        const numericTerminalId = Number(terminalId.split('-').pop() || terminalId) || 474; 
+        const numericTerminalId = Number(terminalId.split('-').pop() || terminalId) || 474;
         const totalAmount = mappedItems.reduce((sum, item) => sum + item.amount, 0);
 
         setIsExecuting(true);
@@ -355,31 +330,35 @@ export default function TicketManagementPage() {
     if (!transactionId.trim()) return
     setIsExecuting(true)
     setShowResyncSuccess(false)
-    // MOCK: This endpoint is not yet hooked up to a real service.
-    setTimeout(() => { 
+    setTimeout(() => {
       setIsExecuting(false)
       setShowResyncSuccess(true)
-      toast({ title: "Success", description: `Transaction Resync (MOCK) executed for ID: ${transactionId}` });
       setTimeout(() => setShowResyncSuccess(false), 5000)
     }, 1000)
   }
 
-  // Extend Expiry handlers (Fully Integrated - No changes needed)
+  // Extend Expiry handlers
   const handleExtendSearch = async () => {
     if (!extendSearchQuery) return
     setIsExtendSearching(true)
-    setExtendSearchResult([]) 
-    setEditedDates({}) 
+    setExtendSearchResult([]) // Clear results
+    setEditedDates({}) // Clear edited dates
 
     try {
+      // 1. Call the service to get the array of editable tickets directly
       const response = await itPoswfService.findExtendableTickets(extendSearchQuery.trim());
 
       if (response.success && response.data) {
         const liveTickets = response.data;
+        
+        // 2. SUCCESS: Use LIVE data to populate the table
         setExtendSearchResult(liveTickets); 
         
+        // 3. Initialize editedDates state using the live data
         const initialDates: Record<string, string> = {}
         liveTickets.forEach((ticket) => {
+          // Format date to yyyy-MM-ddThh:mm for Input type="datetime-local"
+          // We use slice(0, 16) to remove seconds and timezone offset
           initialDates[ticket.ticketNo] = ticket.expiryDate.slice(0, 16) 
         })
         setEditedDates(initialDates)
@@ -390,7 +369,9 @@ export default function TicketManagementPage() {
                 description: "No extendable tickets found for this invoice/transaction.",
             });
         }
+
       } else {
+        // Handle API error (e.g., 500 status code)
         setExtendSearchResult([])
         toast({
           title: "Search Failed",
@@ -411,6 +392,7 @@ export default function TicketManagementPage() {
     }
   }
   
+
   const handleDateChange = (ticketNo: string, newDate: string) => {
     setEditedDates((prev) => ({
       ...prev,
@@ -430,24 +412,29 @@ export default function TicketManagementPage() {
     setIsUpdatingTicketNo(ticketNo);
 
     try {
+        // 1. Construct the payload for the single ticket update
         const payload = {
-            TrxNo: extendSearchQuery.trim(), 
+            TrxNo: extendSearchQuery.trim(), // Transaction/Invoice No. from search field
             ticketsToUpdate: [{
                 ticketNo: originalTicket.ticketNo,
                 ticketName: originalTicket.ticketName,
                 effectiveDate: originalTicket.effectiveDate, 
+                // CRITICAL: New date must be formatted to ISO 8601 (appending :00 to match backend format)
                 expiryDate: newExpiryDate + ":00", 
                 lastValidDate: originalTicket.lastValidDate, 
             }],
         };
 
+        // 2. Call the service
         const response = await itPoswfService.updateTicketExpiry(payload);
 
         if (response.success && response.data) {
+            // 3. Update the displayed table to reflect the new expiry date
             setExtendSearchResult(prev => prev.map(t => 
                 t.ticketNo === ticketNo ? { ...t, expiryDate: newExpiryDate + ":00" } : t
             ));
             
+            // 4. Show success toast
             toast({
                 title: "Success",
                 description: `Expiry date updated for ticket ${ticketNo}.`,
@@ -465,15 +452,16 @@ export default function TicketManagementPage() {
     } finally {
         setIsUpdatingTicketNo(null);
     }
-  }
+  }
 
-  // Void Transaction handlers (Fully Integrated - No changes needed)
+  // Void Transaction handlers
   const handleVoidSearch = async () => {
     if (!voidInvoiceNo) return
    setIsVoidSearching(true)
-    setVoidSearchResult([])
+    setVoidSearchResult([]) // Clear previous results
 
     try {
+      // 1. Call the service to search for voidable transactions
       const response = await itPoswfService.searchVoidTransactions(voidInvoiceNo.trim());
 
       if (response.success && response.data) {
@@ -485,11 +473,12 @@ export default function TicketManagementPage() {
           });
         }
       } else {
+        // Handle API error (e.g., 500 status code)
         setVoidSearchResult([]);
         toast({
           title: "Search Failed",
           description: response.error || "Could not retrieve transactions.",
-          variant: "default"
+          variant: "destructive"
         });
       }
     } catch (error) {
@@ -516,8 +505,10 @@ export default function TicketManagementPage() {
     setIsVoiding(true)
     
     try {
+      // 1. Construct the exact payload required by the backend
       const payload = {
-        TrxID: Number(voidingTransaction.trxID), 
+        // Use the transaction ID or a unique identifier as TrxID (assuming 'id' is safe)
+        TrxID: Number(voidingTransaction.id), 
         InvoiceNo: voidingTransaction.invoiceNo,
         BalanceQty: -1, 
         trxType: voidingTransaction.transactionType,
@@ -525,21 +516,21 @@ export default function TicketManagementPage() {
         Action: "Void" as const,
       };
 
+      // 2. Call the service
       const response = await itPoswfService.executeVoidTransaction(payload);
       
       if (!response.success) {
         throw new Error(response.error || "Failed to communicate with API.");
       }
       
+      // 3. Update the local UI state on success
       setVoidSearchResult((prev) => 
         prev.map((t) => (t.id === voidingTransaction.id ? { ...t, status: "Voided" } : t))
       )
       
-      const responseMessage = response.data?.messaged || "Void request processed successfully.";
-
       toast({
         title: "Success",
-        description: `Transaction ${voidingTransaction.trxID} has been voided successfully. Message: ${responseMessage}`,
+        description: `Transaction ${voidingTransaction.transactionId} has been voided successfully. Message: ${response.data?.messaged}`,
       })
 
     } catch (error) {
@@ -556,42 +547,22 @@ export default function TicketManagementPage() {
     }
   }
 
-  // Package Listing handlers
   const handlePackageSearch = async () => {
-    if (!packageSearchTerm.trim() && packages.length > 0) {
-            return; 
-        }
+    setIsPackageSearching(true)
+    setTimeout(() => {
+      if (packageSearchTerm) {
+        const filtered = mockPackageData.filter((pkg) =>
+          pkg.packageName.toLowerCase().includes(packageSearchTerm.toLowerCase()),
+        )
+        setPackages(filtered)
+      } else {
+        setPackages(mockPackageData)
+      }
+      setIsPackageSearching(false)
+    }, 500)
+  }
 
-        setIsPackageSearching(true)
-        setPackages([]) // Clear previous results
-        
-        try {
-            // CRITICAL FIX: Use the new, dedicated service function
-            const { packages: livePackages } = await packageService.getItPoswfPackages(
-                packageSearchTerm.trim()
-            );
-            
-            setPackages(livePackages);
-            
-            if (livePackages.length > 0) {
-                toast({ title: "Search Complete", description: `Found ${livePackages.length} packages.` });
-            } else {
-                toast({ title: "Search Complete", description: "No packages found matching the criteria." });
-            }
-
-        } catch (error) {
-            console.error("Package Search Error:", error);
-            toast({
-                title: "Package Search Failed",
-                description: "Failed to fetch package data.",
-                variant: "destructive"
-            });
-        } finally {
-            setIsPackageSearching(false)
-        }
-    }
-
-  const handlePackageEdit = (pkg: ItPoswfPackage) => {
+  const handlePackageEdit = (pkg: Package) => {
     setEditingPackage({ ...pkg })
     setPackageRemark("")
     setIsPackageDialogOpen(true)
@@ -601,55 +572,33 @@ export default function TicketManagementPage() {
     if (!editingPackage) return
 
     setIsPackageUpdating(true)
-    
-    try {
-        // 1. Call the new live service function
-        await packageService.updateItPoswfPackage(
-            editingPackage.packageId,
-            editingPackage.lastValidDate,
-            packageRemark
-        );
-
-        // 2. Update the local UI state on success
-        const updatedPackages = packages.map((p) =>
-            p.id === editingPackage.id
-                ? {
-                    ...editingPackage,
-                    lastModifiedBy: "current.user@themepark.com", // Static user for now
-                    modifiedDate: new Date().toISOString().slice(0, 19).replace("T", " "),
-                  }
-                : p,
-        );
-        
-        setPackages(updatedPackages);
-        setIsPackageDialogOpen(false);
-        setEditingPackage(null);
-        setPackageRemark("");
-        
-        toast({
-            title: "Success",
-            description: "Package updated successfully.",
-        });
-
-    } catch (error) {
-        console.error("Package Update Error:", error);
-        toast({
-            title: "Update Failed",
-            description: error instanceof Error ? error.message : "An unexpected error occurred.",
-            variant: "destructive",
-        });
-    } finally {
-        setIsPackageUpdating(false);
-    }
+    setTimeout(() => {
+      const updatedPackages = packages.map((p) =>
+        p.id === editingPackage.id
+          ? {
+              ...editingPackage,
+              lastModifiedBy: "current.user@themepark.com",
+              modifiedDate: new Date().toISOString().slice(0, 19).replace("T", " "),
+            }
+          : p,
+      )
+      setPackages(updatedPackages)
+      setIsPackageDialogOpen(false)
+      setEditingPackage(null)
+      setPackageRemark("")
+      setIsPackageUpdating(false)
+      toast({
+        title: "Success",
+        description: "Package updated successfully",
+      })
+    }, 500)
   }
 
-  // Terminal Update handlers
   const handleTerminalSearch = async () => {
     setIsTerminalSearching(true)
     setTerminals([]) 
 
     try {
-        // FIX: Use the live service instead of setTimeout/mock data
         const response = await itPoswfService.searchTerminals(terminalSearchTerm.trim());
 
         if (response.success && response.data) {
@@ -731,14 +680,14 @@ export default function TicketManagementPage() {
   const voidTransactionColumns: TableColumn<VoidTransaction>[] = [
     {
       header: "Transaction ID",
-      accessor: "trxID",
+      accessor: "transactionId",
       cell: (value) => <span className="font-medium">{value}</span>,
     },
     { header: "Invoice No", accessor: "invoiceNo" },
     { header: "Transaction Type", accessor: "transactionType", cell: (value) => <StatusBadge status={value} /> },
     { header: "Item Type", accessor: "itemType", cell: (value) => <StatusBadge status={value} /> },
     { header: "Balance Quantity", accessor: "balanceQuantity" },
-    { header: "Amount", accessor: "amount", cell: (value) => `RM ${(value ?? 0).toFixed(2)}`},
+    { header: "Amount", accessor: "amount", cell: (value) => `RM ${value.toFixed(2)}` },
     { header: "Terminal", accessor: "terminal" },
     { header: "Status", accessor: "status", cell: (value) => <StatusBadge status={value} /> },
     { header: "Created Date", accessor: "createdDate" },
@@ -754,11 +703,11 @@ export default function TicketManagementPage() {
     },
   ]
 
-  const packageColumns: TableColumn<ItPoswfPackage>[] = [
+  const packageColumns: TableColumn<Package>[] = [
     { header: "Package ID", accessor: "packageId", cell: (value) => <span className="font-medium">{value}</span> },
     { header: "Package Name", accessor: "packageName" },
     { header: "Package Type", accessor: "packageType", cell: (value) => <StatusBadge status={value} /> },
-    { header: "Price", accessor: "price", cell: (value) => `RM ${(value ?? 0).toFixed(2)}` },
+    { header: "Price", accessor: "price", cell: (value) => `RM ${value.toFixed(2)}` },
     { header: "Last Valid Date", accessor: "lastValidDate" },
     {
       header: "Description",
@@ -766,16 +715,6 @@ export default function TicketManagementPage() {
       cell: (value) => <div className="max-w-xs truncate">{value}</div>,
     },
     { header: "Status", accessor: "status", cell: (value) => <StatusBadge status={value} /> },
-    {
-      header: "Action",
-      accessor: "id",
-      cell: (_, row) => (
-        <Button variant="ghost" size="sm" onClick={() => handlePackageEdit(row)}>
-          <Pencil className="h-4 w-4 mr-2" />
-          Edit
-        </Button>
-      ),
-    },
   ]
 
   return (
@@ -1189,7 +1128,7 @@ export default function TicketManagementPage() {
                     <SelectContent>
                       {allTerminals.map((terminal) => (
                         <SelectItem key={terminal.id} value={terminal.id}>
-                          {`${terminal.terminalName} (${terminal.id})`}
+                                        {`${terminal.terminalName} (${terminal.id})`}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1223,7 +1162,6 @@ export default function TicketManagementPage() {
                     <SelectContent>
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="unused">Unused</SelectItem>
-                      <SelectItem value="expired">Expired</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1279,9 +1217,6 @@ export default function TicketManagementPage() {
                         {consumeSearchResult.totalRewardCredit.toLocaleString()} Credits
                       </span>
                     </div>
-                    <Button onClick={handleConsumeExecute} disabled={isExecuting} className="w-full">
-                      {isExecuting ? "Executing..." : "Execute Consumption"}
-                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -1330,7 +1265,6 @@ export default function TicketManagementPage() {
                       <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
-
                   <TableBody>
                     {packages.length === 0 ? (
                       <TableRow>
@@ -1344,13 +1278,13 @@ export default function TicketManagementPage() {
                           <TableCell className="font-medium">{pkg.packageId}</TableCell>
                           <TableCell>{pkg.packageName}</TableCell>
                           <TableCell>
-                            <StatusBadge status={pkg.packageType ?? "N/A"} />
+                            <StatusBadge status={pkg.packageType} />
                           </TableCell>
-                          <TableCell>RM {(pkg.price ?? 0).toFixed(2)}</TableCell>
+                          <TableCell>RM {pkg.price.toFixed(2)}</TableCell>
                           <TableCell>{pkg.lastValidDate}</TableCell>
                           <TableCell className="max-w-xs truncate">{pkg.description}</TableCell>
                           <TableCell>
-                            <StatusBadge status={pkg.status?? "Unknown"} />
+                            <StatusBadge status={pkg.status} />
                           </TableCell>
                           <TableCell className="text-right">
                             <Button variant="ghost" size="sm" onClick={() => handlePackageEdit(pkg)}>
@@ -1484,25 +1418,14 @@ export default function TicketManagementPage() {
                   className="min-h-[100px]"
                 />
               </div>
-              {/* Display Created User Email and Date */}
               <div className="border-t pt-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Created By (Email):</span>
-                  <span className="font-medium">{ editingPackage.createdBy || 'N/A'}</span>
+                  <span className="text-muted-foreground">Created By:</span>
+                  <span className="font-medium">{editingPackage.createdBy}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Created Date:</span>
-                  <span className="font-medium">{formatDateTime(editingPackage.createdDate)}</span>
-                </div>
-
-                {/* Display Last Modified User Email and Date */}
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Last Modified By (Email):</span>
-                  <span className="font-medium">{ editingPackage.lastModifiedBy || 'N/A'}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Last Modified Date:</span>
-                  <span className="font-medium">{formatDateTime(editingPackage.modifiedDate)}</span>
+                  <span className="text-muted-foreground">Last Modified By:</span>
+                  <span className="font-medium">{editingPackage.lastModifiedBy}</span>
                 </div>
               </div>
             </div>
@@ -1523,7 +1446,7 @@ export default function TicketManagementPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Void Transaction</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to void transaction {voidingTransaction?.trxID}? This action cannot be
+              Are you sure you want to void transaction {voidingTransaction?.transactionId}? This action cannot be
               undone and will mark the transaction as voided.
             </AlertDialogDescription>
           </AlertDialogHeader>

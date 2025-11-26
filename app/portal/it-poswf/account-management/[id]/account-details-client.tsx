@@ -21,7 +21,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { StatusBadge } from "@/components/it-poswf/status-badge"
 import { BalanceCard } from "@/components/it-poswf/balance-card"
 import { ArrowLeft, CheckCircle2, Wallet, Clock } from "lucide-react"
-import type { Account } from "@/types/account" // Import the Account type
+import type { Account } from "@/type/it-poswf"
+import { itPoswfService } from "@/services/it-poswf-services"
+import { useToast } from "@/hooks/use-toast"
 
 type ActionType = "activate" | "inactive" | "reset-password" | "exchange" | "change-email" | "activate-balance" | null
 
@@ -37,7 +39,9 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
   const [isProcessing, setIsProcessing] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
   const [showSuccess, setShowSuccess] = useState(false)
+  const { toast } = useToast()
 
+  // MOCK DATA for Balance cards (replace with API call later if fetching this data separately)
   const [creditBalance] = useState(1250.0)
   const [expiredBalance] = useState(350.0)
 
@@ -45,7 +49,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
   const [newAccId, setNewAccId] = useState("")
 
   const handleAction = (type: ActionType) => {
-    if (type === "reset-password" || type === "inactive") {
+    if (type === "reset-password" || type === "activate" || type === "inactive") {
       setActionType(type)
       setIsConfirmOpen(true)
     } else {
@@ -56,71 +60,154 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
   const handleConfirmAction = async () => {
     setIsProcessing(true)
     setIsConfirmOpen(false)
+    
+    try {
+        const accId = account.accId;
+        let response;
+        let successToastMessage = "";
 
-    setTimeout(() => {
-      if (actionType === "reset-password") {
-        setSuccessMessage("Password reset successfully. Default password: 123456")
-      } else if (actionType === "inactive") {
-        setSuccessMessage("Inactive account successfully")
-        setAccount({ ...account, accountStatus: "Inactive" })
-      }
-      setShowSuccess(true)
-      setIsProcessing(false)
-      setActionType(null)
-      setTimeout(() => setShowSuccess(false), 5000)
-    }, 1000)
+        if (actionType === "reset-password") {
+            response = await itPoswfService.resetAccountPassword(accId)
+            if (response.success && response.data) {
+                // Backend response for reset password only contains a success message, not the password itself.
+                successToastMessage = `Password reset requested successfully.`;
+            } else {
+                throw new Error(response.error || "Reset failed.");
+            }
+        } else if (actionType === "inactive") {
+            response = await itPoswfService.updateAccountStatus(accId, "Inactive")
+            if (response.success) {
+                setAccount(prev => ({ ...prev, accountStatus: "Inactive" }));
+                successToastMessage = "Account successfully set to Inactive";
+            } else {
+                throw new Error(response.error || "Inactivation failed.");
+            }
+        } else if (actionType === "activate") {
+             response = await itPoswfService.updateAccountStatus(accId, "Active")
+            if (response.success) {
+                setAccount(prev => ({ ...prev, accountStatus: "Active" }));
+                successToastMessage = "Account activated successfully";
+            } else {
+                throw new Error(response.error || "Activation failed.");
+            }
+        }
+        
+        setSuccessMessage(successToastMessage);
+        setShowSuccess(true)
+        toast({ title: "Success", description: successToastMessage });
+        setTimeout(() => setShowSuccess(false), 5000)
+
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : "An unexpected error occurred.";
+        toast({
+            title: "Action Failed",
+            description: errorMsg,
+            variant: "destructive"
+        });
+        setSuccessMessage("");
+        setShowSuccess(false);
+
+    } finally {
+        setIsProcessing(false)
+        setActionType(null)
+    }
   }
 
   const handleChangeEmail = async () => {
     if (!newEmail.trim()) return
 
     setIsProcessing(true)
-    setTimeout(() => {
-      setAccount({ ...account, email: newEmail })
-      setSuccessMessage(`Email changed successfully to ${newEmail}`)
-      setShowSuccess(true)
-      setIsProcessing(false)
-      setActionType(null)
-      setNewEmail("")
-      setTimeout(() => setShowSuccess(false), 5000)
-    }, 1000)
+    try {
+        const response = await itPoswfService.updateAccountEmail(account.accId, newEmail.trim());
+
+        if (response.success) {
+            setAccount(prev => ({ ...prev, email: newEmail.trim() }));
+            const msg = `Email changed successfully to ${newEmail}`;
+            setSuccessMessage(msg);
+            toast({ title: "Success", description: msg });
+            setShowSuccess(true);
+            setNewEmail("");
+            setTimeout(() => setShowSuccess(false), 5000);
+        } else {
+            throw new Error(response.error || "Email change failed.");
+        }
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : "An unexpected error occurred.";
+        toast({
+            title: "Action Failed",
+            description: errorMsg,
+            variant: "destructive"
+        });
+    } finally {
+        setIsProcessing(false);
+        setActionType(null);
+    }
   }
 
   const handleExchangeTransaction = async () => {
-    if (!newEmail.trim() || !newAccId.trim()) return
+    if (!newEmail.trim()) return // Email is mandatory
+    // Note: The backend schema suggests newAccId is optional/null when not in use.
 
     setIsProcessing(true)
-    setTimeout(() => {
-      setSuccessMessage(`Transaction exchanged successfully to ${newEmail} (${newAccId})`)
-      setShowSuccess(true)
-      setIsProcessing(false)
-      setActionType(null)
-      setNewEmail("")
-      setNewAccId("")
-      setTimeout(() => setShowSuccess(false), 5000)
-    }, 1000)
+    try {
+        const response = await itPoswfService.exchangeTransactions(
+            account.accId, 
+            newEmail.trim(), 
+            newAccId.trim() || undefined
+        );
+
+        if (response.success) {
+            const msg = `Transaction exchange requested successfully to ${newEmail}${newAccId ? ` (${newAccId})` : ""}.`;
+            setSuccessMessage(msg);
+            toast({ title: "Success", description: msg });
+            setShowSuccess(true);
+            setNewEmail("");
+            setNewAccId("");
+            setTimeout(() => setShowSuccess(false), 5000);
+        } else {
+            throw new Error(response.error || "Transaction exchange failed.");
+        }
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : "An unexpected error occurred.";
+        toast({
+            title: "Action Failed",
+            description: errorMsg,
+            variant: "destructive"
+        });
+    } finally {
+        setIsProcessing(false);
+        setActionType(null);
+    }
   }
 
-  const handleActivateAccount = async () => {
-    setIsProcessing(true)
-    setTimeout(() => {
-      setAccount({ ...account, accountStatus: "Active" })
-      setSuccessMessage("Account activated successfully")
-      setShowSuccess(true)
-      setIsProcessing(false)
-      setTimeout(() => setShowSuccess(false), 5000)
-    }, 1000)
-  }
+  const handleActivateAccount = () => handleAction("activate")
 
   const handleActivateExpiredBalance = async () => {
     setIsProcessing(true)
-    setTimeout(() => {
-      setSuccessMessage("Expired balance activated successfully")
-      setShowSuccess(true)
-      setIsProcessing(false)
-      setActionType(null)
-      setTimeout(() => setShowSuccess(false), 5000)
-    }, 1000)
+    try {
+        // NOTE: Uses account.id and account.email from the fetched data
+        const response = await itPoswfService.activateExpiredBalance(account.accId, account.email);
+        
+        if (response.success) {
+            const msg = "Expired balance activation requested successfully.";
+            setSuccessMessage(msg);
+            toast({ title: "Success", description: msg });
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 5000);
+        } else {
+            throw new Error(response.error || "Balance activation failed.");
+        }
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : "An unexpected error occurred.";
+        toast({
+            title: "Action Failed",
+            description: errorMsg,
+            variant: "destructive"
+        });
+    } finally {
+        setIsProcessing(false)
+        setActionType(null)
+    }
   }
 
   return (
@@ -253,6 +340,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
               </Button>
             </div>
 
+            {/* Change Email Form */}
             {actionType === "change-email" && (
               <div className="space-y-3 p-4 border rounded-lg">
                 <h4 className="text-sm font-medium">Change Email</h4>
@@ -275,6 +363,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
               </div>
             )}
 
+            {/* Exchange Transaction Form */}
             {actionType === "exchange" && (
               <div className="space-y-3 p-4 border rounded-lg">
                 <h4 className="text-sm font-medium">Exchange Transaction</h4>
@@ -305,7 +394,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
                 </div>
                 <Button
                   onClick={handleExchangeTransaction}
-                  disabled={isProcessing || !newEmail.trim() || !newAccId.trim()}
+                  disabled={isProcessing || !newEmail.trim()}
                   className="w-full"
                 >
                   {isProcessing ? "Exchanging..." : "Exchange Transaction"}
@@ -313,10 +402,11 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
               </div>
             )}
 
+            {/* Activate Balance Section */}
             {actionType === "activate-balance" && (
               <div className="space-y-4 p-4 border rounded-lg">
                 <h4 className="text-sm font-medium">Activate Balance</h4>
-
+              {/* NOTE: Balance Cards and Table still display mock data (creditBalance/expiredBalance) */}
                 <div className="grid gap-4 md:grid-cols-2">
                   <BalanceCard
                     title="Credit Balance"

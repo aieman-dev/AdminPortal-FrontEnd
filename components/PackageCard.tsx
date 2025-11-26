@@ -1,12 +1,13 @@
 // components/PackageCard.tsx
-import { Calendar, User, Copy, Pencil, Trash2 } from "lucide-react"; // Import Trash2
+import { Calendar, User, Copy, Pencil, Trash2, Globe } from "lucide-react"; // Import Trash2
 
 interface PackageCardProps {
   id: number;
   name: string;
   price: string;
   category: string;
-  createdDate: string;
+  dateDisplay: string;
+  nationality: string;
   status: string;
   image: string;
   onClick?: () => void;        // For navigating to detail page
@@ -19,7 +20,8 @@ export default function PackageCard({
   name,
   price,
   category,
-  createdDate,
+  dateDisplay,
+  nationality,
   status,
   image,
   onClick,
@@ -121,20 +123,33 @@ export default function PackageCard({
           RM {price}
         </p>
 
-        {/* Category */}
-        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-300 mb-2">
-          <User size={12} className="text-gray-400 dark:text-gray-300" />
-          <span>{category}</span>
+        {/* Category & Nationality - 🌟 FIX 1: Add Nationality Display */}
+        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-300 mb-2">
+          {/* Age Category */}
+          <div className="flex items-center gap-1">
+            <User size={12} className="text-gray-400 dark:text-gray-300" />
+            <span>{category}</span>
+          </div>
+          {/* Nationality */}
+          {nationality && nationality !== 'N/A' && (
+            <div className="flex items-center gap-1">
+              <Globe size={12} className="text-gray-400 dark:text-gray-300" />
+              <span>{nationality}</span>
+            </div>
+          )}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-1 text-gray-500 dark:text-gray-300">
-            <Calendar size={12} className="text-gray-400 dark:text-gray-300" />
-            <span>{createdDate}</span>
+        {/* Footer - Date Range Display & Status */}
+        <div className="flex justify-between items-start text-xs">
+          {/* 🌟 FIX 2: Display the Date Range and ensure vertical alignment is to the start */}
+          <div className="flex items-start gap-1 text-gray-500 dark:text-gray-300 flex-1 flex-wrap pr-1">
+            <Calendar size={12} className="text-gray-400 dark:text-gray-300 mt-0.5 flex-shrink-0" />
+            <span className="leading-tight">{dateDisplay}</span>
           </div>
+          
           <span
-            className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(
+            // 🌟 FIX 3: Add shrink-0 and ml-2 to ensure badge is compact and spaced
+            className={`px-2 py-0.5 rounded text-xs font-medium shrink-0 ml-2 ${getStatusColor(
               status
             )}`}
           >
