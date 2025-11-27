@@ -18,7 +18,8 @@ import {
     ManualConsumeSearchPayload, 
     ConsumeExecutePayload,
     ConsumeExecuteItem, 
-} from "../type/it-poswf"; 
+    BalanceDetail
+} from "../type/themepark-support"; 
 
 const ENDPOINTS = {
     SEARCH_HISTORY: "/proxy-search-history",
@@ -45,6 +46,7 @@ const ENDPOINTS = {
     EXCHANGE_TRANSACTIONS: "/proxy-account/exchange-transactions",
     UPDATE_ACCOUNT_EMAIL: "/proxy-account/update-email",
     ACTIVATE_BALANCE: "/proxy-account/activate-balance",
+    BALANCE_DETAILS: "/proxy-account/balance-details"
 };
 
 // Interface for the data returned *directly* at the root of a 200 OK response
@@ -464,5 +466,22 @@ export const itPoswfService = {
             return { success: false, error: response.error || "Failed to activate balance." };
         }
         return { success: true };
+    },
+
+    getAccountBalanceDetails: async (email: string): Promise<ApiResponse<BalanceDetail>> => {
+        const payload = {
+            email: email,
+        };
+        
+        const response = await apiClient.post<BalanceDetail>(ENDPOINTS.BALANCE_DETAILS, payload);
+
+        if (!response.success) {
+            return {
+                success: false,
+                error: response.error || "Failed to retrieve balance details."
+            };
+        }
+        
+        return response;
     },
 };

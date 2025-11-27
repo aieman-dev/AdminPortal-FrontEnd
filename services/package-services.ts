@@ -1,7 +1,7 @@
 // services/package-services.ts
 import { apiClient } from "@/lib/api-client";
 import { PackageFormData, Package, PackageDuplicateResponse } from "@/type/packages"; 
-import { ItPoswfPackage } from "@/type/it-poswf";
+import { ItPoswfPackage } from "@/type/themepark-support";
 
 
 const ENDPOINTS = {

@@ -1,4 +1,4 @@
-// app/portal/it-poswf/search-history/page.tsx
+// components/it-poswf/tabs/Account/SearchHistoryRecordTab.tsx
 "use client"
 
 import { useState } from "react"
@@ -6,24 +6,21 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { SearchField } from "@/components/it-poswf/search-field"
-import { DataTable, type TableColumn } from "@/components/it-poswf/data-table"
-import { StatusBadge } from "@/components/it-poswf/status-badge"
-import { TransactionHistory, TicketHistory } from "@/type/it-poswf"; 
-import { itPoswfService } from "@/services/it-poswf-services"; 
+import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
+import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
+import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
+import { TransactionHistory, TicketHistory } from "@/type/themepark-support"; 
+import { itPoswfService } from "@/services/themepark-support"; 
 import { useToast } from "@/hooks/use-toast";
 
-// --- NEW DATE FORMATTING HELPER ---
 function formatHistoryDate(dateString: string): string {
     if (!dateString) return "—";
     
-    // Create a Date object from the string (e.g., "2024-01-15 10:30:00")
     const date = new Date(dateString);
 
     if (isNaN(date.getTime())) {
-        return dateString; // Return original if invalid
+        return dateString;
     }
-    // Extract components and ensure two digits
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -34,17 +31,15 @@ function formatHistoryDate(dateString: string): string {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
-export default function SearchHistoryPage() {
+export default function SearchHistoryRecordTab() {
   const [searchType, setSearchType] = useState<"email" | "mobile" | "invoice">("email")
   const [searchTerm, setSearchTerm] = useState("")
-  // Initialize with empty arrays instead of mock data
   const [historyData, setHistoryData] = useState<TransactionHistory[]>([])
   const [ticketData, setTicketData] = useState<TicketHistory[]>([])
   const [isSearching, setIsSearching] = useState(false)
 
   const { toast } = useToast();
 
-  // --- UPDATED handleSearch function to rely on response.success ---
   const handleSearch = async () => {
     if (!searchTerm) {
         setHistoryData([]);
@@ -52,7 +47,7 @@ export default function SearchHistoryPage() {
         toast({
             title: "Search Required",
             description: "Please enter a search term.",
-            variant: "default", // Use default style for input validation
+            variant: "default",
         });
         return;
     }
@@ -62,15 +57,10 @@ export default function SearchHistoryPage() {
     try {
         const response = await itPoswfService.searchHistory(searchType, searchTerm);
 
-        // CHECK 1: If the overall API call (HTTP status) succeeded and data structure is present.
         if (response.success && response.data) { 
-            // SUCCESS PATH (200 OK): Data received, even if the arrays are empty.
-            
-            // Set the state with the received (potentially empty) arrays
             setHistoryData(response.data.transactionHistory); 
             setTicketData(response.data.ticketHistory);
 
-            // Optional: Log a status message for clarity (not an error)
             if (response.data.transactionHistory.length === 0 && response.data.ticketHistory.length === 0) {
                  toast({
                     title: "Search Complete",
@@ -80,15 +70,13 @@ export default function SearchHistoryPage() {
             }
 
         } else {
-            // ERROR PATH: Only reached if the API Client detected a genuine network error or non-200 status (e.g., 401, 500).
-            // We now safely use the message returned by the service/backend.
             console.error("API Error:", response.error);
             setHistoryData([]);
             setTicketData([]);
             toast({
                 title: "Search Failed",
                 description: response.error || "Server error occurred.",
-                variant: "destructive", // Use destructive variant for backend errors
+                variant: "destructive",
             });
         }
     } catch (error) {
@@ -123,10 +111,8 @@ export default function SearchHistoryPage() {
       cell: (value) => <span className="font-mono text-sm">{value}</span>,
     },
     { header: "Invoice No", accessor: "invoiceNo" },
-    // Corrected accessor field name to match API payload
     { header: "Attraction", accessor: "attractionName" }, 
     { header: "Amount", accessor: "amount" },
-    // Corrected accessor field name to match API payload
     { header: "Transaction Type", accessor: "trxType", 
       cell: (value) => <StatusBadge status={value} /> },
     { header: "Created Date", accessor: "createdDate", 
@@ -134,14 +120,12 @@ export default function SearchHistoryPage() {
   ]
 
   const ticketColumns: TableColumn<TicketHistory>[] = [
-    // Use ticketNo as primary key, as it appears unique in the API payload
     {
       header: "Ticket No",
       accessor: "ticketNo",
       cell: (value) => <span className="font-medium">{value}</span>,
     },
     { header: "Package Name", accessor: "packageName" },
-    // Corrected accessor field name
     { header: "Package ID", accessor: "packageID" },
     { header: "Qty", accessor: "qty" },
     { header: "Start Date", accessor: "startDate" },
@@ -157,7 +141,6 @@ export default function SearchHistoryPage() {
 
   return (
     <div className="space-y-6">
-      {/* Search Section */}
       <Card>
         <CardContent>
           <div className="space-y-4">
@@ -211,9 +194,7 @@ export default function SearchHistoryPage() {
               <DataTable
                 columns={historyColumns}
                 data={historyData}
-                // FINAL FIX: Use a composite key (InvoiceNo + Index) to guarantee uniqueness for React.
                 keyExtractor={(row, index) => 
-                    // Fallback to a placeholder if invoiceNo is falsy, then append index
                     (row.invoiceNo || `no-invoice-${index}`) + `-${index}`
                 } 
                 emptyMessage={isSearching ? "Searching..." : "No transaction records found"}
@@ -228,8 +209,6 @@ export default function SearchHistoryPage() {
               <DataTable
                 columns={ticketColumns}
                 data={ticketData}
-                // Ticket History should use ticketNo (which is unique per ticket), 
-                // combined with index for safety/empty fields.
                 keyExtractor={(row, index) => (row.ticketNo || `tk-${index}`).toString()}
                 emptyMessage={isSearching ? "Searching..." : "No ticket records found"}
               />

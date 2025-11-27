@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -18,11 +18,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { StatusBadge } from "@/components/it-poswf/status-badge"
-import { BalanceCard } from "@/components/it-poswf/balance-card"
+import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
+import { BalanceCard } from "@/components/themepark-support/it-poswf/balance-card"
 import { ArrowLeft, CheckCircle2, Wallet, Clock } from "lucide-react"
-import type { Account } from "@/type/it-poswf"
-import { itPoswfService } from "@/services/it-poswf-services"
+import type { Account, BalanceDetail, BalanceTransaction } from "@/type/themepark-support"
+import { itPoswfService } from "@/services/themepark-support"
 import { useToast } from "@/hooks/use-toast"
 
 type ActionType = "activate" | "inactive" | "reset-password" | "exchange" | "change-email" | "activate-balance" | null
@@ -41,9 +41,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
   const [showSuccess, setShowSuccess] = useState(false)
   const { toast } = useToast()
 
-  // MOCK DATA for Balance cards (replace with API call later if fetching this data separately)
-  const [creditBalance] = useState(1250.0)
-  const [expiredBalance] = useState(350.0)
+  const [balanceDetail, setBalanceDetail] = useState<BalanceDetail | null>(null);
 
   const [newEmail, setNewEmail] = useState("")
   const [newAccId, setNewAccId] = useState("")
@@ -113,6 +111,29 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
     }
   }
 
+  const fetchBalanceDetails = async () => {
+      const email = account.email;
+      if (!email || email === 'N/A') return;
+
+      try {
+        const response = await itPoswfService.getAccountBalanceDetails(email);
+        
+        if (response.success && response.data) {
+          setBalanceDetail(response.data);
+        } else {
+          setBalanceDetail(null);
+          console.error("Failed to load balance details:", response.error);
+        }
+      } catch (error) {
+        setBalanceDetail(null);
+        console.error("Network error fetching balance:", error);
+      }
+    };
+
+    useEffect(() => {
+    fetchBalanceDetails();
+  }, [account.email])
+
   const handleChangeEmail = async () => {
     if (!newEmail.trim()) return
 
@@ -127,6 +148,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
             toast({ title: "Success", description: msg });
             setShowSuccess(true);
             setNewEmail("");
+            fetchBalanceDetails();
             setTimeout(() => setShowSuccess(false), 5000);
         } else {
             throw new Error(response.error || "Email change failed.");
@@ -193,6 +215,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
             setSuccessMessage(msg);
             toast({ title: "Success", description: msg });
             setShowSuccess(true);
+            fetchBalanceDetails();
             setTimeout(() => setShowSuccess(false), 5000);
         } else {
             throw new Error(response.error || "Balance activation failed.");
@@ -209,6 +232,10 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
         setActionType(null)
     }
   }
+
+  const currentBalance = balanceDetail?.currentBalance ?? 0.0;
+  const expiredBalance = balanceDetail?.expiredBalance ?? 0.0;
+  const balanceHistory = balanceDetail?.history ?? [];
 
   return (
     <div className="space-y-6">
@@ -410,7 +437,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
                 <div className="grid gap-4 md:grid-cols-2">
                   <BalanceCard
                     title="Credit Balance"
-                    amount={creditBalance}
+                    amount={currentBalance}
                     description="Available balance"
                     icon={Wallet}
                     valueColor="text-green-600"
@@ -445,7 +472,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
                             </TableCell>
                           </TableRow>
                         ) : (
-                          account.transactions.map((transaction, index) => (
+                          balanceHistory.map((transaction, index) => (
                             <TableRow key={index}>
                               <TableCell className="font-medium">{transaction.invoiceNo}</TableCell>
                               <TableCell>{transaction.name}</TableCell>

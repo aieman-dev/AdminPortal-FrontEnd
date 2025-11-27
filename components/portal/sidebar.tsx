@@ -23,24 +23,24 @@ const navigation = [
     icon: Ticket,
   },
   {
-    name: "IT POSWF",
+    name: "Themepark Support",
     icon: ServerCog,
     children: [
       {
-        name: "Search History Record",
-        href: "/portal/it-poswf/search-history",
+        name: "Transaction Master",
+        href: "/portal/themepark-support/transaction-master",
       },
       {
-        name: "Search Shopify Order",
-        href: "/portal/it-poswf/search-shopify-order",
+        name: "Attraction Master",
+        href: "/portal/themepark-support/attraction-master",
       },
       {
         name: "Ticket Management",
-        href: "/portal/it-poswf/ticket-management",
+        href: "/portal/themepark-support/ticket-master",
       },
       {
         name: "Account Management",
-        href: "/portal/it-poswf/account-management",
+        href: "/portal/themepark-support/account-master",
       },
     ],
   },

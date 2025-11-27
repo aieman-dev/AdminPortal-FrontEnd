@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { AccountDetailsClient } from "./account-details-client"
-import { Account } from "@/type/it-poswf"
-import { itPoswfService } from "@/services/it-poswf-services" 
+import { Account } from "@/type/themepark-support"
+import { itPoswfService } from "@/services/themepark-support" 
 import { Loader2 } from "lucide-react"
 
 

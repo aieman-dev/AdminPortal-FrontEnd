@@ -20,6 +20,22 @@ export interface PasswordData {
   currentPassword: string
 }
 
+export interface BalanceTransaction {
+  invoiceNo: string
+  name: string
+  amount: number
+  trxType: string 
+  createdDate: string
+}
+
+export interface BalanceDetail {
+  accountId: number
+  email: string
+  currentBalance: number
+  expiredBalance: number
+  history: BalanceTransaction[]
+}
+
 export interface TransactionHistory {
   trxID: number 
   transactionId: string

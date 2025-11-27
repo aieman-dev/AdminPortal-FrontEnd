@@ -1,14 +1,13 @@
-// app/portal/it-poswf/search-shopify-order/page.tsx
+// components/it-poswf/tabs/Transaction/ShopifyOrderTab.tsx
 "use client"
 
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { ShoppingBag } from "lucide-react"
-import { SearchField } from "@/components/it-poswf/search-field"
-import { DataTable, type TableColumn } from "@/components/it-poswf/data-table"
-import { StatusBadge } from "@/components/it-poswf/status-badge"
-import { ShopifyOrder } from "@/type/it-poswf" // Import the new type
-import { itPoswfService } from "@/services/it-poswf-services" // Import the service
+import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
+import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
+import { ShopifyOrder } from "@/type/themepark-support"
+import { itPoswfService } from "@/services/themepark-support"
 import { useToast } from "@/hooks/use-toast"
 
 // Define a type for the table display based on the API result
@@ -17,10 +16,9 @@ interface ShopifyTableData extends ShopifyOrder {
 }
 
 
-export default function SearchShopifyOrderPage() {
+export default function ShopifyOrderTab() {
   const { toast } = useToast()
   const [orderNo, setOrderNo] = useState("")
-  // Change state to hold the single result or null
   const [searchResult, setSearchResult] = useState<ShopifyTableData | null>(null)
   const [isSearching, setIsSearching] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -38,12 +36,10 @@ export default function SearchShopifyOrderPage() {
     setErrorMessage(null)
 
     try {
-      // Use the new service
       const response = await itPoswfService.searchShopifyOrder(orderNo.trim())
 
       if (response.success) {
         if (response.data) {
-          // Map the result to include the searched orderId
           setSearchResult({ ...response.data, orderId: orderNo.trim() })
           toast({
               title: "Search Complete",
@@ -51,12 +47,10 @@ export default function SearchShopifyOrderPage() {
               variant: "default",
           })
         } else {
-          // This is the "Not Found" case returned as success by service
           setSearchResult(null)
           setErrorMessage(response.message || "No transaction found for the given Order ID.")
         }
       } else {
-        // API or Network Error
         setErrorMessage(response.error || "Server error occurred during search.")
         toast({
             title: "Search Failed",
@@ -77,7 +71,6 @@ export default function SearchShopifyOrderPage() {
     }
   }
 
-  // Update columns to match the new API response structure
   const orderTrxColumns: TableColumn<ShopifyTableData>[] = [
     { header: "Order ID (Searched)", accessor: "orderId", cell: (value) => <span className="font-semibold">{value}</span> },
     { header: "Transaction ID", accessor: "trxId" },
@@ -88,13 +81,11 @@ export default function SearchShopifyOrderPage() {
     { header: "Financial Status", accessor: "financialStatus"}
   ]
 
-  // Convert the single result to an array for DataTable, or use an empty array if null
   const dataForTable = searchResult ? [searchResult] : []
 
 
   return (
     <div className="space-y-6">
-      {/* Search Card */}
       <Card>
         <CardContent>
           <SearchField
@@ -108,7 +99,6 @@ export default function SearchShopifyOrderPage() {
         </CardContent>
       </Card>
       
-      {/* Error Message */}
       {errorMessage && (
         <Card>
           <CardContent className="py-4">
@@ -117,7 +107,6 @@ export default function SearchShopifyOrderPage() {
         </Card>
       )}
 
-      {/* Results Table */}
       {(isSearching || dataForTable.length > 0) && (
         <Card>
           <CardContent className="space-y-4">
@@ -128,7 +117,6 @@ export default function SearchShopifyOrderPage() {
             <DataTable
               columns={orderTrxColumns}
               data={dataForTable}
-              // Use a constant key as there will only be 0 or 1 rows
               keyExtractor={() => "shopify-trx-detail-row"} 
               emptyMessage={isSearching ? "Searching..." : "No transaction found for this Order ID."}
             />
