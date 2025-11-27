@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get("authorization");
 
     // Backend URL for Manual Consume Execute
-    const BACKEND_URL = `${BACKEND_API_BASE}/api/it/retail/consume`; 
+    const BACKEND_URL = `${BACKEND_API_BASE}/api/support/retail/consume`;
 
     const apiResponse = await fetch(BACKEND_URL, {
       method: "POST", 

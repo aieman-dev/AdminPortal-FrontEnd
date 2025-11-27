@@ -60,19 +60,26 @@ export interface ShopifyOrder {
   financialStatus : string;
 }
 
+//result searching of manual consume ticket
 export interface AvailableTicket {
   id: string
-  packageName: string
-  itemName: string
-  consumeTerminal: string
-  itemType: "Ticket" | "Credit" | "Reward"
-  ipoints: number
-  packageStatus: "Active" | "Inactive" | "Pending"
+  PackageName: string 
+  ItemName: string 
+  ConsumeTerminal: number 
+  TicketType: "Entry" | string 
+  ItemPoint: number 
+  PackageStatus: "Expired" | "Active" | "Inactive" | "Expired" 
+  BalanceQty: number
+  PackageID: number
+  PackageItemID: number
+  TrxItemID: number
+  SourceType: string
+  TicketItemID: number
 }
 
 export interface ManualConsumeData {
   creditBalance: number
-  availableTickets: AvailableTicket[]
+  tickets: AvailableTicket[]
   totalAmount: number
   totalRewardCredit: number
 }
@@ -80,9 +87,9 @@ export interface ManualConsumeData {
 export interface ManualConsumeSearchPayload {
     searchType: string;
     email: string;
-    mobileNo: string;
+    mobile: string;
     invoiceNo: string;
-    terminalId: string;
+    terminalID: string;
     ticketType: string;
     ticketStatus: string;
 }

@@ -236,9 +236,9 @@ export default function TicketManagementPage() {
     const searchPayload: ManualConsumeSearchPayload = {
         searchType: consumeType.toUpperCase(),
         email: email.trim(),
-        mobileNo: mobileNo.trim() || "", // Send empty string if optional field is empty
-        invoiceNo: invoiceNo.trim(),
-        terminalId: terminalId,
+        mobile: mobileNo.trim() || "", // Send empty string if optional field is empty
+        invoiceNo: invoiceNo.trim() || "",
+        terminalID: terminalId,
         ticketType: ticketType.toUpperCase(),
         ticketStatus: ticketStatus.toUpperCase(),
     };
@@ -270,20 +270,20 @@ export default function TicketManagementPage() {
   }
 
     const handleConsumeExecute = async () => {
-        if (!consumeSearchResult || consumeSearchResult.availableTickets.length === 0) {
+        if (!consumeSearchResult || consumeSearchResult.tickets.length === 0) {
             toast({ title: "Action Blocked", description: "No available tickets to consume.", variant: "default" });
             return;
         }
         
         // 1. Map all available tickets/credits into the required complex execution payload format
-        const itemsToConsume = consumeSearchResult.availableTickets;
+        const itemsToConsume = consumeSearchResult.tickets;
         
         // NOTE: Assuming 1 unit of each item is consumed for this process flow
         const mappedItems: ConsumeExecuteItem[] = itemsToConsume.map(item => {
-            // Assuming 'ipoints' field holds the value (unitPrice/amount)
-            const unitPrice = item.ipoints; 
+            // FIX: Use ItemPoint and TicketItemID from the new PascalCase structure
+            const unitPrice = item.ItemPoint; 
             return {
-                itemID: Number(item.id) || 1, 
+                itemID: item.TicketItemID || 1, 
                 quantity: 1, 
                 unitPrice: unitPrice, 
                 amtBeforeTax: unitPrice,
@@ -311,7 +311,8 @@ export default function TicketManagementPage() {
             custEmail: email.trim(),
             txtMobileNo: mobileNo.trim() || "+60103921432",
             creditBalance: consumeSearchResult.creditBalance,
-            itemNamesForEmail: itemsToConsume.map(i => i.itemName).join(', '), 
+            // FIX: Use ItemName for correct PascalCase field access
+            itemNamesForEmail: itemsToConsume.map(i => i.ItemName).join(', '), 
         };
         
         try {
@@ -342,12 +343,12 @@ export default function TicketManagementPage() {
     }
 
   const ticketColumns: TableColumn<AvailableTicket>[] = [
-    { header: "Package Name", accessor: "packageName", cell: (value) => <span className="font-medium">{value}</span> },
-    { header: "Item Name", accessor: "itemName" },
-    { header: "Consume Terminal", accessor: "consumeTerminal" },
-    { header: "Item Type", accessor: "itemType", cell: (value) => <StatusBadge status={value} /> },
-    { header: "iPoints", accessor: "ipoints", cell: (value) => value.toLocaleString() },
-    { header: "Package Status", accessor: "packageStatus", cell: (value) => <StatusBadge status={value} /> },
+    { header: "Package Name", accessor: "PackageName", cell: (value) => <span className="font-medium">{value}</span> },
+    { header: "Item Name", accessor: "ItemName" },
+    { header: "Consume Terminal", accessor: "ConsumeTerminal" },
+    { header: "Item Type", accessor: "TicketType", cell: (value) => <StatusBadge status={value} /> },
+    { header: "Item Points", accessor: "ItemPoint", cell: (value) => value.toLocaleString() },
+    { header: "Package Status", accessor: "PackageStatus", cell: (value) => <StatusBadge status={value} /> },
   ]
 
   // Resync Transaction handlers
@@ -777,6 +778,11 @@ export default function TicketManagementPage() {
       ),
     },
   ]
+  
+  // calculate displayTotalamout ipoint
+  const displayTotalAmount = consumeSearchResult?.tickets.reduce(
+      (sum, item) => sum + (item.ItemPoint ?? 0), 0
+  ) ?? 0;
 
   return (
     <div className="space-y-6">
@@ -1255,19 +1261,22 @@ export default function TicketManagementPage() {
                   <div className="text-sm font-medium">Available Tickets</div>
                   <DataTable
                     columns={ticketColumns}
-                    data={consumeSearchResult.availableTickets}
+                    data={consumeSearchResult.tickets}
                     keyExtractor={(row) => row.id}
                     emptyMessage="No available tickets found"
                   />
 
+                  {/* FIX 2: Removed erroneous declaration block inside JSX */}
+                  
                   <div className="border-t pt-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">Total Amount</span>
+                        <span className="text-sm font-medium">Total Consumable iPoints</span>
                       </div>
                       <span className="text-lg font-semibold">
-                        {consumeSearchResult.totalAmount.toLocaleString()} iPoints
+                        {/* FIX 3: Use the local variable directly */}
+                        {displayTotalAmount.toLocaleString()} iPoints
                       </span>
                     </div>
                     <div className="flex items-center justify-between">

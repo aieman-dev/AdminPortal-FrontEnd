@@ -5,6 +5,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json(); 
     const authHeader = request.headers.get("authorization");
+    const backendPayload = body;
 
     // Backend URL for Manual Consume Search
     const BACKEND_URL = `${BACKEND_API_BASE}/api/support/consume/search`; 
@@ -16,20 +17,38 @@ export async function POST(request: NextRequest) {
         "ngrok-skip-browser-warning": "true",
         "Authorization": authHeader || "",
       },
-      body: JSON.stringify(body), 
+      body: JSON.stringify(backendPayload), 
     });
 
-    const data = await apiResponse.json();
+    const responseText = await apiResponse.text();
+    let data;
+    try {
+        data = responseText ? JSON.parse(responseText) : {};
+    } catch {
+        // If parsing fails, create a generic error object to return
+        data = { error: responseText, message: "Non-JSON response from backend" };
+    }
 
     if (!apiResponse.ok) {
       return NextResponse.json(
-        { error: data.message || `Backend Error: ${apiResponse.statusText}` }, 
+        { error: data.message || data.error ||`Backend Error: ${apiResponse.statusText}` }, 
         { status: apiResponse.status }
       );
     }
+
+    const finalData = {
+        creditBalance: data.creditBalance || 0,
+        tickets: (data.tickets || []).map((ticket: any) => ({
+            // CRITICAL: Map the frontend's unique 'id' key for React's DataTable
+            id: String(ticket.TicketItemID), 
+            ...ticket, // Pass all other PascalCase fields as-is
+        })),
+        // Initialize these to 0 as they are not present in the search response
+        totalAmount: 0, 
+        totalRewardCredit: 0,
+    };
     
-    // Assuming successful response data format is directly convertible to ManualConsumeData
-    return NextResponse.json(data, { status: 200 });
+    return NextResponse.json(finalData, { status: 200 });
 
   } catch (error) {
     console.error("Manual Consume Search Proxy Error:", error);
