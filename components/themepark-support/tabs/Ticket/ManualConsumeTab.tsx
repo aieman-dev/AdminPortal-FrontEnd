@@ -1,4 +1,4 @@
-// components/it-poswf/tabs/Ticket/ManualConsumeTab.tsx
+// components/themepark-support/tabs/Ticket/ManualConsumeTab.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -39,6 +39,14 @@ export default function ManualConsumeTab() {
   const [allTerminals, setAllTerminals] = useState<Terminal[]>([]);
 
 
+  // NEW: Determine required states based on consumeType
+  const isSuperApp = consumeType === "superapp";
+  const isReceipt = consumeType === "receipt";
+  const isEmailDisabled = isReceipt;
+  const isMobileDisabled = isReceipt;
+  const isInvoiceDisabled = isSuperApp;
+
+
   // Fetch all terminals on mount for the Manual Consume dropdown
   useEffect(() => {
     const fetchTerminalsList = async () => {
@@ -48,7 +56,10 @@ export default function ManualConsumeTab() {
                 setAllTerminals(response.data);
             } else {
                 console.error("Failed to fetch terminal list:", response.error);
-                toast({ title: "Error", description: "Failed to load terminal dropdown list.", variant: "destructive" });
+                toast({ 
+                    title: "Error", 
+                    description: "Failed to load terminal dropdown list.", 
+                    variant: "destructive" });
             }
         } catch (error) {
             console.error("Network error fetching terminals:", error);
@@ -58,11 +69,24 @@ export default function ManualConsumeTab() {
   }, []);
 
   const handleConsumeSearch = async () => {
-    // Basic validation based on previous file's structure
-    if (!consumeType || !email || !invoiceNo || !terminalId || !ticketType || !ticketStatus) {
+    let missingFields: string[] = [];
+
+    if (!consumeType) missingFields.push("Consume Type");
+    if (!terminalId) missingFields.push("Terminal ID");
+    if (!ticketType) missingFields.push("Ticket Type");
+    if (!ticketStatus) missingFields.push("Ticket Status");
+
+    if (isSuperApp) {
+        if (!email.trim()) missingFields.push("Email Address");
+    } else if (isReceipt) {
+        if (!invoiceNo.trim()) missingFields.push("Invoice No");
+    }
+
+    if (missingFields.length > 0) {
+        const missingFieldsStr = missingFields.join(", ");
         toast({
             title: "Input Required",
-            description: "Please fill in all required search criteria.",
+            description: `Please fill in all required search criteria: ${missingFieldsStr}.`,
             variant: "default",
         });
         return;
@@ -73,9 +97,9 @@ export default function ManualConsumeTab() {
 
     const searchPayload: ManualConsumeSearchPayload = {
         searchType: consumeType.toUpperCase(),
-        email: email.trim(),
-        mobile: mobileNo.trim() || "", 
-        invoiceNo: invoiceNo.trim() || "",
+        email: email.trim(), 
+        mobile: mobileNo.trim(), 
+        invoiceNo: invoiceNo.trim(),
         terminalID: terminalId,
         ticketType: ticketType.toUpperCase(),
         ticketStatus: ticketStatus.toUpperCase(),
@@ -85,8 +109,29 @@ export default function ManualConsumeTab() {
         const response = await itPoswfService.searchManualConsume(searchPayload);
 
         if (response.success && response.data) {
-            setConsumeSearchResult(response.data);
-            toast({ title: "Search Complete", description: "Manual consume details retrieved." });
+            if (isSuperApp && !response.data.accID) {
+                 toast({ 
+                    title: "Account Data Missing", 
+                    description: "Search successful, but Account ID (accID) is missing for Superapp consumption.", 
+                    variant: "destructive" 
+                });
+                setConsumeSearchResult(null); // Block UI if essential data is missing
+                return;
+            }
+            if (!response.data.rrQRID) {
+                toast({ 
+                    title: "System Data Missing", 
+                    description: "Search successful, but QR ID (rrQRID) is missing for execution.", 
+                    variant: "destructive" 
+                });
+                // Only warn, execution logic will decide the final block.
+            }
+
+            toast({ 
+                title: "Search Complete",
+                 description: "Manual consume details retrieved.", 
+                 variant: "default" });
+
         } else {
             setConsumeSearchResult(null);
             toast({
@@ -109,7 +154,28 @@ export default function ManualConsumeTab() {
 
     const handleConsumeExecute = async () => {
         if (!consumeSearchResult || consumeSearchResult.tickets.length === 0) {
-            toast({ title: "Action Blocked", description: "No available tickets to consume.", variant: "default" });
+            toast({ 
+                title: "Action Blocked", 
+                description: "No available tickets to consume.",
+                 variant: "default" });
+            return;
+        }
+
+        if (isSuperApp && !consumeSearchResult.accID) {
+            toast({ 
+                title: "Execution Blocked", 
+                description: "Cannot execute: Account ID is required in Superapp mode but is missing.", 
+                variant: "destructive" 
+            });
+            return;
+        }
+
+        if (!consumeSearchResult.rrQRID) {
+            toast({ 
+                title: "Execution Blocked", 
+                description: "Cannot execute: RRQRID is missing from the search result.", 
+                variant: "destructive" 
+            });
             return;
         }
         
@@ -126,22 +192,22 @@ export default function ManualConsumeTab() {
             };
         });
 
-        const MOCK_ACC_ID = 1; 
-        const MOCK_RRQRID = "1825076"; 
+        const finalAccID = consumeSearchResult.accID ?? 1; 
+        const finalRRQRID = consumeSearchResult.rrQRID ?? ""; 
         const numericTerminalId = Number(terminalId.split('-').pop() || terminalId) || 474; 
         const totalAmount = mappedItems.reduce((sum, item) => sum + item.amount, 0);
 
         setIsExecuting(true);
         
         const executePayload: ConsumeExecutePayload = {
-            consumeBySuperApp: consumeType === "superapp",
-            accID: MOCK_ACC_ID,
-            rrQRID: MOCK_RRQRID,
+            consumeBySuperApp: isSuperApp,
+            accID: finalAccID,
+            rrQRID: finalRRQRID,
             terminalID: numericTerminalId, 
             totalAmount: totalAmount,
             items: mappedItems,
             custEmail: email.trim(),
-            txtMobileNo: mobileNo.trim() || "+60103921432",
+            txtMobileNo: mobileNo.trim() || "",
             creditBalance: consumeSearchResult.creditBalance,
             itemNamesForEmail: itemsToConsume.map(i => i.ItemName).join(', '), 
         };
@@ -208,7 +274,7 @@ export default function ManualConsumeTab() {
 
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium">
-                Email Address
+                Email Address <span className="text-muted-foreground">{isSuperApp ? "(Required)" : "(Disabled)"}</span>
               </Label>
               <Input
                 id="email"
@@ -217,12 +283,13 @@ export default function ManualConsumeTab() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-11"
+                disabled={isEmailDisabled}
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="mobileNo" className="text-sm font-medium">
-                Mobile No <span className="text-muted-foreground">(Optional)</span>
+                Mobile No <span className="text-muted-foreground">{isSuperApp ? "(Optional)" : "(Disabled)"}</span>
               </Label>
               <Input
                 id="mobileNo"
@@ -231,12 +298,13 @@ export default function ManualConsumeTab() {
                 value={mobileNo}
                 onChange={(e) => setMobileNo(e.target.value)}
                 className="h-11"
+                disabled={isMobileDisabled}
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="invoiceNo" className="text-sm font-medium">
-                Invoice No
+                Invoice No <span className="text-muted-foreground">{isReceipt ? "(Required)" : "(Disabled)"}</span>
               </Label>
               <Input
                 id="invoiceNo"
@@ -244,6 +312,7 @@ export default function ManualConsumeTab() {
                 value={invoiceNo}
                 onChange={(e) => setInvoiceNo(e.target.value)}
                 className="h-11"
+                disabled={isInvoiceDisabled}
               />
             </div>
 

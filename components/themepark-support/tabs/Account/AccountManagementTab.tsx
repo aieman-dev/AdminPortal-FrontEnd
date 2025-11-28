@@ -23,6 +23,8 @@ export default function AccountManagementTab() {
   const handleSearch = async () => {
     const query = searchEmail.trim()
 
+    const isExplicitSearch = query.length > 0
+
     setIsSearching(true)
     setAccounts([]) 
 

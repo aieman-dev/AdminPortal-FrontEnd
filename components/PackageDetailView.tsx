@@ -173,7 +173,8 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
         toast({
             title: "Package Approved!",
             description: `Package ID ${packageData!.id} is now Active.`,
-            variant: "default" // Default or primary for success
+            variant: "success", 
+            duration : 50000
         });
         setTimeout(() => router.push("/portal/packages"), 1500);
         } catch (error) {
@@ -181,7 +182,8 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
         toast({
             title: "Approval Failed",
             description: "Failed to approve package. Please check the network.",
-            variant: "destructive"
+            variant: "destructive",
+            duration : 50000
         });
     } finally {
         setLoading(false);

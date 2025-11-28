@@ -43,7 +43,8 @@ export async function POST(request: NextRequest) {
             id: String(ticket.TicketItemID), 
             ...ticket, // Pass all other PascalCase fields as-is
         })),
-        // Initialize these to 0 as they are not present in the search response
+        accID: data.accID, 
+        rrQRID: data.rrQRID,
         totalAmount: 0, 
         totalRewardCredit: 0,
     };

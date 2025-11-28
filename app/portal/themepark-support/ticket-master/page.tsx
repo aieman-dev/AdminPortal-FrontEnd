@@ -19,7 +19,7 @@ export default function TicketMasterPage() {
         description="Manage ticket lifecycles: deactivation, expiry extension, QR security, and manual consumption."
       />
 
-      <Tabs defaultValue="extend-expiry" className="space-y-6">
+      <Tabs defaultValue="deactivate-ticket" className="space-y-6">
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
           <TabsList className="inline-flex h-auto p-0 bg-transparent border-b w-full md:w-auto min-w-full md:min-w-0 justify-start rounded-none">
             <TabsTrigger value="deactivate-ticket" className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px relative data-[state=active]:z-10">

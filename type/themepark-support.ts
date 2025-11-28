@@ -98,6 +98,8 @@ export interface ManualConsumeData {
   tickets: AvailableTicket[]
   totalAmount: number
   totalRewardCredit: number
+  accID?: number; 
+  rrQRID?: string;
 }
 
 export interface ManualConsumeSearchPayload {
@@ -203,4 +205,38 @@ export interface ItPoswfPackage {
   lastModifiedBy?: string;
   createdDate?: string;
   modifiedDate?: string;
+}
+
+// ADDED FOR DEACTIVATE TICKET TAB
+export interface DeactivatableTicket {
+  id: string; // Unique ID for key/local use (Mapped from ticketID)
+  ticketID: number; // Backend's primary ID
+  ticketNo: string;
+  ticketName: string;
+  quantity: number; // Mapped from ticketQty
+  purchaseDate: string; 
+  status: "Active" | "Deactivated" | "Expired" | string; // Mapped from recordStatus
+  invoiceNo: string;
+}
+
+export interface ConsumptionHistory {
+  id: string; // Unique ID for key/local use (Mapped from ticketConsumptionNo)
+  consumptionNo: string; // Mapped from ticketConsumptionNo
+  trxNo: string; // Mapped from trxNo (original invoice/trx)
+  ticketNo: string;
+  ticketItemNo: string; 
+  ticketName: string;
+  terminalID: number; 
+  ticketQty: number; 
+  consumeQty: number;
+  modifiedDate: string; // Mapped from consumptionModifiedDate
+  status: "Active" | "Deactivated" | string; // Mapped from consumptionRecordStatus
+}
+
+export interface TicketDeactivatePayload {
+    ticketId: number | string;
+}
+
+export interface ConsumptionDeactivatePayload {
+    consumptionNo: string;
 }

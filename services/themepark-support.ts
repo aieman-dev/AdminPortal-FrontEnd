@@ -18,7 +18,11 @@ import {
     ManualConsumeSearchPayload, 
     ConsumeExecutePayload,
     ConsumeExecuteItem, 
-    BalanceDetail
+    BalanceDetail,
+    DeactivatableTicket,
+    ConsumptionHistory,
+    TicketDeactivatePayload,
+    ConsumptionDeactivatePayload
 } from "../type/themepark-support"; 
 
 const ENDPOINTS = {
@@ -46,7 +50,12 @@ const ENDPOINTS = {
     EXCHANGE_TRANSACTIONS: "/proxy-account/exchange-transactions",
     UPDATE_ACCOUNT_EMAIL: "/proxy-account/update-email",
     ACTIVATE_BALANCE: "/proxy-account/activate-balance",
-    BALANCE_DETAILS: "/proxy-account/balance-details"
+    BALANCE_DETAILS: "/proxy-account/balance-details",
+
+    DEACTIVATE_TICKET_SEARCH: "/proxy-deactivate/ticket/search",
+    DEACTIVATE_TICKET_EXECUTE: "/proxy-deactivate/ticket/execute",
+    DEACTIVATE_CONSUMPTION_SEARCH: "/proxy-deactivate/consumption-ticket/search",
+    DEACTIVATE_CONSUMPTION_EXECUTE: "/proxy-deactivate/consumption-ticket/execute",
 };
 
 // Interface for the data returned *directly* at the root of a 200 OK response
@@ -87,6 +96,32 @@ interface TicketUpdatePayload {
     TrxNo: string; // The search term (Invoice No. / Transaction No)
     ticketsToUpdate: TicketUpdateItem[];
 }
+
+const mapToDeactivatableTicket = (raw: any): DeactivatableTicket => ({
+    id: String(raw.ticketID), // Use ticketID for React key
+    ticketID: raw.ticketID,
+    ticketNo: raw.ticketNo,
+    ticketName: raw.ticketName,
+    quantity: raw.ticketQty,
+    purchaseDate: raw.purchaseDate,
+    status: raw.recordStatus,
+    invoiceNo: raw.invoiceNo,
+});
+
+// Helper to map consumption search result
+const mapToConsumptionHistory = (raw: any): ConsumptionHistory => ({
+    id: raw.ticketConsumptionNo, // Use consumption number as unique ID for key
+    consumptionNo: raw.ticketConsumptionNo,
+    trxNo: raw.trxNo,
+    ticketNo: raw.ticketNo,
+    ticketItemNo: raw.ticketItemNo,
+    ticketName: raw.ticketName,
+    terminalID: raw.terminalID,
+    ticketQty: raw.ticketQty,
+    consumeQty: raw.consumeQty,
+    modifiedDate: raw.consumptionModifiedDate,
+    status: raw.consumptionRecordStatus,
+});
 
 
 export const itPoswfService = {
@@ -484,4 +519,73 @@ export const itPoswfService = {
         
         return response;
     },
+
+    searchDeactivatableTickets: async (searchQuery: string): Promise<ApiResponse<DeactivatableTicket[]>> => {
+        // Logic to determine if query is an InvoiceNo (contains '-') or TicketNo
+        const isInvoice = searchQuery.includes('-') || searchQuery.length > 10;
+        const payload = {
+            invoiceNo: isInvoice ? searchQuery.trim() : null,
+            ticketNo: !isInvoice ? searchQuery.trim() : null,
+        };
+
+        const response = await apiClient.post<any[]>(ENDPOINTS.DEACTIVATE_TICKET_SEARCH, payload);
+
+        if (!response.success || !response.data) {
+            return { success: false, error: response.error || "Failed to search tickets." };
+        }
+
+        return {
+            success: true,
+            data: response.data.map(mapToDeactivatableTicket),
+        };
+    },
+
+    // 2. Search Consumption History
+    searchConsumptionHistory: async (invoiceNo: string, ticketNo: string = ""): Promise<ApiResponse<ConsumptionHistory[]>> => {
+        // This is primarily a search by (InvoiceNo + TicketNo), but we default ticketNo to empty/placeholder
+        const payload = {
+            ticketNo: ticketNo.trim(),
+            invoiceNo: invoiceNo.trim(),
+        };
+        
+        const response = await apiClient.post<any[]>(ENDPOINTS.DEACTIVATE_CONSUMPTION_SEARCH, payload);
+
+        if (!response.success || !response.data) {
+            return { success: false, error: response.error || "Failed to search consumption history." };
+        }
+
+        return {
+            success: true,
+            data: response.data.map(mapToConsumptionHistory),
+        };
+    },
+
+    // 3. Deactivate Ticket
+    deactivateTicket: async (ticketId: number | string): Promise<ApiResponse<void>> => {
+        const payload: TicketDeactivatePayload = { ticketId: String(ticketId) };
+        const response = await apiClient.post<{ message: string }>(ENDPOINTS.DEACTIVATE_TICKET_EXECUTE, payload);
+
+        if (!response.success) {
+            return { success: false, error: response.error || "Failed to deactivate ticket." };
+        }
+        return { success: true };
+    },
+
+    // 4. Deactivate Consumption
+    deactivateConsumption: async (consumptionNo: string): Promise<ApiResponse<void>> => {
+        const payload: ConsumptionDeactivatePayload = { consumptionNo };
+        const response = await apiClient.post<{ message: string }>(ENDPOINTS.DEACTIVATE_CONSUMPTION_EXECUTE, payload);
+
+        if (!response.success) {
+            return { success: false, error: response.error || "Failed to deactivate consumption." };
+        }
+        
+        const isAlreadyDeactivated = response.data?.message?.toLowerCase().includes('already deactivated');
+
+        if (response.success || isAlreadyDeactivated) {
+             return { success: true, message: response.data?.message };
+        }
+        
+        return { success: true }; 
+    }
 };

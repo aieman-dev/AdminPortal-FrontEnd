@@ -1,3 +1,4 @@
+//app/portal/themepark-spport/account-master/[id]/account-details-clients.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -290,7 +291,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
       <Card>
         <CardContent>
           <h3 className="text-lg font-semibold mb-4">Transaction Details</h3>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-96 overflow-y-auto scrollbar-hide">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -453,7 +454,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
 
                 <div className="space-y-3">
                   <div className="text-sm font-medium">Transaction History</div>
-                  <div className="overflow-x-auto border rounded-lg">
+                  <div className="overflow-x-auto border rounded-lg max-h-64 overflow-y-auto scrollbar-hide">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -527,3 +528,4 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
     </div>
   )
 }
+
