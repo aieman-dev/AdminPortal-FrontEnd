@@ -62,7 +62,12 @@ export default function PackageCard({
     >
       {/* Image */}
       <div className="relative h-32">
-        <img src={image} alt={name} className="w-full h-full object-cover" />
+        <img 
+          src={image} 
+          alt={name}
+          className="w-full h-full object-cover" 
+          onError={(e) => (e.currentTarget.src = "/packages/DefaultPackageImage.png")}
+         />
         <span className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium">
           Bundle
         </span>

@@ -177,7 +177,7 @@ export const packageService = {
       lastValidDate: form.lastValidDate ? new Date(form.lastValidDate).toISOString() : new Date().toISOString(),
       remark: form.tpremark || "No remarks",
       nationality: form.nationality ,
-      // FIX 3: Use the extracted code for the API
+      dayPass: form.dayPass,
       ageCategory: ageCode, 
       imageID: imageId,
       

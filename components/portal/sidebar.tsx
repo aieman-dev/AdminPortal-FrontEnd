@@ -46,7 +46,7 @@ const navigation = [
   },
   {
     name: "Users",
-    href: "/portal/page-3",
+    href: "/portal/staff-management",
     icon: Users,
   },
   {

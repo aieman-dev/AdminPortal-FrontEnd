@@ -38,7 +38,21 @@ const formatShortDate = (dateString: string | undefined) => {
   });
 };
 
-// REMOVED: formatValidityRange helper
+// Add the image proxy helper function here
+function getProxiedImageUrl(url: string | null | undefined): string {
+  const DEFAULT_IMAGE = "/packages/DefaultPackageImage.png";
+  
+  if (!url) return DEFAULT_IMAGE;
+  
+  // Standard checks for valid URLs
+  if (url.startsWith("https") || url.startsWith("blob:") || url.startsWith("/")) return url;
+  
+  // Proxy insecure HTTP
+  if (url.startsWith("http://")) return `/api/proxy-image?url=${encodeURIComponent(url)}`;
+  
+  // Fallback for any other invalid string
+  return DEFAULT_IMAGE;
+}
 
 export default function PackagesPage() {
   const { user } = useAuth();
@@ -93,13 +107,12 @@ export default function PackagesPage() {
           name: pkg.name || pkg.PackageName || "Untitled", 
           price: (pkg.price !== undefined ? pkg.price : pkg.totalPrice ?? 0).toString(),
           category: pkg.ageCategory || pkg.packageType || pkg.PackageType || "N/A",
-          // 🌟 MAPPED: Map createdDate from Package interface
           createdDate: pkg.createdDate,
           nationality: pkg.nationality || "N/A",
           effectiveDate: pkg.effectiveDate,
           lastValidDate: pkg.lastValidDate,
           status: pkg.status || "Draft",
-          image: pkg.imageUrl || pkg.imageID || "/packages/DefaultPackageImage.png",
+          image: getProxiedImageUrl(pkg.imageUrl || pkg.imageID),
         }));
 
         setPackages(formatted);
@@ -249,7 +262,6 @@ export default function PackagesPage() {
                     name={pkg.name} 
                     price={pkg.price}
                     category={pkg.category}
-                    // 🌟 UPDATED: Pass the formatted Created Date
                     dateDisplay={formatShortDate(pkg.createdDate)} 
                     nationality={pkg.nationality}
                     status={pkg.status}

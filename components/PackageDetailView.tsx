@@ -23,8 +23,7 @@ const formatDisplayDate = (dateString: string | undefined) => {
   if (!dateString) return "—";
 
   // Use the date part to create a date object at the start of the day
-  const date = new Date(dateString.split('T')[0]); 
-  date.setHours(0, 0, 0, 0);
+  const date = new Date(dateString);
   
   return date.toLocaleString("en-GB", {
     day: "2-digit", 
@@ -41,7 +40,7 @@ const formatExpiryDateTime = (dateString: string | undefined) => {
   if (!dateString) return "—";
   
   // 1. Get the date part and create a new Date object for the selected day in local context
-  const date = new Date(dateString.split('T')[0]); 
+  const date = new Date(dateString)
 
   // 2. Advance to the next day
   date.setDate(date.getDate() + 1);
@@ -62,7 +61,7 @@ const formatExpiryDateTime = (dateString: string | undefined) => {
 
 // Helper to proxy HTTP images if needed
 function getProxiedImageUrl(url: string | null | undefined): string {
-  const DEFAULT_IMAGE = "/packages/DefaultPackagesImage.png";
+  const DEFAULT_IMAGE = "/packages/DefaultPackageImage.png";
   if (!url) return DEFAULT_IMAGE;
   if (url.startsWith("https") || url.startsWith("blob:") || url.startsWith("/")) return url;
   if (url.startsWith("http://")) return `/api/proxy-image?url=${encodeURIComponent(url)}`;
@@ -257,7 +256,7 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
                 src={displayImage}
                 alt={packageData.name || packageData.PackageName}
                 className="w-full h-[220px] object-cover rounded-xl shadow-md"
-                onError={(e) => (e.currentTarget.src = "/packages/DefaultPackagesImage.png")}
+                onError={(e) => (e.currentTarget.src = "/packages/DefaultPackageImage.png")}
               />
             </div>
 

@@ -26,23 +26,31 @@ import {
 } from "../type/themepark-support"; 
 
 const ENDPOINTS = {
-    SEARCH_HISTORY: "/proxy-search-history",
+    //Transaction Master
+    VOID_SEARCH: "/proxy-void/search",
+    VOID_EXECUTE: "/proxy-void/execute",
+    RESYNC_TRANSACTION: "/proxy-resync-transaction",
     SEARCH_SHOPIFY_ORDER: "/proxy-search-shopify-order",
     
-    VOID_EXECUTE: "/proxy-void/execute",
-    VOID_SEARCH: "/proxy-void/search",
-    EXTEND_EXPIRY: "/proxy-extend-expiry/update",
-    EXTEND_EXPIRY_SEARCH: "/proxy-extend-expiry/search",
-    
+    //Attraction Master
     TERMINAL_SEARCH: "/proxy-terminal/search", 
     TERMINAL_UPDATE: "/proxy-terminal/update",
-    
+
+    //Ticket Master
+    DEACTIVATE_TICKET_SEARCH: "/proxy-deactivate/ticket/search",
+    DEACTIVATE_TICKET_EXECUTE: "/proxy-deactivate/ticket/execute",
+    DEACTIVATE_CONSUMPTION_SEARCH: "/proxy-deactivate/consumption-ticket/search",
+    DEACTIVATE_CONSUMPTION_EXECUTE: "/proxy-deactivate/consumption-ticket/execute",
+    EXTEND_EXPIRY: "/proxy-extend-expiry/update",
+    EXTEND_EXPIRY_SEARCH: "/proxy-extend-expiry/search",
     QR_PASSWORD_SEARCH: "/proxy-qr-password/search", 
     QR_PASSWORD_RESET: "/proxy-qr-password/reset",
     
-    MANUAL_CONSUME_SEARCH: "/proxy-manual-consume/search", 
-    MANUAL_CONSUME_EXECUTE: "/proxy-manual-consume/execute",
+    MANUAL_CONSUME_TICKET_SEARCH: "/proxy-manual-consume/ticket/search", 
+
+    MANUAL_CONSUME_RETAIL_EXECUTE: "/proxy-manual-consume/retail/execute",
     
+    //Account Master
     SEARCH_ACCOUNTS: "/proxy-account/search",
     GET_ACCOUNT_DETAILS: "/proxy-account/details",
     UPDATE_ACCOUNT_STATUS: "/proxy-account/update-status",
@@ -51,11 +59,7 @@ const ENDPOINTS = {
     UPDATE_ACCOUNT_EMAIL: "/proxy-account/update-email",
     ACTIVATE_BALANCE: "/proxy-account/activate-balance",
     BALANCE_DETAILS: "/proxy-account/balance-details",
-
-    DEACTIVATE_TICKET_SEARCH: "/proxy-deactivate/ticket/search",
-    DEACTIVATE_TICKET_EXECUTE: "/proxy-deactivate/ticket/execute",
-    DEACTIVATE_CONSUMPTION_SEARCH: "/proxy-deactivate/consumption-ticket/search",
-    DEACTIVATE_CONSUMPTION_EXECUTE: "/proxy-deactivate/consumption-ticket/execute",
+    SEARCH_HISTORY: "/proxy-search-history",
 };
 
 // Interface for the data returned *directly* at the root of a 200 OK response
@@ -233,6 +237,18 @@ export const itPoswfService = {
         return response;
     },
 
+    // 5Resync Transaction
+    resyncTransaction: async (trxId: string): Promise<ApiResponse<{ message: string }>> => {
+        const payload = { trxId };
+        const response = await apiClient.post<{ message: string }>(ENDPOINTS.RESYNC_TRANSACTION, payload);
+
+        if (!response.success) {
+            return { success: false, error: response.error || "Failed to resync transaction." };
+        }
+        return response;
+    },
+
+
     // ADDED TICKET EXPIRY FIND FUNCTION
     findExtendableTickets: async (searchQuery: string): Promise<ApiResponse<ExtendTicketData[]>> => {
         const payload = {
@@ -337,10 +353,10 @@ export const itPoswfService = {
         
         return response;
     },
-    // --- NEW: Search Manual Consume Data ---
+    // --- Search Manual Consume Ticket ---
     searchManualConsume: async (payload: ManualConsumeSearchPayload): Promise<ApiResponse<ManualConsumeData>> => {
         // This function will rely on proxy to map the response to ManualConsumeData
-        const response = await apiClient.post<ManualConsumeData>(ENDPOINTS.MANUAL_CONSUME_SEARCH, payload);
+        const response = await apiClient.post<ManualConsumeData>(ENDPOINTS.MANUAL_CONSUME_TICKET_SEARCH, payload);
 
         if (!response.success) {
             return {
@@ -372,10 +388,10 @@ export const itPoswfService = {
         return response;
     },
 
-    // --- NEW: Execute Manual Consume ---
+    // --- NEW: Execute Manual Consume Retail ---
     executeManualConsume: async (payload: ConsumeExecutePayload): Promise<ApiResponse<{ invoiceNo: string }>> => {
         // This function sends the complex execution payload
-        const response = await apiClient.post<{ invoiceNo: string }>(ENDPOINTS.MANUAL_CONSUME_EXECUTE, payload);
+        const response = await apiClient.post<{ invoiceNo: string }>(ENDPOINTS.MANUAL_CONSUME_RETAIL_EXECUTE, payload);
 
         if (!response.success) {
             return {
