@@ -1,4 +1,4 @@
-// app/api/(itposwf)/proxy-manual-consume/ticket/search/route.ts
+// app/api/(itposwf)/proxy-manual-consume/retail/search/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { BACKEND_API_BASE } from "@/lib/config";
 
@@ -6,21 +6,9 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json(); 
     const authHeader = request.headers.get("authorization");
-    
-    // --- UPDATED: Ensure SourceType is included in the payload ---
-    const backendPayload = {
-      searchType: body.searchType,
-      email: body.email,
-      mobile: body.mobile,
-      invoiceNo: body.invoiceNo,
-      terminalID: body.terminalID,
-      ticketType: body.ticketType,
-      ticketStatus: body.ticketStatus,
-      SourceType: body.SourceType, // Explicitly pass the new field
-    };
 
-    // Backend URL for Manual Consume Search (Ticket/Package)
-    const BACKEND_URL = `${BACKEND_API_BASE}/api/support/consume/search`; 
+    // Backend URL for Retail Manual Consume Search
+    const BACKEND_URL = `${BACKEND_API_BASE}/api/support/retail/search`; 
 
     const apiResponse = await fetch(BACKEND_URL, {
       method: "POST", 
@@ -29,7 +17,7 @@ export async function POST(request: NextRequest) {
         "ngrok-skip-browser-warning": "true",
         "Authorization": authHeader || "",
       },
-      body: JSON.stringify(backendPayload), // Forward explicit payload
+      body: JSON.stringify(body), // Forward payload: { searchType, email, mobile, invoiceNo, terminalID, tGroupID, itemName }
     });
 
     const responseText = await apiResponse.text();
@@ -37,7 +25,6 @@ export async function POST(request: NextRequest) {
     try {
         data = responseText ? JSON.parse(responseText) : {};
     } catch {
-        // If parsing fails, create a generic error object to return
         data = { error: responseText, message: "Non-JSON response from backend" };
     }
 
@@ -47,17 +34,18 @@ export async function POST(request: NextRequest) {
         { status: apiResponse.status }
       );
     }
-
+    
+    // Normalize the successful response fields for the frontend
     const finalData = {
-        creditBalance: data.creditBalance || 0,
-        tickets: (data.tickets || []).map((ticket: any) => ({
-            // CRITICAL: Map the frontend's unique 'id' key for React's DataTable
-            id: String(ticket.TicketItemID), 
-            ...ticket, // Pass all other PascalCase fields as-is
-        })),
         accID: data.accID, 
-        rrQRID: data.rrQrId, // Backend returns rQrId in ticket search as well
-        myQr: data.myQr, // New field from ticket search result
+        // Backend uses 'rQrId', proxy renames to 'rrQRID' for reuse in the frontend interface.
+        rrQRID: data.rQrId, 
+        creditBalance: data.creditBalance || 0,
+        items: (data.items || []).map((item: any) => ({
+            // CRITICAL: Map the frontend's unique 'id' key for React's DataTable
+            id: String(item.itemID), 
+            ...item, // Pass all other fields as-is
+        })),
         totalAmount: 0, 
         totalRewardCredit: 0,
     };
@@ -65,7 +53,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(finalData, { status: 200 });
 
   } catch (error) {
-    console.error("Manual Consume Search Proxy Error:", error);
+    console.error("Retail Manual Consume Search Proxy Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

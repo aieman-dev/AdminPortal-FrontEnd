@@ -93,13 +93,67 @@ export interface AvailableTicket {
   TicketItemID: number
 }
 
+export interface RetailItem {
+  id: string // Mapped from itemID
+  itemID: number 
+  tGroupID: number
+  barcode: string
+  itemName: string 
+  unitPrice: number
+  categoryCode: string
+  departmentCode: string
+  subcategoryCode: string
+}
+
+export interface RetailManualConsumeData {
+  creditBalance: number
+  items: RetailItem[] // Changed type
+  totalAmount: number
+  totalRewardCredit: number
+  accID?: number; 
+  rQRID?: string; 
+}
+
+export interface RetailManualConsumeSearchPayload {
+    searchType: string;
+    email: string;
+    mobile: string;
+    invoiceNo: string;
+    terminalID: string;
+    tGroupID: number;
+    itemName: string; 
+}
+
+export interface ConsumeTicketItem {
+    PackageName: string;
+    ItemName: string;
+    TicketType: string;
+    PackageID: number;
+    PackageItemID: number;
+    TicketItemID: number;
+    ConsumeQty: number;
+}
+
+export interface TicketConsumeExecutePayload {
+    terminalID: number;
+    myQrData: string | null; // Use myQr data from search result
+    custEmail: string;
+    mobileNo: string;
+    invoiceNo: string;
+    creditBalance: number;
+    totalAmount: number;
+    itemNamesForEmail: string;
+    consumeList: ConsumeTicketItem[];
+}
+
 export interface ManualConsumeData {
   creditBalance: number
   tickets: AvailableTicket[]
   totalAmount: number
   totalRewardCredit: number
   accID?: number; 
-  rrQRID?: string;
+  rQRID?: string;
+  myQr?: string;
 }
 
 export interface ManualConsumeSearchPayload {
@@ -110,6 +164,7 @@ export interface ManualConsumeSearchPayload {
     terminalID: string;
     ticketType: string;
     ticketStatus: string;
+    SourceType: string;
 }
 
 export interface ConsumeExecuteItem {
@@ -123,7 +178,7 @@ export interface ConsumeExecuteItem {
 export interface ConsumeExecutePayload {
     consumeBySuperApp: boolean;
     accID: number; 
-    rrQRID: string; 
+    rQRID: string; 
     terminalID: number;
     totalAmount: number;
     items: ConsumeExecuteItem[];

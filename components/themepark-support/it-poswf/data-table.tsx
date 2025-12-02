@@ -10,7 +10,6 @@ export interface TableColumn<T> {
 interface DataTableProps<T> {
   columns: TableColumn<T>[]
   data: T[]
-  // FIX 1: Update keyExtractor to accept index
   keyExtractor: (row: T, index: number) => string 
   emptyMessage?: string
 }

@@ -1,4 +1,4 @@
-// components/themepark-support/tabs/Ticket/ManualConsumeTab.tsx
+// components/themepark-support/tabs/Transaction/RetailManualConsumeTab.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -7,67 +7,62 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Wallet, TrendingUp, AlertTriangle } from "lucide-react"
+import { Search, Wallet, TrendingUp } from "lucide-react"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
-import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { BalanceCard } from "@/components/themepark-support/it-poswf/balance-card"
 import {
-  type AvailableTicket,
-  type ManualConsumeData,
-  type ManualConsumeSearchPayload,
-  type ConsumeTicketItem,
-  type TicketConsumeExecutePayload,
+  type RetailItem,
+  type RetailManualConsumeData,
+  type RetailManualConsumeSearchPayload,
+  type ConsumeExecuteItem,
+  type ConsumeExecutePayload,
   type Terminal,
 } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
 import { useToast } from "@/hooks/use-toast"
 
 
-export default function ManualConsumeTab() {
+export default function RetailManualConsumeTab() {
   const { toast } = useToast()
 
   const [consumeType, setConsumeType] = useState<string>("")
   const [email, setEmail] = useState("")
   const [mobileNo, setMobileNo] = useState("")
   const [invoiceNo, setInvoiceNo] = useState("")
-  const [terminalId, setTerminalId] = useState<string>("")
-  const [ticketType, setTicketType] = useState<string>("")
-  const [ticketStatus, setTicketStatus] = useState<string>("")
   
-  // NEW STATE: Search term for the Terminal dropdown/search
+  const [terminalId, setTerminalId] = useState<string>("") // Selected Terminal ID
+  const [tGroupId, setTGroupId] = useState<string>("")
+  const [itemName, setItemName] = useState<string>("")
+  
+  // NEW STATES FOR SEARCHABLE TERMINAL
   const [terminalSearchQuery, setTerminalSearchQuery] = useState("") 
-  // NEW STATE: List of terminals filtered by the search query
   const [filteredTerminals, setFilteredTerminals] = useState<Terminal[]>([]) 
   const [isTerminalLoading, setIsTerminalLoading] = useState(false)
+  // --- END NEW STATES ---
   
-  const [consumeSearchResult, setConsumeSearchResult] = useState<ManualConsumeData | null>(null)
+  const [consumeSearchResult, setConsumeSearchResult] = useState<RetailManualConsumeData | null>(null)
   const [isConsumeSearching, setIsConsumeSearching] = useState(false)
   const [isExecuting, setIsExecuting] = useState(false)
 
 
-  const isExecutionBlocked = !consumeSearchResult || 
-                             consumeSearchResult.tickets.length === 0 ||
-                             consumeSearchResult.tickets.filter(t => t.PackageStatus.toLowerCase() === 'active').length === 0;
-
-
+  // Determine required states based on consumeType
   const isSuperApp = consumeType === "superapp";
   const isReceipt = consumeType === "receipt";
   const isEmailDisabled = isReceipt;
   const isMobileDisabled = isReceipt;
   const isInvoiceDisabled = isSuperApp;
-
+  
 
   // --- MODIFIED EFFECT: Fetch terminals based on search query with DEBOUNCE ---
   useEffect(() => {
     const fetchFilteredTerminals = async () => {
-        // Only trigger search if the query is non-empty or if the list is initially empty.
-        if (terminalSearchQuery.length === 0 && filteredTerminals.length > 0) {
-            return;
-        }
-
+        // Only trigger search if the query is non-empty or if the list is currently empty.
+        
         setIsTerminalLoading(true);
-        // Clear selected terminal when search starts
-        setTerminalId(""); 
+        // Clear selected terminal when search starts (unless the query is empty on initial load)
+        if (terminalSearchQuery.length > 0 && terminalId) {
+             setTerminalId(""); 
+        }
         
         try {
             // Use searchTerminals with the input query
@@ -110,15 +105,18 @@ export default function ManualConsumeTab() {
       }
   }, [filteredTerminals, terminalId]);
 
-  // Handle manual search logic
+
   const handleConsumeSearch = async () => {
     let missingFields: string[] = [];
 
     if (!consumeType) missingFields.push("Consume Type");
-    // Ensure both the search query AND a selected ID are present
-    if (!terminalSearchQuery.trim() || !terminalId) missingFields.push("Terminal ID (Search & Select)");
-    if (!ticketType) missingFields.push("Ticket Type");
-    if (!ticketStatus) missingFields.push("Ticket Status");
+    
+    // UPDATED VALIDATION: Check for Terminal selection
+    if (!terminalId) missingFields.push("Terminal ID"); 
+
+    if (!tGroupId) missingFields.push("Terminal Group ID");
+    if (!itemName.trim()) missingFields.push("Item Name");
+    // ... (rest of validation unchanged) ...
 
     if (isSuperApp) {
         if (!email.trim()) missingFields.push("Email Address");
@@ -139,20 +137,18 @@ export default function ManualConsumeTab() {
     setIsConsumeSearching(true);
     setConsumeSearchResult(null);
 
-    const searchPayload: ManualConsumeSearchPayload = {
+    const searchPayload: RetailManualConsumeSearchPayload = {
         searchType: consumeType.toUpperCase(),
         email: email.trim(), 
         mobile: mobileNo.trim(), 
         invoiceNo: invoiceNo.trim(),
         terminalID: terminalId, // Use the selected ID
-        ticketType: ticketType.toUpperCase(),
-        ticketStatus: ticketStatus.toUpperCase(),
-        SourceType: ticketType.toUpperCase(), 
+        tGroupID: Number(tGroupId),
+        itemName: itemName.trim(), 
     };
-    // ... (rest of search logic remains the same)
     
     try {
-        const response = await itPoswfService.searchManualConsume(searchPayload);
+        const response = await itPoswfService.searchManualConsumeRetail(searchPayload);
 
         if (response.success && response.data) {
             if (isSuperApp && !response.data.accID) {
@@ -161,13 +157,13 @@ export default function ManualConsumeTab() {
                     description: "Search successful, but Account ID (accID) is missing for Superapp consumption.", 
                     variant: "destructive" 
                 });
-                setConsumeSearchResult(null); 
+                setConsumeSearchResult(null);
                 return;
             }
-            if (!response.data.myQr) { 
+            if (!response.data.rQRID) {
                 toast({ 
                     title: "System Data Missing", 
-                    description: "Search successful, but QR Data (myQr) is missing for execution.", 
+                    description: "Search successful, but QR ID (rrQRID) is missing for execution.", 
                     variant: "destructive" 
                 });
             }
@@ -175,116 +171,148 @@ export default function ManualConsumeTab() {
             setConsumeSearchResult(response.data);
             toast({ 
                 title: "Search Complete",
-                 description: "Manual consume details retrieved.", 
+                 description: `Found ${response.data.items.length} retail items.`, 
                  variant: "default" });
 
         } else {
             setConsumeSearchResult(null);
             toast({
                 title: "Search Failed",
-                description: response.error || "No data found matching the search criteria.",
+                description: response.error || "No retail items found matching the search criteria.",
                 variant: "destructive"
             });
         }
     } catch (error) {
-        console.error("Manual Consume Search Error:", error);
-        setConsumeSearchResult(null);
-        toast({
-            title: "Network Error",
-            description: "Failed to connect to the search service.",
-            variant: "destructive"
-        });
+        console.error("Retail Manual Consume Search Error:", error);
+        if (error instanceof Error && error.message.includes("Network")) {
+             toast({
+                title: "Network Error",
+                description: "Failed to connect to the search service.",
+                variant: "destructive"
+            });
+        } else {
+             toast({
+                title: "Error",
+                description: "An unexpected error occurred during search.",
+                variant: "destructive"
+            });
+        }
     } finally {
         setIsConsumeSearching(false);
     }
   }
 
-    const handleConsumeExecute = async () => {
-        if (!consumeSearchResult) return;
-        
-        const ticketsToConsume = consumeSearchResult.tickets.filter(t => t.PackageStatus.toLowerCase() === 'active');
-
-        if (ticketsToConsume.length === 0) {
-            toast({ 
-                title: "Action Blocked", 
-                description: "No ACTIVE tickets available to consume.",
-                 variant: "default" });
-            return;
-        }
-        
-        const consumeList: ConsumeTicketItem[] = ticketsToConsume.map(item => ({
-            PackageName: item.PackageName,
-            ItemName: item.ItemName,
-            TicketType: item.TicketType,
-            PackageID: item.PackageID,
-            PackageItemID: item.PackageItemID,
-            TicketItemID: Number(item.id), 
-            ConsumeQty: 1, 
-        }));
-
-        const numericTerminalId = Number(terminalId.split('-').pop() || terminalId) || 0; 
-        
-        const executePayload: TicketConsumeExecutePayload = {
-            terminalID: numericTerminalId,
-            myQrData: consumeSearchResult.myQr ?? null, 
-            custEmail: email.trim(),
-            mobileNo: mobileNo.trim() || "",
-            invoiceNo: invoiceNo.trim() || "", 
-            creditBalance: consumeSearchResult.creditBalance,
-            totalAmount: ticketsToConsume.reduce((sum, item) => sum + (item.ItemPoint ?? 0), 0),
-            itemNamesForEmail: ticketsToConsume.map(i => i.ItemName).join(', '),
-            consumeList: consumeList,
-        };
-        
-        setIsExecuting(true);
-
-        try {
-            const response = await itPoswfService.executeManualConsume(executePayload);
-            
-            if (response.success) {
-                setConsumeSearchResult(null);
-                setEmail("");
-                setInvoiceNo("");
-                toast({ 
-                    title: "Consumption Success", 
-                    description: `Package consumption executed successfully.`,
-                    variant: "default"
-                });
-            } else {
-                throw new Error(response.error || "Consumption failed.");
-            }
-        } catch (error) {
-            console.error("Consume Execute Error:", error);
-            toast({
-                title: "Consumption Failed",
-                description: error instanceof Error ? error.message : "An unexpected error occurred during execution.",
-                variant: "destructive"
-            });
-        } finally {
-            setIsExecuting(false);
-        }
+  const handleConsumeExecute = async () => {
+    // ... (rest of execute logic remains the same) ...
+    if (!consumeSearchResult || consumeSearchResult.items.length === 0) {
+        toast({ 
+            title: "Action Blocked", 
+            description: "No available items to consume.",
+             variant: "default" });
+        return;
     }
 
-  const ticketColumns: TableColumn<AvailableTicket>[] = [
-    { header: "Package Name", accessor: "PackageName", cell: (value) => <span className="font-medium">{value}</span> },
-    { header: "Item Name", accessor: "ItemName" },
-    { header: "Terminal ID", accessor: "ConsumeTerminal" },
-    { header: "Type", accessor: "TicketType" },
-    { header: "Points", accessor: "ItemPoint", cell: (value) => value.toLocaleString() },
-    { header: "Balance Qty", accessor: "BalanceQty" },
-    { header: "Status", accessor: "PackageStatus", cell: (value) => <StatusBadge status={value} /> },
+    if (isSuperApp && !consumeSearchResult.accID) {
+        toast({ 
+            title: "Execution Blocked", 
+            description: "Cannot execute: Account ID is required in Superapp mode but is missing.", 
+            variant: "destructive" 
+        });
+        return;
+    }
+
+    if (!consumeSearchResult.rQRID) {
+        toast({ 
+            title: "Execution Blocked", 
+            description: "Cannot execute: RRQRID is missing from the search result.", 
+            variant: "destructive" 
+        });
+        return;
+    }
+    
+    const itemsToConsume = consumeSearchResult.items;
+    
+    // Prepare the items array for the execute payload
+    const mappedItems: ConsumeExecuteItem[] = itemsToConsume.map(item => {
+        const unitPrice = item.unitPrice; 
+        return {
+            itemID: item.itemID, 
+            quantity: 1, 
+            unitPrice: unitPrice, 
+            amtBeforeTax: unitPrice, 
+            amount: unitPrice,
+        };
+    });
+
+    const finalAccID = consumeSearchResult.accID ?? 0; 
+    const finalRQRID = consumeSearchResult.rQRID ?? ""; 
+    const numericTerminalId = Number(terminalId.split('-').pop() || terminalId) || 0; 
+    const totalAmount = mappedItems.reduce((sum, item) => sum + item.amount, 0);
+
+    setIsExecuting(true);
+    
+    const executePayload: ConsumeExecutePayload = {
+        consumeBySuperApp: isSuperApp,
+        accID: finalAccID,
+        rQRID: finalRQRID, 
+        terminalID: numericTerminalId, 
+        totalAmount: totalAmount,
+        items: mappedItems,
+        custEmail: email.trim(),
+        txtMobileNo: mobileNo.trim() || "",
+        creditBalance: consumeSearchResult.creditBalance,
+        itemNamesForEmail: itemsToConsume.map(i => i.itemName).join(', '), 
+    };
+    
+    try {
+        const response = await itPoswfService.executeManualConsumeRetail(executePayload);
+        
+        if (response.success) {
+            setConsumeSearchResult(null);
+            setEmail("");
+            setInvoiceNo("");
+            toast({ 
+                title: "Consumption Success", 
+                description: `Retail consumption executed successfully. New Invoice: ${response.data?.invoiceNo || 'N/A'}`,
+                variant: "default"
+            });
+        } else {
+            throw new Error(response.error || "Consumption failed.");
+        }
+    } catch (error) {
+        console.error("Retail Consume Execute Error:", error);
+        toast({
+            title: "Consumption Failed",
+            description: error instanceof Error ? error.message : "An unexpected error occurred during execution.",
+            variant: "destructive"
+        });
+    } finally {
+        setIsExecuting(false);
+    }
+  }
+
+
+  const retailItemColumns: TableColumn<RetailItem>[] = [
+    { header: "Item ID", accessor: "itemID", cell: (value) => <span className="font-medium">{value}</span> },
+    { header: "Item Name", accessor: "itemName" },
+    { header: "Barcode", accessor: "barcode" },
+    { header: "Category", accessor: "categoryCode" },
+    { header: "Subcategory", accessor: "subcategoryCode" },
+    { header: "Unit Price (RM)", accessor: "unitPrice", cell: (value) => `RM ${(value ?? 0).toFixed(2)}` },
   ]
   
-  const totalActiveTickets = consumeSearchResult?.tickets.filter(t => t.PackageStatus.toLowerCase() === 'active').length ?? 0;
-  const totalExpiredTickets = consumeSearchResult?.tickets.filter(t => t.PackageStatus.toLowerCase() === 'expired').length ?? 0;
+  const displayTotalAmount = consumeSearchResult?.items.reduce(
+      (sum, item) => sum + (item.unitPrice ?? 0), 0
+  ) ?? 0;
 
   return (
     <>
       <Card>
         <CardContent>
+          {/* Using grid-cols-3 for the compact layout */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             
-            {/* 1. Consume Type (R1, C1) */}
+            {/* R1, C1: Consume Type */}
             <div className="space-y-2">
               <Label htmlFor="consumeType" className="text-sm font-medium">
                 Consume Type
@@ -300,7 +328,7 @@ export default function ManualConsumeTab() {
               </Select>
             </div>
 
-            {/* 2. Email Address (R1, C2) */}
+            {/* R1, C2: Email Address */}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium">
                 Email Address <span className="text-muted-foreground">{isSuperApp ? "(Required)" : "(Disabled)"}</span>
@@ -316,7 +344,7 @@ export default function ManualConsumeTab() {
               />
             </div>
 
-            {/* 3. Mobile No (R1, C3) */}
+            {/* R1, C3: Mobile No */}
             <div className="space-y-2">
               <Label htmlFor="mobileNo" className="text-sm font-medium">
                 Mobile No <span className="text-muted-foreground">{isSuperApp ? "(Optional)" : "(Disabled)"}</span>
@@ -332,7 +360,7 @@ export default function ManualConsumeTab() {
               />
             </div>
             
-            {/* 4. Invoice No (R2, C1) */}
+            {/* R2, C1: Invoice No */}
             <div className="space-y-2">
               <Label htmlFor="invoiceNo" className="text-sm font-medium">
                 Invoice No <span className="text-muted-foreground">{isReceipt ? "(Required)" : "(Disabled)"}</span>
@@ -347,7 +375,7 @@ export default function ManualConsumeTab() {
               />
             </div>
 
-            {/* 5. Terminal Search Input (R2, C2) */}
+            {/* R2, C2: Terminal Search Input */}
             <div className="space-y-2">
               <Label htmlFor="terminal-search-input" className="text-sm font-medium">
                 Terminal Search
@@ -363,7 +391,7 @@ export default function ManualConsumeTab() {
               />
             </div>
 
-            {/* 6. Terminal ID Select (R2, C3) - Filtered Select */}
+            {/* R2, C3: Select Terminal ID */}
             <div className="space-y-2">
               <Label htmlFor="terminalId" className="text-sm font-medium">
                 Select Terminal ID
@@ -391,48 +419,45 @@ export default function ManualConsumeTab() {
                 </SelectContent>
               </Select>
             </div>
-
-            {/* 7. Ticket Type (R3, C1) */}
+            
+            {/* R3, C1: Item Name */}
             <div className="space-y-2">
-              <Label htmlFor="ticketType" className="text-sm font-medium">
-                Ticket Type
+              <Label htmlFor="itemName" className="text-sm font-medium">
+                Item Name
               </Label>
-              <Select value={ticketType} onValueChange={setTicketType}>
-                <SelectTrigger id="ticketType" className="h-11">
-                  <SelectValue placeholder="Select ticket type" />
+              <Input
+                id="itemName"
+                placeholder="Enter item name (e.g., 'Tempura Nuggets')"
+                value={itemName}
+                onChange={(e) => setItemName(e.target.value)}
+                className="h-11"
+              />
+            </div>
+
+            {/* R3, C2: Terminal Group ID */}
+            <div className="space-y-2">
+              <Label htmlFor="tGroupId" className="text-sm font-medium">
+                Terminal Group ID
+              </Label>
+              <Select value={tGroupId} onValueChange={setTGroupId}>
+                <SelectTrigger id="tGroupId" className="h-11">
+                  <SelectValue placeholder="Select group" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ticket">Ticket</SelectItem>
-                  <SelectItem value="credit">Credit</SelectItem>
-                  <SelectItem value="reward">Reward</SelectItem>
+                  <SelectItem value="1">1 (I-City)</SelectItem>
+                  <SelectItem value="2">2 (JV Partner)</SelectItem>
+                  <SelectItem value="3">3 (Photo Booth)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {/* 8. Ticket Status (R3, C2) */}
-            <div className="space-y-2">
-              <Label htmlFor="ticketStatus" className="text-sm font-medium">
-                Ticket Status
-              </Label>
-              <Select value={ticketStatus} onValueChange={setTicketStatus}>
-                <SelectTrigger id="ticketStatus" className="h-11">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="unused">Unused</SelectItem>
-                  <SelectItem value="expired">Expired</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* 9. Search Button (R3, C3) - Aligned to the far right of the remaining area */}
+            {/* R3, C3: Search Button - Aligned to the far right */}
             <div className="space-y-2 flex flex-col justify-end items-end"> 
               <div className="h-6"></div>
              <Button 
                 onClick={handleConsumeSearch} 
                 disabled={isConsumeSearching} 
-                className="h-11 w-40" // Fixed width button
+                className="h-11 w-40" 
              >
                 <Search className="mr-2 h-4 w-4" />
                 {isConsumeSearching ? "Searching..." : "Search"}
@@ -445,55 +470,43 @@ export default function ManualConsumeTab() {
 
       {consumeSearchResult && (
         <>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-1">
             <BalanceCard
               title="Credit Balance"
               amount={consumeSearchResult.creditBalance}
-              description="Available balance"
+              description="Available balance for consumption"
               icon={Wallet}
               valueColor="text-green-600"
             />
-            <Card>
-              <CardContent className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-medium">Ticket Summary</div>
-                    <AlertTriangle className="h-4 w-4 text-orange-500" />
-                  </div>
-                  <div className={`text-2xl font-bold`}>
-                      {totalActiveTickets} Active, {totalExpiredTickets} Expired
-                  </div>
-                  <p className="text-xs text-muted-foreground">Only active tickets can be consumed.</p>
-              </CardContent>
-            </Card>
           </div>
 
           <Card>
             <CardContent className="space-y-4">
-              <div className="text-sm font-medium">Available Packages/Tickets ({consumeSearchResult.tickets.length})</div>
+              <div className="text-sm font-medium">Available Retail Items ({consumeSearchResult.items.length})</div>
               
               <div className="overflow-y-auto max-h-[300px] border border-border rounded-lg">
                 <DataTable
-                  columns={ticketColumns}
-                  data={consumeSearchResult.tickets}
+                  columns={retailItemColumns}
+                  data={consumeSearchResult.items}
                   keyExtractor={(row) => row.id}
-                  emptyMessage="No available tickets found"
+                  emptyMessage="No available retail items found"
                 />
               </div>
               
               <div className="border-t pt-4 space-y-3">
-                <Button 
-                    onClick={handleConsumeExecute} 
-                    disabled={isExecuting || isExecutionBlocked} 
-                    className="w-full"
-                >
-                    {isExecuting ? "Executing..." : "Execute Consumption"}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Total Item Price</span>
+                  </div>
+                  <span className="text-lg font-semibold">
+                    RM {displayTotalAmount.toFixed(2)}
+                  </span>
+                </div>
+                
+                <Button onClick={handleConsumeExecute} disabled={isExecuting} className="w-full">
+                    {isExecuting ? "Executing..." : "Execute Retail Consume"}
                 </Button>
-                {isExecutionBlocked && (
-                     <div className="text-center text-sm text-red-500 font-medium flex items-center justify-center gap-2">
-                        <AlertTriangle className="w-4 h-4" />
-                        Execution blocked: No active tickets found.
-                    </div>
-                )}
               </div>
             </CardContent>
           </Card>

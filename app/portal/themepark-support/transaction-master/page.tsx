@@ -9,8 +9,8 @@ import { XCircle, Wallet, CheckCircle2, ShoppingBag, Settings } from "lucide-rea
 import VoidTransactionTab from "@/components/themepark-support/tabs/Transaction/voidTransactionTab"
 import ResyncTransactionTab from "@/components/themepark-support/tabs/Transaction/ResyncTransactionTab"
 import ShopifyOrderTab from "@/components/themepark-support/tabs/Transaction/ShopifyOrderTab"
-import ManualConsumeTab from "@/components/themepark-support/tabs/Ticket/ManualConsumeTab" // Reused component
 import ConsumeTerminalTab from "@/components/themepark-support/tabs/Transaction/ConsumeTerminalTab"
+import RetailManualConsumeTab from "@/components/themepark-support/tabs/Transaction/RetailManualConsumeTab"
 
 export default function TransactionMasterPage() {
   return (
@@ -26,8 +26,8 @@ export default function TransactionMasterPage() {
             <TabsTrigger value="void-transaction" className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px relative data-[state=active]:z-10">
               <XCircle className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> Void Transaction
             </TabsTrigger>
-            <TabsTrigger value="manual-consume" className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px -ml-px relative data-[state=active]:z-10">
-              <Wallet className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> Manual Consume
+            <TabsTrigger value="retail-manual-consume" className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px -ml-px relative data-[state=active]:z-10">
+              <Wallet className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> Retail/F&B Consume
             </TabsTrigger>
             <TabsTrigger value="resync-transaction" className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px -ml-px relative data-[state=active]:z-10">
               <CheckCircle2 className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> Resync Transaction
@@ -42,7 +42,7 @@ export default function TransactionMasterPage() {
         </div>
 
         <TabsContent value="void-transaction" className="mt-0 space-y-6"><VoidTransactionTab /></TabsContent>
-        <TabsContent value="manual-consume" className="mt-0 space-y-6"><ManualConsumeTab /></TabsContent>
+        <TabsContent value="retail-manual-consume" className="mt-0 space-y-6"><RetailManualConsumeTab /></TabsContent>
         <TabsContent value="resync-transaction" className="mt-0 space-y-6"><ResyncTransactionTab /></TabsContent>
         <TabsContent value="shopify-order" className="mt-0 space-y-6"><ShopifyOrderTab /></TabsContent>
         <TabsContent value="consume-terminal" className="mt-0 space-y-6"><ConsumeTerminalTab /></TabsContent>

@@ -14,9 +14,13 @@ import {
     Terminal,
     TerminalSearchPayload,
     PasswordData,
-    ManualConsumeData,
+    RetailManualConsumeSearchPayload,
+    RetailManualConsumeData,
     ManualConsumeSearchPayload, 
-    ConsumeExecutePayload,
+    ConsumeExecutePayload, 
+    ConsumeTicketItem,
+    TicketConsumeExecutePayload,
+    ManualConsumeData,
     ConsumeExecuteItem, 
     BalanceDetail,
     DeactivatableTicket,
@@ -31,6 +35,8 @@ const ENDPOINTS = {
     VOID_EXECUTE: "/proxy-void/execute",
     RESYNC_TRANSACTION: "/proxy-resync-transaction",
     SEARCH_SHOPIFY_ORDER: "/proxy-search-shopify-order",
+    MANUAL_CONSUME_RETAIL_SEARCH: "/proxy-manual-consume/retail/search",
+    MANUAL_CONSUME_RETAIL_EXECUTE: "/proxy-manual-consume/retail/execute",
     
     //Attraction Master
     TERMINAL_SEARCH: "/proxy-terminal/search", 
@@ -45,10 +51,8 @@ const ENDPOINTS = {
     EXTEND_EXPIRY_SEARCH: "/proxy-extend-expiry/search",
     QR_PASSWORD_SEARCH: "/proxy-qr-password/search", 
     QR_PASSWORD_RESET: "/proxy-qr-password/reset",
-    
     MANUAL_CONSUME_TICKET_SEARCH: "/proxy-manual-consume/ticket/search", 
-
-    MANUAL_CONSUME_RETAIL_EXECUTE: "/proxy-manual-consume/retail/execute",
+    MANUAL_CONSUME_TICKET_EXECUTE: "/proxy-manual-consume/ticket/execute", 
     
     //Account Master
     SEARCH_ACCOUNTS: "/proxy-account/search",
@@ -248,6 +252,31 @@ export const itPoswfService = {
         return response;
     },
 
+    // NEW: Search Manual Consume Data (RETAIL) ---
+    searchManualConsumeRetail: async (payload: RetailManualConsumeSearchPayload): Promise<ApiResponse<RetailManualConsumeData>> => {
+        const response = await apiClient.post<RetailManualConsumeData>(ENDPOINTS.MANUAL_CONSUME_RETAIL_SEARCH, payload);
+
+        if (!response.success) {
+            return {
+                success: false,
+                error: response.error || "Failed to search manual retail consume data."
+            };
+        }
+        return response;
+    },
+
+    // Execute Manual Consume (RETAIL) ---
+    executeManualConsumeRetail: async (payload: ConsumeExecutePayload): Promise<ApiResponse<{ invoiceNo: string }>> => {
+        const response = await apiClient.post<{ invoiceNo: string }>(ENDPOINTS.MANUAL_CONSUME_RETAIL_EXECUTE, payload);
+
+        if (!response.success) {
+            return {
+                success: false,
+                error: response.error || "Failed to execute manual retail consume."
+            };
+        }
+        return { success: true, data: response.data }; 
+    },
 
     // ADDED TICKET EXPIRY FIND FUNCTION
     findExtendableTickets: async (searchQuery: string): Promise<ApiResponse<ExtendTicketData[]>> => {
@@ -367,6 +396,26 @@ export const itPoswfService = {
         return response;
     },
 
+    executeManualConsume: async (payload: TicketConsumeExecutePayload): Promise<ApiResponse<{ message: string }>> => {
+        // This function sends the specific ticket consumption payload to the Ticket proxy
+        const response = await apiClient.post<{ message: string }>(ENDPOINTS.MANUAL_CONSUME_TICKET_EXECUTE, payload);
+
+        if (!response.success) {
+             // Handle the specific error status from the proxy (409 Conflict)
+            const isConflict = response.error && response.error.includes("already consumed or has an invalid status");
+            if (isConflict) {
+                 return { success: false, error: "Ticket/Package is already consumed or has an invalid status." };
+            }
+            
+            return {
+                success: false,
+                error: response.error || "Failed to execute manual ticket consume."
+            };
+        }
+        
+        return { success: true, data: response.data }; 
+    },
+
     //Fetches a list of terminals for dropdowns (Manual Consume Terminal ID Select).
     //This uses a non-filtered search query (or a very broad one).
     fetchAllTerminals: async (): Promise<ApiResponse<Terminal[]>> => {
@@ -386,21 +435,6 @@ export const itPoswfService = {
             };
         }
         return response;
-    },
-
-    // --- NEW: Execute Manual Consume Retail ---
-    executeManualConsume: async (payload: ConsumeExecutePayload): Promise<ApiResponse<{ invoiceNo: string }>> => {
-        // This function sends the complex execution payload
-        const response = await apiClient.post<{ invoiceNo: string }>(ENDPOINTS.MANUAL_CONSUME_RETAIL_EXECUTE, payload);
-
-        if (!response.success) {
-            return {
-                success: false,
-                error: response.error || "Failed to execute manual consume."
-            };
-        }
-        // Assuming backend response contains { invoiceNo: "..." }
-        return { success: true, data: response.data }; 
     },
 
     // NEW FUNCTION FOR ACCOUNT MANAGEMENT SEARCH
