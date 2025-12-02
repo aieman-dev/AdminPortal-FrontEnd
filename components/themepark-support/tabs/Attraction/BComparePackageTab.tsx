@@ -1,6 +1,6 @@
 // components/themepark-support/tabs/Attraction/BComparePackageTab.tsx
 "use client"
-import { useState, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { DivideCircle, Search, Copy } from "lucide-react"
 import { Label } from "@/components/ui/label"
@@ -11,26 +11,19 @@ import { DataTable, type TableColumn } from "@/components/themepark-support/it-p
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
+import { packageService } from "@/services/package-services" 
 
-// Mock Package Type (Reusing ItPoswfPackage structure for table display)
+// Interface is defined in type/themepark-support.ts (using minimal interface here)
 interface SelectableItPoswfPackage {
-    id: string; // Unique ID
+    id: string;
     packageId: string | number;
     packageName: string;
     packageType: string;
     price: number;
-    status: string; // Active | Inactive
-    lastValidDate: string;
-    syncStatus: "Pending" | "Synced" | "Error"; // Strict string literal type
+    status: string;
+    lastValidDate: string; // Retained for model consistency, but not displayed
+    syncStatus: "Pending" | "Synced" | "Error";
 }
-
-const mockPackages: SelectableItPoswfPackage[] = [
-    { id: "1", packageId: 1001, packageName: "Daily Pass Ticket", packageType: "Ticket", price: 150.00, status: "Active", lastValidDate: "2026-12-31", syncStatus: "Pending" },
-    { id: "2", packageId: 2005, packageName: "Premium Point Pack", packageType: "Point", price: 50.00, status: "Active", lastValidDate: "2026-12-31", syncStatus: "Synced" },
-    { id: "3", packageId: 1002, packageName: "Kid's Entry Ticket", packageType: "Ticket", price: 90.00, status: "Inactive", lastValidDate: "2025-06-01", syncStatus: "Pending" },
-    { id: "4", packageId: 3010, packageName: "Annual Reward Bonus", packageType: "Reward", price: 0.00, status: "Active", lastValidDate: "2027-01-01", syncStatus: "Pending" },
-    { id: "5", packageId: 2006, packageName: "Standard Point Pack", packageType: "Point", price: 25.00, status: "Active", lastValidDate: "2026-12-31", syncStatus: "Error" },
-];
 
 export default function BComparePackageTab() {
     const { toast } = useToast();
@@ -41,35 +34,45 @@ export default function BComparePackageTab() {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isSyncing, setIsSyncing] = useState(false);
 
-    const filteredResults = useMemo(() => {
+    const packagesToDisplay = useMemo(() => {
         return results.filter(p =>
-            p.packageName.toLowerCase().includes(searchQuery.toLowerCase()) &&
-            (packageType === "all" || p.packageType.toLowerCase() === packageType.toLowerCase())
+            p.packageName.toLowerCase().includes(searchQuery.toLowerCase())
         );
-    }, [searchQuery, packageType, results]);
+    }, [searchQuery, results]);
 
-    const handleSearch = () => {
+    const fetchUnsyncedPackages = async () => {
         setIsSearching(true);
         setSelectedIds(new Set());
         
-        // Simulate search logic (MOCK)
-        setTimeout(() => {
-            const finalResults = mockPackages.filter(p =>
-                p.packageName.toLowerCase().includes(searchQuery.toLowerCase()) &&
-                (packageType === "all" || p.packageType.toLowerCase() === packageType.toLowerCase())
+        try {
+            const typeFilter = packageType === "all" ? undefined : packageType;
+
+            const response = await packageService.getUnsyncedPackages(
+                typeFilter as any,
+                searchQuery
             );
-            setResults(finalResults);
-            setIsSearching(false);
-            if (finalResults.length === 0) {
-                 toast({ title: "Search Complete", description: "No packages found matching the criteria." });
+            
+            if (response.success && response.data) {
+                setResults(response.data);
+                 if (response.data.length === 0) {
+                    toast({ title: "Search Complete", description: "No unsynced packages found matching the criteria." });
+                }
+            } else {
+                setResults([]);
+                toast({ title: "Search Failed", description: response.error || "Could not retrieve packages.", variant: "destructive" });
             }
-        }, 500);
+        } catch (error) {
+            console.error("API Search Error:", error);
+            toast({ title: "Network Error", description: "Failed to connect to the package service.", variant: "destructive" });
+        } finally {
+            setIsSearching(false);
+        }
     };
 
-    // Auto-load initial data
-    useState(() => {
-        handleSearch();
-    });
+    // Load initial data
+    useEffect(() => {
+        fetchUnsyncedPackages();
+    }, []); 
 
     const handleSelect = (id: string, isChecked: boolean) => {
         setSelectedIds(prev => {
@@ -85,7 +88,7 @@ export default function BComparePackageTab() {
 
     const handleSelectAll = (isChecked: boolean) => {
         if (isChecked) {
-            const allIds = new Set(filteredResults.map(p => p.id));
+            const allIds = new Set(packagesToDisplay.map(p => p.id));
             setSelectedIds(allIds);
         } else {
             setSelectedIds(new Set());
@@ -93,9 +96,9 @@ export default function BComparePackageTab() {
     };
     
     const packagesToSyncCount = Array.from(selectedIds).length;
-    const isAllSelected = packagesToSyncCount === filteredResults.length && filteredResults.length > 0;
+    const isAllSelected = packagesToSyncCount === packagesToDisplay.length && packagesToDisplay.length > 0;
 
-    const handleSync = () => {
+    const handleSync = async () => {
         if (packagesToSyncCount === 0) {
             toast({ title: "No Packages Selected", description: "Please select packages to sync.", variant: "default" });
             return;
@@ -103,31 +106,40 @@ export default function BComparePackageTab() {
 
         setIsSyncing(true);
         
-        // MOCK: Simulate sync API call
-        setTimeout(() => {
-            const syncedPackages = Array.from(selectedIds).map(id => results.find(p => p.id === id)?.packageName);
-            const updatedResults = results.map(p => {
-                if (selectedIds.has(p.id) && p.syncStatus !== "Synced") {
-                    return { ...p, syncStatus: "Synced" as "Synced" };
-                }
-                return p;
-            });
-            setResults(updatedResults);
-            setSelectedIds(new Set());
-            setIsSyncing(false);
+        try {
+            const idsToSync = Array.from(selectedIds).map(id => Number(id));
             
-            // Notification changed to Toast only, 5 seconds duration
+            const response = await packageService.syncPackages(idsToSync);
+            
+            if (response.success && response.data) {
+                setSelectedIds(new Set());
+                
+                toast({ 
+                    title: "Sync Complete", 
+                    description: response.data.message,
+                    duration: 5000, 
+                });
+
+                await fetchUnsyncedPackages();
+            } else {
+                throw new Error(response.error || "Sync API failed to return success status.")
+            }
+        } catch (error) {
+            console.error("Sync Execute Error:", error);
             toast({ 
-                title: "Sync Complete", 
-                description: `Successfully initiated sync for ${packagesToSyncCount} package(s): ${syncedPackages.join(', ')}.`,
-                duration: 5000, 
+                title: "Sync Failed", 
+                description: error instanceof Error 
+                    ? error.message.includes("500") ? "Internal Server Error during sync execution." : error.message
+                    : "An unexpected error occurred during sync. Check console for details.",
+                variant: "destructive"
             });
-        }, 1500);
+        } finally {
+            setIsSyncing(false);
+        }
     };
 
     const columns: TableColumn<SelectableItPoswfPackage>[] = [
         { 
-            // FIX: Header must be a string. Using "Select" and the checkbox goes in the cell.
             header: "Select", 
             accessor: "id", 
             cell: (value, row) => (
@@ -145,7 +157,7 @@ export default function BComparePackageTab() {
         { header: "Package Type", accessor: "packageType", cell: (value) => <StatusBadge status={value} /> },
         { header: "Price", accessor: "price", cell: (value) => `RM ${(value ?? 0).toFixed(2)}` },
         { header: "Status", accessor: "status", cell: (value) => <StatusBadge status={value} /> },
-        { header: "Last Valid Date", accessor: "lastValidDate" },
+        // REMOVED: { header: "Last Valid Date", accessor: "lastValidDate" },
         { header: "Sync Status", accessor: "syncStatus", cell: (value) => {
             const statusLower = (value as string).toLowerCase();
             let color = "bg-gray-500/10 text-gray-500";
@@ -170,7 +182,7 @@ export default function BComparePackageTab() {
                                 placeholder="Enter package name"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                                onKeyDown={(e) => e.key === "Enter" && fetchUnsyncedPackages()} 
                                 className="h-11 flex-1"
                             />
                             <div className="w-[200px]">
@@ -180,13 +192,13 @@ export default function BComparePackageTab() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Types</SelectItem> 
-                                        <SelectItem value="Ticket">Ticket</SelectItem>
+                                        <SelectItem value="Entry">Entry</SelectItem>
                                         <SelectItem value="Point">Point</SelectItem>
                                         <SelectItem value="Reward">Reward</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <Button onClick={handleSearch} disabled={isSearching} className="h-11 px-8">
+                            <Button onClick={fetchUnsyncedPackages} disabled={isSearching} className="h-11 px-8">
                                 <Search className="mr-2 h-4 w-4" />
                                 {isSearching ? "Searching..." : "Search"}
                             </Button>
@@ -206,23 +218,24 @@ export default function BComparePackageTab() {
                     <div className="overflow-y-auto max-h-[400px] border border-border rounded-lg">
                         <DataTable
                             columns={columns}
-                            data={filteredResults}
-                            keyExtractor={(row) => row.id}
+                            data={packagesToDisplay}
+                            keyExtractor={(row, index) => `${row.id}-${index}`}
                             emptyMessage={isSearching ? "Searching..." : "No packages found matching criteria."}
                         />
                     </div>
                     
                     <div className="flex justify-between items-center border-t pt-4">
                         <p className="text-sm text-muted-foreground">
-                            {filteredResults.length} total packages found.
+                            {packagesToDisplay.length} total unsynced packages found.
                         </p>
                         <div className="flex gap-3">
                            {/* Select All Button */}
-                           {filteredResults.length > 0 && (
+                           {packagesToDisplay.length > 0 && (
                              <Button 
                                 variant="outline"
                                 onClick={() => handleSelectAll(!isAllSelected)} 
                                 className="h-11 px-6"
+                                disabled={isSyncing}
                              >
                                 {isAllSelected ? "Deselect All" : "Select All"}
                              </Button>
@@ -230,7 +243,6 @@ export default function BComparePackageTab() {
                            <Button 
                                 onClick={handleSync} 
                                 disabled={isSyncing || packagesToSyncCount === 0} 
-                                // Button styling to Indigo/Primary theme
                                 className="h-11 px-6 bg-indigo-600 hover:bg-indigo-700 text-primary-foreground"
                             >
                                 <Copy className="mr-2 h-4 w-4" />

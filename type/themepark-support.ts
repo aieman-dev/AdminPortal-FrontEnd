@@ -295,3 +295,53 @@ export interface TicketDeactivatePayload {
 export interface ConsumptionDeactivatePayload {
     consumptionNo: string;
 }
+
+//Terminal History Interfaces
+export interface TerminalPurchaseHistory {
+  id: string; // Unique ID
+  terminalID: string;
+  invoiceNo: string;
+  amount: number;
+  customerEmail: string;
+  packageName: string;
+  purchaseDate: string;
+  paymentStatus: "Paid" | "Pending" | "Refund";
+}
+
+export interface TerminalConsumeHistory {
+  id: string; // Unique ID
+  terminalID: string;
+  consumptionNo: string;
+  itemConsumed: string;
+  quantity: number;
+  consumeDate: string;
+  status: "Consumed" | "Deactivated";
+}
+
+export interface TerminalHistoryData {
+    purchaseHistory: TerminalPurchaseHistory[];
+    consumeHistory: TerminalConsumeHistory[];
+}
+
+export interface UnsyncedPackageDTO {
+    packageID: number;
+    packageName: string;
+    packageType: "Entry" | "Point" | "Reward" | string;
+    packageItemID: number;
+    itemName: string;
+    primaryTerminalID: number;
+    secondaryTerminalID: number;
+    status: string;
+}
+
+// NEW: Front-end model used in BCompareTab (Selectable list)
+export interface SelectableItPoswfPackage {
+    id: string; 
+    packageId: string | number;
+    packageName: string;
+    packageType: string;
+    price: number;
+    status: string;
+    lastValidDate: string;
+    syncStatus: "Pending" | "Synced" | "Error";
+}
