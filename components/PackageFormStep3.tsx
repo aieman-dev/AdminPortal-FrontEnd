@@ -1,3 +1,4 @@
+// components/PackageFormStep3.tsx
 "use client";
 import React, { useState } from "react";
 import { PackageFormData } from "../type/packages";
@@ -19,11 +20,13 @@ function calculateValidDays(effectiveDate: string, lastValidDate: string): numbe
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
 
+// FIX: Use a static local path for the default image to prevent external connectivity errors.
+const DEFAULT_FALLBACK_IMAGE = "/packages/DefaultPackageImage.png";
+
 const PackageFormStep3: React.FC<Props> = ({ form, onBack, onSubmit, onSaveDraft }) => {
   const [activeTab, setActiveTab] = useState<"overview" | "items">("overview");
   const isPointMode = form.packageType === "Point";
   const validDays = calculateValidDays(form.effectiveDate, form.lastValidDate);
-  const DEFAULT_IMAGE = "https://endodermal-tiffaney-scalelike.ngrok-free.dev/images/aieman.jpg";
 
   return (
     <div className="px-4 md:px-8 py-6">
@@ -52,10 +55,12 @@ const PackageFormStep3: React.FC<Props> = ({ form, onBack, onSubmit, onSaveDraft
               src={
                 form.imageID instanceof File 
                   ? URL.createObjectURL(form.imageID)
-                  : (typeof form.imageID === "string" && form.imageID !== "" ? form.imageID : DEFAULT_IMAGE)
+                  // Use static fallback if imageID is a string but falsy/empty
+                  : (typeof form.imageID === "string" && form.imageID !== "" ? form.imageID : DEFAULT_FALLBACK_IMAGE)
               }
               alt={form.packageName}
-              onError={(e) => (e.currentTarget.src = DEFAULT_IMAGE)}
+              // FIX: Use the stable local fallback on image loading error
+              onError={(e) => (e.currentTarget.src = DEFAULT_FALLBACK_IMAGE)}
               className="w-60 h-60 rounded-xl object-cover shadow-md bg-muted"
             />
           </div>
@@ -97,8 +102,6 @@ const PackageFormStep3: React.FC<Props> = ({ form, onBack, onSubmit, onSaveDraft
               <div>
                 {/* Titles now align vertically */}
                 <h4 className="font-semibold mb-3 text-foreground border-b border-border pb-1">Validity</h4>
-                
-                {/* REMOVED: The unnecessary vertical space */}
                 
                 {/* Details: Shorter fixed width w-[100px] */}
                 <p className="mb-2">

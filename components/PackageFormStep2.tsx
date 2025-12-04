@@ -5,6 +5,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { PackageFormData, PackageItem } from "../type/packages";
 import { Loader2 } from "lucide-react";
 import { getAuthToken } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast"
 
 type Props = {
   form: PackageFormData;
@@ -26,6 +27,7 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<PackageItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   // FIX 3: Check if the package type is point-based (Point or Reward P)
   const isPointMode = form.packageType === "Point" || form.packageType === "Reward P";
@@ -86,7 +88,22 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
 
   const handleItemChange = (item: PackageItem, field: "price" | "point" | "entryQty", value: string) => {
     if (!isSelected(item.attractionId!)) toggleSelect(item);
-    const numVal = Math.max(Number(value) || 0, field === "entryQty" ? 1 : 0);
+    let numVal = Number(value) || 0;
+
+    if (isPointMode && (field === "point") && value.includes('.')) {
+        numVal = Math.floor(numVal); // Remove decimals by flooring
+        
+        // Show Toast
+        toast({ 
+            title: "Point Value Adjusted", 
+            description: "Points must be whole numbers (no decimals). Value has been adjusted.", 
+            variant: "default" 
+        });
+    }
+
+    // Ensure non-negative and minimum quantity is 1
+    numVal = Math.max(numVal, field === "entryQty" ? 1 : 0);
+
     setForm((prev) => ({
       ...prev,
       packageitems: prev.packageitems.map((s) =>
@@ -97,12 +114,13 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
 
   useEffect(() => {
     const total = form.packageitems.reduce((sum, item) => {
-      // FIX 3: Calculation logic based on isPointMode
       const val = isPointMode ? (item.point || 0) : (item.price || 0);
-      return sum + val * (item.entryQty || 0);
+      // Logic changed from sum + (val * qty) to sum + val
+      return sum + val;
     }, 0);
     setForm((prev) => ({ ...prev, totalPrice: total }));
-  }, [form.packageitems, isPointMode, setForm]);
+  }, [form.packageitems, isPointMode, setForm]
+);
 
   // Helper to determine display text for mode
   const getModeDisplayText = () => {

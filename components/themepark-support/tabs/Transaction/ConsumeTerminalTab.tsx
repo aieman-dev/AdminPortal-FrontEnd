@@ -14,8 +14,8 @@ import { useToast } from "@/hooks/use-toast"
 import { itPoswfService } from "@/services/themepark-support"
 import { 
     type Terminal, 
-    type TerminalPurchaseHistory, 
-    type TerminalConsumeHistory 
+    type TerminalTransaction, 
+    type TerminalHistoryData 
 } from "@/type/themepark-support"
 
 // Date formatter reuse
@@ -40,13 +40,14 @@ export default function ConsumeTerminalTab() {
     const [selectedTerminalId, setSelectedTerminalId] = useState<string>("")
 
     // History Search States
-    const [purchaseHistory, setPurchaseHistory] = useState<TerminalPurchaseHistory[]>([])
-    const [consumeHistory, setConsumeHistory] = useState<TerminalConsumeHistory[]>([])
+    const [purchaseHistory, setPurchaseHistory] = useState<TerminalTransaction[]>([])
+    const [consumeHistory, setConsumeHistory] = useState<TerminalTransaction[]>([])
     const [isHistorySearching, setIsHistorySearching] = useState(false)
 
 
     // --- Terminal Search Logic with Debounce ---
     useEffect(() => {
+        // ... (fetchFilteredTerminals useEffect remains the same) ...
         const fetchFilteredTerminals = async () => {
             setIsTerminalLoading(true);
             setSelectedTerminalId(""); 
@@ -79,10 +80,23 @@ export default function ConsumeTerminalTab() {
         }
     }, [filteredTerminals, selectedTerminalId]);
 
+    // NEW: Computed property for button enablement check (available to the render function)
+    const matchingTerminal = filteredTerminals.find(t => 
+        t.id === terminalSearchQuery.trim() || 
+        t.terminalName.toLowerCase() === terminalSearchQuery.trim().toLowerCase()
+    );
+
     // --- Main History Search Logic ---
     const handleHistorySearch = async () => {
-        if (!selectedTerminalId) {
-            toast({ title: "Input Required", description: "Please select a Terminal ID.", variant: "default" });
+        let finalTerminalId = selectedTerminalId;
+        
+        // 1. If no explicit selection, but a direct match was found (by the new computed logic), use that ID.
+        if (!finalTerminalId && matchingTerminal) {
+            finalTerminalId = matchingTerminal.id;
+        }
+
+        if (!finalTerminalId) {
+            toast({ title: "Input Required", description: "Please enter or select a valid Terminal ID.", variant: "default" });
             return;
         }
 
@@ -91,11 +105,16 @@ export default function ConsumeTerminalTab() {
         setConsumeHistory([]);
 
         try {
-            const response = await itPoswfService.searchTerminalHistory(selectedTerminalId);
+            const response = await itPoswfService.searchTerminalHistory(finalTerminalId);
 
             if (response.success && response.data) {
                 setPurchaseHistory(response.data.purchaseHistory);
                 setConsumeHistory(response.data.consumeHistory);
+                
+                // OPTIONAL: Auto-select the terminal ID after a successful search if it wasn't selected before
+                if (finalTerminalId && finalTerminalId !== selectedTerminalId) {
+                    setSelectedTerminalId(finalTerminalId);
+                }
 
                 if (response.data.purchaseHistory.length === 0 && response.data.consumeHistory.length === 0) {
                      toast({ title: "Search Complete", description: "No history found for this terminal." });
@@ -114,24 +133,19 @@ export default function ConsumeTerminalTab() {
     }
 
     // --- DataTable Column Definitions ---
-    const purchaseColumns: TableColumn<TerminalPurchaseHistory>[] = [
+    const commonColumns: TableColumn<TerminalTransaction>[] = [
+        { header: "Trx ID", accessor: "trxID", cell: (value) => <span className="font-medium">{value}</span> },
         { header: "Invoice No", accessor: "invoiceNo" },
-        { header: "Package Name", accessor: "packageName" },
-        { header: "Amount", accessor: "amount", cell: (value) => `RM ${value.toFixed(2)}` },
-        { header: "Customer Email", accessor: "customerEmail" },
-        { header: "Purchase Date", accessor: "purchaseDate", cell: (value) => formatHistoryDate(value) },
-        { header: "Status", accessor: "paymentStatus", cell: (value) => <StatusBadge status={value} /> },
+        { header: "Trx Type", accessor: "trxType", cell: (value) => <StatusBadge status={value} /> },
+        { header: "Amount", accessor: "amount", cell: (value) => `RM ${(value ?? 0).toFixed(2)}` },
+        { header: "Created Date", accessor: "createdDate", cell: (value) => formatHistoryDate(value) },
+        { header: "Status", accessor: "recordStatus", cell: (value) => <StatusBadge status={value} /> },
+        { header: "Created By", accessor: "createdBy" },
     ];
 
-    const consumeColumns: TableColumn<TerminalConsumeHistory>[] = [
-        { header: "Consumption No", accessor: "consumptionNo" },
-        { header: "Item Consumed", accessor: "itemConsumed" },
-        { header: "Quantity", accessor: "quantity" },
-        { header: "Terminal ID", accessor: "terminalID" },
-        { header: "Consume Date", accessor: "consumeDate", cell: (value) => formatHistoryDate(value) },
-        { header: "Status", accessor: "status", cell: (value) => <StatusBadge status={value} /> },
-    ];
-
+    // CORRECTED LOGIC: Button is enabled if a dropdown item is selected OR a direct match is found in the search results.
+    const isButtonDisabled = isHistorySearching || (!selectedTerminalId && !matchingTerminal);
+    
 
     return (
         <div className="space-y-6">
@@ -186,7 +200,9 @@ export default function ConsumeTerminalTab() {
                         {/* 3. Search Button */}
                         <div className="space-y-2 flex flex-col justify-end">
                             <div className="h-6"></div>
-                            <Button onClick={handleHistorySearch} disabled={isHistorySearching || !selectedTerminalId} className="h-11 px-8 w-full">
+                            <Button onClick={handleHistorySearch} 
+                                    disabled={isButtonDisabled} // NOW CORRECTLY USES matchingTerminal
+                                    className="h-11 px-8 w-full">
                                 <Search className="mr-2 h-4 w-4" />
                                 {isHistorySearching ? "Searching..." : "Search"}
                             </Button>
@@ -215,7 +231,7 @@ export default function ConsumeTerminalTab() {
                     <Card className="rounded-tl-none">
                         <CardContent>
                             <DataTable
-                                columns={purchaseColumns}
+                                columns={commonColumns}
                                 data={purchaseHistory}
                                 keyExtractor={(row) => row.id} 
                                 emptyMessage={isHistorySearching ? "Loading Purchase History..." : "No purchase records found for this terminal."}
@@ -228,7 +244,7 @@ export default function ConsumeTerminalTab() {
                     <Card className="rounded-tl-none">
                         <CardContent>
                             <DataTable
-                                columns={consumeColumns}
+                                columns={commonColumns}
                                 data={consumeHistory}
                                 keyExtractor={(row) => row.id}
                                 emptyMessage={isHistorySearching ? "Loading Consume History..." : "No consumption records found for this terminal."}

@@ -296,32 +296,27 @@ export interface ConsumptionDeactivatePayload {
     consumptionNo: string;
 }
 
-//Terminal History Interfaces
-export interface TerminalPurchaseHistory {
-  id: string; // Unique ID
-  terminalID: string;
+export interface TerminalTransaction {
+  id: string; // Unique ID (use trxID)
+  trxID: number;
   invoiceNo: string;
+  trxType: "Purchase" | "Consume" | string;
   amount: number;
-  customerEmail: string;
-  packageName: string;
-  purchaseDate: string;
-  paymentStatus: "Paid" | "Pending" | "Refund";
+  createdDate: string;
+  recordStatus: "Active" | "Voided" | string;
+  createdBy: string;
 }
 
-export interface TerminalConsumeHistory {
-  id: string; // Unique ID
-  terminalID: string;
-  consumptionNo: string;
-  itemConsumed: string;
-  quantity: number;
-  consumeDate: string;
-  status: "Consumed" | "Deactivated";
-}
+export type TerminalPurchaseHistory = TerminalTransaction & { packageName?: string, customerEmail?: string, paymentStatus?: string }; 
+export type TerminalConsumeHistory = TerminalTransaction & { itemConsumed?: string, quantity?: number, consumeDate?: string, status?: string };
+
+
 
 export interface TerminalHistoryData {
     purchaseHistory: TerminalPurchaseHistory[];
     consumeHistory: TerminalConsumeHistory[];
 }
+
 
 export interface UnsyncedPackageDTO {
     packageID: number;

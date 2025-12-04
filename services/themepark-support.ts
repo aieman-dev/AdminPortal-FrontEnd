@@ -12,6 +12,10 @@ import {
     VoidTransaction, 
     ExtendTicketData,
     Terminal,
+    TerminalTransaction,
+    TerminalPurchaseHistory,
+    TerminalHistoryData,
+    TerminalConsumeHistory,
     TerminalSearchPayload,
     PasswordData,
     RetailManualConsumeSearchPayload,
@@ -35,6 +39,7 @@ const ENDPOINTS = {
     VOID_EXECUTE: "/proxy-void/execute",
     RESYNC_TRANSACTION: "/proxy-resync-transaction",
     SEARCH_SHOPIFY_ORDER: "/proxy-search-shopify-order",
+    TRANSACTION_BY_TERMINAL: "/proxy-consume-history-by-terminal",
     MANUAL_CONSUME_RETAIL_SEARCH: "/proxy-manual-consume/retail/search",
     MANUAL_CONSUME_RETAIL_EXECUTE: "/proxy-manual-consume/retail/execute",
     
@@ -250,6 +255,51 @@ export const itPoswfService = {
             return { success: false, error: response.error || "Failed to resync transaction." };
         }
         return response;
+    },
+
+    // Search Transaction History by Terminal ID
+    searchTerminalHistory: async (terminalId: string): Promise<ApiResponse<TerminalHistoryData>> => {
+        const payload = {
+            terminalID: terminalId,
+        };
+
+        // Call the new proxy
+        const response = await apiClient.post<TerminalTransaction[]>(ENDPOINTS.TRANSACTION_BY_TERMINAL, payload);
+
+        if (!response.success || !response.data) {
+            return {
+                success: false,
+                error: response.error || "Failed to search terminal history."
+            };
+        }
+
+        // --- Client-side splitting and mapping ---
+        const purchaseHistory: TerminalTransaction[] = [];
+        const consumeHistory: TerminalTransaction[] = [];
+
+        response.data.forEach(trx => {
+            // Apply unique ID and filter by trxType
+            const mappedTrx = {
+                ...trx,
+                id: String(trx.trxID), // Use trxID as the unique ID for React key
+            }
+            
+            if (mappedTrx.trxType.toLowerCase() === 'purchase') {
+                // Cast to TerminalPurchaseHistory which is TerminalTransaction & some optional fields
+                purchaseHistory.push(mappedTrx as TerminalPurchaseHistory);
+            } else if (mappedTrx.trxType.toLowerCase() === 'consume') {
+                // Cast to TerminalConsumeHistory which is TerminalTransaction & some optional fields
+                consumeHistory.push(mappedTrx as TerminalConsumeHistory);
+            }
+        });
+        
+        return {
+            success: true,
+            data: {
+                purchaseHistory: purchaseHistory,
+                consumeHistory: consumeHistory,
+            },
+        };
     },
 
     // NEW: Search Manual Consume Data (RETAIL) ---

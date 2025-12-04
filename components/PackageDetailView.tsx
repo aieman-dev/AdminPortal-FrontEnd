@@ -18,21 +18,31 @@ interface PackageDetailViewProps {
   source: "pending" | "active"; // 'active' = Live DB, 'pending' = Request DB
 }
 
+const NATIONALITY_MAP = {
+  'L': 'Malaysia',
+  'F': 'International',
+};
+
 // FIX 2.1: Renamed from formatDate to formatDisplayDate (used for Effective Date)
 const formatDisplayDate = (dateString: string | undefined) => {
-  if (!dateString) return "—";
+  if (!dateString) return "—";
 
-  // Use the date part to create a date object at the start of the day
-  const date = new Date(dateString);
-  
-  return date.toLocaleString("en-GB", {
-    day: "2-digit", 
-    month: "short", 
-    year: "numeric",
-    hour: '2-digit', // Include time
-    minute: '2-digit', // Include time
-    hour12: true, // Use 24-hour format
-  }).replace(',', ' ');
+  // 1. Get the date part only (e.g., '2025-12-13')
+  const datePart = dateString.split('T')[0];
+
+  // 2. CRITICAL FIX: Construct Date object from YYYY-MM-DD (defaults to local midnight) 
+  // and explicitly set time to 00:00:00 to prevent internal shifting.
+  const date = new Date(datePart); 
+  date.setHours(0, 0, 0, 0);
+  
+  return date.toLocaleString("en-GB", {
+    day: "2-digit", 
+    month: "short", 
+    year: "numeric",
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: true,
+  }).replace(',', ' ');
 };
 
 // FIX 2.2: New helper for 3:00 AM next day logic (used for Last Valid Date)
@@ -217,9 +227,19 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
   const filteredItems = packageItems.filter((item: PackageItem) =>
     item.itemName.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  const displayPrice = packageData.price ?? packageData.totalPrice ?? 0;
-  const displayPoints = packageData.point ?? 0;
   const displayImage = getProxiedImageUrl(packageData.imageUrl || packageData.imageID);
+  
+  const isPointPackage = packageData.packageType?.toLowerCase().includes('point') || packageData.packageType?.toLowerCase().includes('reward p');
+
+  const primaryDisplayValue = isPointPackage
+  ? packageData.point ?? 0
+  : packageData.price ?? packageData.totalPrice ?? 0;
+
+  const priceContent = isPointPackage
+  ? `${Math.round(primaryDisplayValue).toLocaleString()} Pts`
+  : `RM ${primaryDisplayValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const priceDisplayValue = `<span style="color: #5B5FEF;">${priceContent}</span>`;
 
   return (
     <>
@@ -262,8 +282,10 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
 
             <div className="flex-1 space-y-4 ml-2">
               <div className="flex items-center gap-3">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {displayPrice > 0 ? `RM ${displayPrice.toLocaleString()}` : `${displayPoints} Pts`}
+                <h2 className="text-2xl font-bold dark:text-white">
+                  <span className="text-[#5B5FEF] dark:text-indigo-500">
+                    {priceContent} 
+                  </span>
                 </h2>
                 <span className={`px-3 py-1 rounded-full text-sm font-semibold ${packageData.status === "Active" ? "bg-green-100 text-green-700" : packageData.status === "Pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
                   {packageData.status}
@@ -289,7 +311,7 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
                 </div>
                 <div className="flex items-center gap-2">
                   <Globe className="text-indigo-600 dark:text-indigo-400" size={16} />
-                  <span>{packageData.nationality ?? "-"}</span>
+                  <span>{NATIONALITY_MAP[packageData.nationality as keyof typeof NATIONALITY_MAP] || packageData.nationality || "-"}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <User className="text-indigo-600 dark:text-indigo-400" size={16} />
@@ -428,7 +450,9 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-gray-600 dark:text-gray-400 text-sm">
-                          {(item.price ?? 0) > 0 ? `RM ${item.price}` : `${item.point ?? 0} Pts`}
+                          {(item.price ?? 0) > 0 
+                            ? `RM ${(item.price as number).toLocaleString('en-US', { minimumFractionDigits: 2 })}` 
+                            : `${item.point ?? 0} Pts`}
                         </span>
                         <span className="text-gray-500 dark:text-gray-400 text-sm">Qty: {item.entryQty ?? 1}</span>
                       </div>

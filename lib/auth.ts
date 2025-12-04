@@ -135,7 +135,7 @@ export function canViewPackageManagement(department?: string): boolean {
   return !restricted.includes(department);
 }
 
-export function canViewITPOSWF(department?: string): boolean {
+export function canViewThemeParkSupport(department?: string): boolean {
   if (!department) return false;
   // Rules: Only MIS and IT roles
   const allowed = ["MIS_SUPERADMIN", "MIS_SUPPORT", "IT_ADMIN", "IT_SUPPORT"];

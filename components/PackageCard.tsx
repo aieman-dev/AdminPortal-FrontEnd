@@ -6,6 +6,7 @@ interface PackageCardProps {
   name: string;
   price: string;
   category: string;
+  packageType: string;
   dateDisplay: string;
   nationality: string;
   status: string;
@@ -20,6 +21,7 @@ export default function PackageCard({
   name,
   price,
   category,
+  packageType,
   dateDisplay,
   nationality,
   status,
@@ -54,6 +56,15 @@ export default function PackageCard({
   const canEdit = statusLower === "draft";
   const canDuplicate = ["pending", "draft", "rejected"].includes(statusLower);
   const canDelete = statusLower === "draft";
+
+   // NEW FIX: Determine if the price should be shown as Points (Pts) or Ringgit Malaysia (RM)
+  const isPointOrReward = packageType.toLowerCase().includes('point') || packageType.toLowerCase().includes('reward p');
+   const priceUnit = isPointOrReward ? "Pts" : "RM";
+
+  const numericPrice = parseFloat(price);
+   const displayPrice = isPointOrReward
+     ? Math.round(numericPrice).toLocaleString() 
+     : numericPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <div
@@ -125,10 +136,14 @@ export default function PackageCard({
           {name}
         </h3>
         <p className="text-sm text-blue-600 font-bold mb-2 dark:text-blue-400">
-          RM {price}
+          {/* FIX: Removed redundant "RM" prefix */}
+          {isPointOrReward 
+            ? `${displayPrice} ${priceUnit}` // Renders: 3 Pts
+            : `${priceUnit} ${displayPrice}` // Renders: RM 1.75
+          }
         </p>
 
-        {/* Category & Nationality - 🌟 FIX 1: Add Nationality Display */}
+        {/* Category & Nationality -  FIX 1: Add Nationality Display */}
         <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-300 mb-2">
           {/* Age Category */}
           <div className="flex items-center gap-1">
@@ -146,14 +161,14 @@ export default function PackageCard({
 
         {/* Footer - Date Range Display & Status */}
         <div className="flex justify-between items-start text-xs">
-          {/* 🌟 FIX 2: Display the Date Range and ensure vertical alignment is to the start */}
+          {/*  FIX 2: Display the Date Range and ensure vertical alignment is to the start */}
           <div className="flex items-start gap-1 text-gray-500 dark:text-gray-300 flex-1 flex-wrap pr-1">
             <Calendar size={12} className="text-gray-400 dark:text-gray-300 mt-0.5 flex-shrink-0" />
             <span className="leading-tight">{dateDisplay}</span>
           </div>
           
           <span
-            // 🌟 FIX 3: Add shrink-0 and ml-2 to ensure badge is compact and spaced
+            //  FIX 3: Add shrink-0 and ml-2 to ensure badge is compact and spaced
             className={`px-2 py-0.5 rounded text-xs font-medium shrink-0 ml-2 ${getStatusColor(
               status
             )}`}

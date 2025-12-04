@@ -1,3 +1,4 @@
+// components/PackageFormStep1.tsx
 import React, { useEffect, useState, useRef } from "react";
 import { Calendar, X } from "lucide-react";
 import DatePicker from "react-datepicker";
@@ -11,18 +12,17 @@ type Props = {
   onNext: () => void;
 };
 
-// FIX 4: Helper to format date to ISO string at T00:00:00.000Z to prevent timezone rollback
+// FIX 4: Helper to format date to an ISO string using local date components, 
+// forcing NOON (T12:00:00) without the UTC indicator (Z) to prevent rollback.
 const convertDateForSubmission = (date: Date): string => {
   if (!date) return "";
-  const d = new Date(date);
   
-  // Get components for the selected date
-  const year = d.getFullYear();
-  const month = d.getMonth() + 1; // getMonth() is 0-indexed
-  const day = d.getDate();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
 
-  // Construct ISO string for the start of the selected day in UTC (00:00:00Z)
-  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00.000Z`;
+  // CHANGE: Return ISO-like string format: YYYY-MM-DDT12:00:00
+  return `${year}-${month}-${day}T12:00:00`;
 };
 
 
@@ -49,8 +49,6 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
           const data = await res.json();
           const categories = data.ageCategories || [];
           setAgeOptions(categories.map((c: any) => ({
-            // FIX 1: Set the option's HTML value to the descriptive text (c.displayText).
-            // This ensures the <select> element's visual state is correctly bound to the form value.
             value: c.displayText, 
             label: c.displayText
           })));
@@ -129,14 +127,15 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
 
         <div>
           <label className="block text-sm font-medium text-foreground/80 dark:text-gray-300 mb-1">Nationality</label>
+          {/* FIX: Update labels and values to short codes */}
           <select
             value={form.nationality}
             onChange={(e) => setForm({ ...form, nationality: e.target.value })}
             className={inputClass}
           >
             <option value="" className="dark:bg-gray-900">Select Nationality</option>
-            <option value="Malaysian" className="dark:bg-gray-900">Malaysian</option>
-            <option value="Non-Malaysian" className="dark:bg-gray-900">Non-Malaysian</option>
+            <option value="L" className="dark:bg-gray-900">Malaysia</option>
+            <option value="F" className="dark:bg-gray-900">International</option>
           </select>
         </div>
 

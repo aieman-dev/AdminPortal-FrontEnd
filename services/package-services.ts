@@ -1,6 +1,6 @@
 // services/package-services.ts
 import { apiClient, ApiResponse } from "@/lib/api-client";
-import { PackageFormData, Package, PackageDuplicateResponse } from "@/type/packages"; 
+import { PackageFormData, Package, PackageDuplicateResponse, PackageItem } from "@/type/packages"; 
 import { ItPoswfPackage, UnsyncedPackageDTO, SelectableItPoswfPackage } from "../type/themepark-support";
 
 
@@ -23,51 +23,64 @@ const ENDPOINTS = {
 
 // --- FIX: DEFINITION OF BackendPackageDTO ---
 interface BackendPackageDTO {
-    id: number;
-    name: string;           
-    packageType: string;
-    price: number;
-    category: string;
-    nationality: string;
-    imageUrl?: string;      
-    status: string;
-    dateCreated: string;
-    createdDate?: string;
-    effectiveDate?: string; 
-    lastValidDate?: string; 
-    remark?: string;
-    remark2?: string;
-    submittedBy?: string;
-    items?: any[];
-    point?: number;
-    validDays?: number;
-    ageCategory?: string; 
-    reviewedDate?: string;
-    approvedBy?: string;
+    id: number;
+    name?: string;           
+    packageType?: string;
+    price?: number;
+    category?: string;
+    nationality?: string;
+    imageUrl?: string;      
+    status?: string;
+    dateCreated?: string;
+    createdDate?: string;
+    effectiveDate?: string; 
+    lastValidDate?: string; 
+    dayPass?: string;
+    remark?: string;
+    remark2?: string;
+    submittedBy?: string;
+    items?: any[];
+    point?: number;
+    validDays?: number;
+    ageCategory?: string; 
+    reviewedDate?: string;
+    approvedBy?: string;
+    
+    // START FIX: Add missing optional fields used for robust mapping
+    PackageName?: string; 
+    totalPrice?: number;
+    PackageType?: string; 
+    imageID?: string;
+    packageitems?: any[];
+    // END FIX
 
-    // from IT-POSWF list response
-    recordStatus?: string; 
-    packageID?: string | number;
-    packageName?: string;
-    modifiedDate?: string;
-    createdUserEmail?: string; 
-    modifiedUserEmail?: string;
-    
+    // from IT-POSWF list response
+    recordStatus?: string; 
+    packageID?: string | number;
+    packageName?: string;
+    modifiedDate?: string;
+    createdUserEmail?: string; 
+    modifiedUserEmail?: string;
+     
 }
 // ---------------------------------------------
 
 
 const transformToFrontend = (pkg: BackendPackageDTO): Package => {
   // FIX 1: Last Valid Date logic (Next Day at 3AM)
-  const start = new Date(pkg.effectiveDate ? pkg.effectiveDate.split('T')[0] : new Date());
-  let end = new Date(pkg.lastValidDate ? pkg.lastValidDate.split('T')[0] : new Date());
+  // Ensure we get a date string or fallback
+  const effDateStr = pkg.effectiveDate || pkg.createdDate || new Date().toISOString();
+  const lastValidDateStr = pkg.lastValidDate || new Date().toISOString();
+    
+  const start = new Date(effDateStr.split('T')[0]);
+  let end = new Date(lastValidDateStr.split('T')[0]);
   end.setDate(end.getDate() + 1); // Advance by 1 day
   end.setHours(3, 0, 0, 0); // Set time to 3 AM
   const diffTime = Math.abs(end.getTime() - start.getTime());
   const calculatedDuration = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
 
-  const rawAgeCode = pkg.ageCategory; // e.g. "C" (The code stored in the DB)
-  const rawCategoryName = pkg.category; // e.g. "Child" (The descriptive name from DB)
+  const rawAgeCode = pkg.ageCategory; // e.g. "C1"
+  const rawCategoryName = pkg.category; // e.g. "Child"
 
   const displayAgeCategory = (() => {
     // If the ageCategory field already contains a full label (like "A1 - Adult"), use it.
@@ -85,34 +98,64 @@ const transformToFrontend = (pkg: BackendPackageDTO): Package => {
   const finalReviewer = pkg.approvedBy ;
   const finalReviewDate = pkg.reviewedDate ;
 
+// --- CRITICAL MAPPINGS: Robustly checking for field names ---
+// FIX 3: Use the robust fallback variables now that they are defined on BackendPackageDTO
+  const finalName = pkg.name || pkg.packageName || pkg.PackageName || "Untitled Package";
+  
+// FIX 1: Correctly set finalPrice to point value if packageType is Point/Reward
+  const isPointType = (pkg.packageType || pkg.PackageType || '').toLowerCase().includes('point') || (pkg.packageType || pkg.PackageType || '').toLowerCase().includes('reward');
+  const finalPrice = (isPointType && pkg.point !== undefined)
+      ? pkg.point 
+      : pkg.price ?? pkg.totalPrice ?? 0;
+// END FIX 1
+  
+  const finalType = pkg.packageType || pkg.PackageType || "N/A";
+  const finalStatus = pkg.status || "Draft";
+  const finalImage = pkg.imageUrl || pkg.imageID || "/packages/DefaultPackageImage.png";
+
+  // FIX 4: Ensure Package Items are mapped and defaulted correctly.
+  // Note: packageitems is cast to any[] since it's defined as any[] on BackendPackageDTO now.
+  const finalItems = (pkg.items as PackageItem[] || pkg.packageitems as PackageItem[] || []).map(item => ({
+      ...item,
+      price: item.price ?? 0,
+      point: item.point ?? 0,
+      entryQty: item.entryQty ?? 1,
+      itemName: item.itemName || "Unknown Item",
+  }));
+
   return {
     id: pkg.id,
-    name: pkg.name,
-    price: pkg.price,
+    name: finalName,
+    price: finalPrice, // Corrected value here
     point: pkg.point, 
-    imageUrl: pkg.imageUrl, 
+    imageUrl: finalImage, 
     remark: pkg.remark,
     remark2: pkg.remark2,
     submittedBy: pkg.submittedBy,
-    items: pkg.items,
-    PackageName: pkg.name || "Untitled Package", 
-    PackageType: pkg.packageType || "N/A",
-    totalPrice: pkg.price || 0,
-    // FIX 2: Use the most descriptive age category field, falling back to the generic category
+    items: finalItems, // Correct camelCase field for details
+    PackageName: finalName, // Legacy mapping
+    PackageType: finalType, // Legacy mapping
+    totalPrice: finalPrice, // Legacy mapping
     ageCategory: displayAgeCategory,
     nationality: pkg.nationality || "N/A",
-    effectiveDate: pkg.effectiveDate || new Date().toISOString(),
-    lastValidDate: pkg.lastValidDate || new Date().toISOString(),
+    // FIX: Ensure correct string is passed for date fields
+    effectiveDate: effDateStr, 
+    lastValidDate: lastValidDateStr,
     createdDate: pkg.createdDate || pkg.dateCreated || new Date().toISOString(),
-    status: pkg.status || "Draft",
-    imageID: pkg.imageUrl || "/packages/DefaultPackageImage.png",
+    status: finalStatus, // Use robust status
+    imageID: finalImage, // Legacy mapping
     durationDays: pkg.validDays ?? calculatedDuration, 
     createdBy: pkg.submittedBy || "System", 
-    packageitems: pkg.items || [], 
+    packageitems: finalItems, // Legacy mapping
     tpremark: pkg.remark || "",
     reviewedBy: finalReviewer, 
-    reviewedDate: finalReviewDate
+    reviewedDate: finalReviewDate,
+    dayPass: pkg.dayPass, // Pass the dayPass field
   };
+};
+
+const localTransform = (pkg: any): Package => {
+    return transformToFrontend(pkg as BackendPackageDTO);
 };
 
 // FIX 3: Helper to extract code from the display label (e.g., "A1 - Adult" -> "A1")
@@ -141,18 +184,18 @@ const transformToItPoswfPackage = (pkg: BackendPackageDTO): ItPoswfPackage => {
 };
 
 const transformToSelectablePackage = (pkg: UnsyncedPackageDTO): SelectableItPoswfPackage => {
-    // Note: Data like price and date is often missing from the /unsynced endpoint. 
-    // We set dummy/N/A values where necessary for the SelectableItPoswfPackage interface.
-    return {
-        id: String(pkg.packageID), 
-        packageId: pkg.packageID,
-        packageName: pkg.packageName,
-        packageType: pkg.packageType,
-        price: 0, // Not provided by unsynced API
-        status: pkg.status,
-        lastValidDate: "N/A", // Not provided by unsynced API
-        syncStatus: "Pending", // Default sync status for unsynced list
-    } as SelectableItPoswfPackage;
+    // Note: Data like price and date is often missing from the /unsynced endpoint. 
+    // We set dummy/N/A values where necessary for the SelectableItPoswfPackage interface.
+    return {
+        id: String(pkg.packageID), 
+        packageId: pkg.packageID,
+        packageName: pkg.packageName,
+        packageType: pkg.packageType,
+        price: 0, // Not provided by unsynced API
+        status: pkg.status,
+        lastValidDate: "N/A", // Not provided by unsynced API
+        syncStatus: "Pending", // Default sync status for unsynced list
+    } as SelectableItPoswfPackage;
 };
 
 
@@ -184,32 +227,42 @@ export const packageService = {
   },
 
   createPackage: async (form: PackageFormData, imageId: string) => {
-    // FIX 3: Get the machine-readable code for API submission
     const ageCode = extractAgeCode(form.ageCategory);
+    const effectiveDateStr = form.effectiveDate || new Date().toISOString();
+    const lastValidDateStr = form.lastValidDate || new Date().toISOString();
     
-    //  Construct the payload with correct item structure
-    const payload = {
-      name: form.packageName,
-      packageType: form.packageType ,
-      price: form.packageType === "Entry" ? (form.totalPrice || 0) : 0,
-      point: form.packageType === "Point" ? (form.totalPrice || 0) : 0,
-      effectiveDate: form.effectiveDate ? new Date(form.effectiveDate).toISOString() : new Date().toISOString(),
-      lastValidDate: form.lastValidDate ? new Date(form.lastValidDate).toISOString() : new Date().toISOString(),
-      remark: form.tpremark || "No remarks",
-      nationality: form.nationality ,
-      dayPass: form.dayPass,
-      ageCategory: ageCode, 
-      imageID: imageId,
+    const isPointPackage = form.packageType === "Point" || form.packageType === "Reward P";
+    
+    // 1. Item Mapping: Now uses lowercase 'value' field.
+    const mappedItems = form.packageitems.map((item) => {
+        const itemValue = !isPointPackage
+            ? (item.price || 0) 
+            : Math.floor(item.point || 0); 
+
+        if (itemValue <= 0) {
+            throw new Error(`Item "${item.itemName}" must have a value greater than zero. Current value: ${itemValue}`);
+        }
+
+        return {
+            attractionId: item.attractionId, 
+            itemName: item.itemName,         
+            itemType: item.itemType || (isPointPackage ? "Point" : "Entry"),
+            entryQty: item.entryQty || 1,
+            value: itemValue, 
+        };
+    });
       
-      // This 'items' mapping is the most likely source of the 400 error.
-      items: form.packageitems.map((item) => ({
-        attractionId: item.attractionId, // <-- SEND THE ID (from terminalID)
-        itemName: item.itemName,         // <-- Send name (just in case)
-        itemType: item.itemType || "Entry", // <-- Default type
-        //Send the correct value based on package type +++
-        value: form.packageType === "Point" ? (item.point || 0) : (item.price || 0),
-        entryQty: item.entryQty || 1,
-      })),
+      const payload = {
+        name: form.packageName,
+        packageType: form.packageType,
+        effectiveDate: effectiveDateStr.split('T')[0], 
+        lastValidDate: lastValidDateStr.split('T')[0], 
+        remark: form.tpremark || "No remarks",
+        nationality: form.nationality,
+        dayPass: form.dayPass,
+        ageCategory: extractAgeCode(form.ageCategory), 
+        imageID: imageId,
+        items: mappedItems,
     };
 
     // Debug log. Check your browser console to see exactly what is being sent.
@@ -234,14 +287,9 @@ export const packageService = {
     page: number = 1,
     searchQuery: string = ""
   ): Promise<{ packages: Package[], totalPages: number, totalRecords: number }> => {
-    // This transform function is available in the scope.
-    const transformToFrontend = (pkg: any): Package => {
-        return { 
-            id: pkg.id, 
-            name: pkg.name || pkg.PackageName || "Untitled Package",
-            status: pkg.status || "Draft",
-        } as Package;
-    };
+    const localTransform = (pkg: any): Package => {
+        return transformToFrontend(pkg as BackendPackageDTO);
+    };
     
     // Payload matches the C# PackageFilterModel structure
     const payload = {
@@ -265,7 +313,7 @@ export const packageService = {
     // Since PackageController.cs returns a List<PackageSummaryViewModel>, we assume no pagination metadata is returned yet.
     if (response.data && Array.isArray(response.data)) {
         return {
-            packages: response.data.map(transformToFrontend),
+            packages: response.data.map(localTransform),
             totalPages: 1, 
             totalRecords: response.data.length,
         };
@@ -274,22 +322,60 @@ export const packageService = {
     return { packages: [], totalPages: 0, totalRecords: 0 };
   },
 
+// --- STANDARD FUNCTIONS ---
+  getPackageById: async (id: number, source?: string): Promise<Package | null> => {
+    // FIX: Use the complete transformToFrontend function here as well
+    const localTransformDetail = (pkg: any): Package => {
+        return transformToFrontend(pkg as BackendPackageDTO);
+    };
+
+    // Payload matches the C# PackageDetailRequestModel structure
+    const payload = {
+        Id: id,
+        Source: source || null, // 'pending' or null
+    };
+
+    // Use POST method for the new detail endpoint
+    const response = await apiClient.post<BackendPackageDTO>(ENDPOINTS.GET_ONE, payload);
+
+    if (!response.success || !response.data) {
+      console.error("Failed to fetch package:", response.error);
+      return null;
+    }
+
+    return localTransformDetail(response.data);
+  },
+
+  // --- NEW FUNCTION: duplicatePackage (Typed to PackageDuplicateResponse) ---
+  duplicatePackage: async (id: number): Promise<PackageDuplicateResponse> => {
+      // Payload matches the C# PackageIdRequestModel structure
+      const payload = { Id: id }; 
+      
+      // Use POST method and specify the expected response type
+      const response = await apiClient.post<PackageDuplicateResponse>(ENDPOINTS.DUPLICATE, payload);
+      
+      if (!response.success || !response.data) {
+          throw new Error(response.error || "Failed to duplicate package");
+      }
+      return response.data;
+  },
+
   // --- ----------------------------ItPoswfPackage------------------------------------- ---
   
   getItPoswfPackages: async ( // <--- NEW FUNCTION
     searchQuery: string = ""
   ): Promise<{ packages: ItPoswfPackage[], totalPages: number, totalRecords: number }> => {
-    const transformToItPoswfPackage = (pkg: any): ItPoswfPackage => {
-        return {
-            id: String(pkg.packageID), 
-            packageId: pkg.packageID,
-            packageName: pkg.packageName,
-            packageType: pkg.packageType,
-            price: pkg.price,
-            status: pkg.recordStatus || pkg.status || "Unknown",
-        } as ItPoswfPackage;
-    };
-    
+    const transformToItPoswfPackage = (pkg: any): ItPoswfPackage => {
+        return {
+            id: String(pkg.packageID), 
+            packageId: pkg.packageID,
+            packageName: pkg.packageName,
+            packageType: pkg.packageType,
+            price: pkg.price,
+            status: pkg.recordStatus || pkg.status || "Unknown",
+        } as ItPoswfPackage;
+    };
+    
     // CRITICAL FIX: Explicitly set Status to "Active" (as required by the backend for searching)
     const statusFilter = "Active"; 
     
@@ -347,23 +433,23 @@ export const packageService = {
   },
 
   getUnsyncedPackages: async (
-    packageType?: "Entry" | "Point" | "Reward" | "all", // Type is now explicitly broad
-    searchQuery: string = "" 
+    packageType?: "Entry" | "Point" | "Reward" | "all", // Type is now explicitly broad
+    searchQuery: string = "" 
     ): Promise<ApiResponse<SelectableItPoswfPackage[]>> => {
-    const transformToSelectablePackage = (pkg: UnsyncedPackageDTO): SelectableItPoswfPackage => {
-        // Note: Data like price and date is often missing from the /unsynced endpoint. 
-        // We set dummy/N/A values where necessary for the SelectableItPoswfPackage interface.
-        return {
-            id: String(pkg.packageID), 
-            packageId: pkg.packageID,
-            packageName: pkg.packageName,
-            packageType: pkg.packageType,
-            price: 0, // Not provided by unsynced API
-            status: pkg.status,
-            lastValidDate: "N/A", // Not provided by unsynced API
-            syncStatus: "Pending", // Default sync status for unsynced list
-        } as SelectableItPoswfPackage;
-    };
+    const transformToSelectablePackage = (pkg: UnsyncedPackageDTO): SelectableItPoswfPackage => {
+        // Note: Data like price and date is often missing from the /unsynced endpoint. 
+        // We set dummy/N/A values where necessary for the SelectableItPoswfPackage interface.
+        return {
+            id: String(pkg.packageID), 
+            packageId: pkg.packageID,
+            packageName: pkg.packageName,
+            packageType: pkg.packageType,
+            price: 0, // Not provided by unsynced API
+            status: pkg.status,
+            lastValidDate: "N/A", // Not provided by unsynced API
+            syncStatus: "Pending", // Default sync status for unsynced list
+        } as SelectableItPoswfPackage;
+    };
       
       const payload = {
           packageType: packageType === "all" ? undefined : packageType,
@@ -387,59 +473,18 @@ export const packageService = {
           data: mappedData,
       };
     },
-    
-    // ADDED: Function for executing the sync action
-    syncPackages: async (packageIds: number[]): Promise<ApiResponse<{ message: string }>> => {
-        const payload = {
-            packageIds: packageIds,
-        };
-        
-        const response = await apiClient.post<{ message: string }>(ENDPOINTS.BCOMPARE_SYNC, payload);
-        
-        if (!response.success) {
-            return { success: false, error: response.error || "Failed to execute package sync." };
-        }
-        return response;
-    },
-
-  // --- STANDARD FUNCTIONS ---
-  getPackageById: async (id: number, source?: string): Promise<Package | null> => {
-    const transformToFrontend = (pkg: any): Package => {
-        return { 
-            id: pkg.id, 
-            name: pkg.name || pkg.PackageName || "Untitled Package",
-            status: pkg.status || "Draft",
-        } as Package;
-    };
-
-    // Payload matches the C# PackageDetailRequestModel structure
-    const payload = {
-        Id: id,
-        Source: source || null, // 'pending' or null
-    };
-
-    // Use POST method for the new detail endpoint
-    const response = await apiClient.post<BackendPackageDTO>(ENDPOINTS.GET_ONE, payload);
-
-    if (!response.success || !response.data) {
-      console.error("Failed to fetch package:", response.error);
-      return null;
-    }
-
-    return transformToFrontend(response.data);
-  },
-
-  // --- NEW FUNCTION: duplicatePackage (Typed to PackageDuplicateResponse) ---
-  duplicatePackage: async (id: number): Promise<PackageDuplicateResponse> => {
-      // Payload matches the C# PackageIdRequestModel structure
-      const payload = { Id: id }; 
-      
-      // Use POST method and specify the expected response type
-      const response = await apiClient.post<PackageDuplicateResponse>(ENDPOINTS.DUPLICATE, payload);
-      
-      if (!response.success || !response.data) {
-          throw new Error(response.error || "Failed to duplicate package");
-      }
-      return response.data;
-  }
+  	
+  	// ADDED: Function for executing the sync action
+  	syncPackages: async (packageIds: number[]): Promise<ApiResponse<{ message: string }>> => {
+        const payload = {
+            packageIds: packageIds,
+        };
+        
+        const response = await apiClient.post<{ message: string }>(ENDPOINTS.BCOMPARE_SYNC, payload);
+        
+        if (!response.success) {
+            return { success: false, error: response.error || "Failed to execute package sync." };
+        }
+        return response;
+    },
 };

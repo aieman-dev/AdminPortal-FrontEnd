@@ -16,12 +16,12 @@ interface PackageListItem {
   name: string;
   price: string;
   category: string; 
+  packageType: string;
   nationality: string;
   status: string;
   image: string;
   effectiveDate: string | undefined;
   lastValidDate: string | undefined;
-  // ADDED: Field for created date, for card display
   createdDate: string | undefined; 
 }
 
@@ -53,6 +53,7 @@ function getProxiedImageUrl(url: string | null | undefined): string {
   // Fallback for any other invalid string
   return DEFAULT_IMAGE;
 }
+
 
 export default function PackagesPage() {
   const { user } = useAuth();
@@ -88,43 +89,53 @@ export default function PackagesPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const fetchPackages = async () => {
-      setIsLoading(true);
-      try {
-        const startStr = dateRange.start ? dateRange.start.toISOString() : undefined;
-        const endStr = dateRange.end ? dateRange.end.toISOString() : undefined;
+    const fetchPackages = async () => {
+      setIsLoading(true);
+      try {
+        const startStr = dateRange.start ? dateRange.start.toISOString() : undefined;
+        const endStr = dateRange.end ? dateRange.end.toISOString() : undefined;
 
-        const { packages: rawData, totalPages: total, totalRecords: records } = await packageService.getPackages(
-          activeFilter, 
-          startStr, 
-          endStr, 
-          currentPage, 
-          searchQuery
-        );
+        const { packages: rawData, totalPages: total, totalRecords: records } = await packageService.getPackages(
+          activeFilter, 
+          startStr, 
+          endStr, 
+          currentPage, 
+          searchQuery
+        );
 
-        const formatted: PackageListItem[] = rawData.map((pkg: Package) => ({
-          id: pkg.id,
-          name: pkg.name || pkg.PackageName || "Untitled", 
-          price: (pkg.price !== undefined ? pkg.price : pkg.totalPrice ?? 0).toString(),
-          category: pkg.ageCategory || pkg.packageType || pkg.PackageType || "N/A",
-          createdDate: pkg.createdDate,
-          nationality: pkg.nationality || "N/A",
-          effectiveDate: pkg.effectiveDate,
-          lastValidDate: pkg.lastValidDate,
-          status: pkg.status || "Draft",
-          image: getProxiedImageUrl(pkg.imageUrl || pkg.imageID),
-        }));
+        const formatted: PackageListItem[] = rawData.map((pkg: Package) => {
+            // CRITICAL FIX 1: Determine the correct package value based on its type
+            const isPointOrReward = (pkg.packageType || pkg.PackageType || 'Entry').toLowerCase().includes('point') || (pkg.packageType || pkg.PackageType || 'Entry').toLowerCase().includes('reward p');
+			
+            const finalPrice = isPointOrReward 
+                ? (pkg.point ?? pkg.totalPrice ?? 0) 
+                : (pkg.price ?? pkg.totalPrice ?? 0); 
+            
+            return ({
+          id: pkg.id,
+          name: pkg.name || pkg.PackageName || "Untitled", 
+          price: finalPrice.toString(), // Assign the correctly prioritized price
+          category: pkg.ageCategory || "N/A",
+          packageType: pkg.packageType || pkg.PackageType || "Entry",
+          createdDate: pkg.createdDate,
+          nationality: pkg.nationality || "N/A",
+          effectiveDate: pkg.effectiveDate,
+          lastValidDate: pkg.lastValidDate,
+          status: pkg.status || "Draft",
+          image: getProxiedImageUrl(pkg.imageUrl || pkg.imageID),
+        });
+        });
 
-        setPackages(formatted);
-        setTotalPages(total);
-        setTotalRecords(records);
+        setPackages(formatted);
+        setTotalPages(total);
+        setTotalRecords(records);
 
-      } catch (error) {
-        console.error("Error loading packages:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      } catch (error) {
+        console.error("Error loading packages:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
     const timer = setTimeout(() => {
       fetchPackages();
@@ -262,6 +273,7 @@ export default function PackagesPage() {
                     name={pkg.name} 
                     price={pkg.price}
                     category={pkg.category}
+                    packageType ={pkg.packageType}
                     dateDisplay={formatShortDate(pkg.createdDate)} 
                     nationality={pkg.nationality}
                     status={pkg.status}
