@@ -206,6 +206,15 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
   const handleActivateAccount = () => handleAction("activate")
 
   const handleActivateExpiredBalance = async () => {
+    if (expiredBalance <= 0) {
+         toast({
+            title: "Action Blocked",
+            description: "Expired balance is zero. Nothing to activate.",
+            variant: "default"
+        });
+        setActionType(null); // Close any open action forms
+        return;
+    }
     setIsProcessing(true)
     try {
         // NOTE: Uses account.id and account.email from the fetched data
@@ -490,9 +499,18 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
                   </div>
                 </div>
 
-                <Button onClick={handleActivateExpiredBalance} disabled={isProcessing} className="w-full">
+                <Button 
+                    onClick={handleActivateExpiredBalance} 
+                    disabled={isProcessing || expiredBalance <= 0} 
+                    className="w-full"
+                >
                   {isProcessing ? "Activating..." : "Activate Expired Balance"}
                 </Button>
+                {expiredBalance <= 0 && (
+                     <p className="text-center text-sm text-red-500">
+                        Expired balance is RM 0.00. Button is disabled.
+                     </p>
+                 )}
               </div>
             )}
           </div>

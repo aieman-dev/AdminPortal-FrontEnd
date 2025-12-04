@@ -9,7 +9,9 @@ import { LayoutDashboard, Ticket, LogOut, ChevronDown, ServerCog, Users, Setting
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 import { useState, useEffect } from "react" 
-import { canViewITPOSWF } from "@/lib/auth" 
+import { canViewThemeParkSupport, canViewPackageManagement } from "@/lib/auth"
+
+const LOCAL_STORAGE_KEY_TO_CLEAR = 'accountMasterEmailSearch';
 
 const navigation = [
   {
@@ -106,11 +108,19 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
   )
 
   const filteredNavigation = navigation.filter((item) => {
-    if (item.name === "IT POSWF") {
-      return canViewITPOSWF(user?.department); 
+    const department = user?.department;
+
+    if (item.name === "Themepark Support") { 
+      return canViewThemeParkSupport(department); 
     }
+    
+    if (item.name === "Package Management") {
+        return canViewPackageManagement(department);
+    }
+
+    // Default: show everything else
     return true;
-  });
+  });
 
   return (
     <div
@@ -258,9 +268,14 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
             "mt-4 w-full flex items-center transition-all duration-300 bg-transparent border-gray-200 hover:bg-red-50 hover:text-red-600",
             collapsed ? "justify-center px-0" : "justify-start px-3 gap-3"
           )} 
-          onClick={logout}
-          title={collapsed ? "Sign out" : undefined}
-        >
+          onClick={() => {
+             if (typeof window !== 'undefined') {
+                 localStorage.removeItem(LOCAL_STORAGE_KEY_TO_CLEAR); // Clear stored email
+             }
+             logout();
+          }}
+          title={collapsed ? "Sign out" : undefined}
+        >
           <LogOut className="h-4 w-4 flex-shrink-0" />
           <span className={cn(
             "overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap",

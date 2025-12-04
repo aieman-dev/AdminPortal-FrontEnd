@@ -1,7 +1,7 @@
-// components/it-poswf/tabs/Account/AccountManagementTab.tsx
+// components/themepark-support/tabs/Account/AccountManagementTab.tsx
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react" // Added useCallback
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,17 +13,37 @@ import { itPoswfService } from "@/services/themepark-support"
 import { Account } from "@/type/themepark-support" 
 import { useToast } from "@/hooks/use-toast"
 
+const LOCAL_STORAGE_KEY = 'accountMasterEmailSearch';
+
 export default function AccountManagementTab() {
   const router = useRouter()
-  const [searchEmail, setSearchEmail] = useState("")
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [isSearching, setIsSearching] = useState(false)
   const { toast } = useToast()
 
-  const handleSearch = async () => {
-    const query = searchEmail.trim()
+  // 1. Initialize state by reading from localStorage on mount
+  const [searchEmail, setSearchEmail] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(LOCAL_STORAGE_KEY) || "";
+    }
+    return "";
+  });
+  
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [isSearching, setIsSearching] = useState(false)
 
-    const isExplicitSearch = query.length > 0
+  // 2. Persist state to localStorage whenever searchEmail changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(LOCAL_STORAGE_KEY, searchEmail);
+    }
+  }, [searchEmail]);
+
+
+  // 3. Extracted and memoized the core search logic
+  const executeSearch = useCallback(async (query: string) => {
+    if (!query) {
+        setAccounts([]);
+        return;
+    }
 
     setIsSearching(true)
     setAccounts([]) 
@@ -59,14 +79,24 @@ export default function AccountManagementTab() {
     } finally {
       setIsSearching(false)
     }
+  }, [toast])
+
+
+  // 4. CRITICAL FIX: Effect to run initial search if a saved email exists
+  useEffect(() => {
+    // Check if the initial state was populated from localStorage
+    if (searchEmail) {
+        executeSearch(searchEmail);
+    }
+  }, [executeSearch, searchEmail]); 
+
+  // Function used by the SearchField component
+  const handleSearchClick = () => {
+    executeSearch(searchEmail.trim());
   }
 
-  useEffect(() => {
-    handleSearch()
-  }, [])
-
   const handleEdit = (accountId: string) => {
-    router.push(`/portal/themepark-support/account-master/${accountId}`) // NOTE: New master path
+    router.push(`/portal/themepark-support/account-master/${accountId}`) 
   }
 
   return (
@@ -78,7 +108,7 @@ export default function AccountManagementTab() {
             placeholder="Enter email address"
             value={searchEmail}
             onChange={setSearchEmail}
-            onSearch={handleSearch}
+            onSearch={handleSearchClick} // Calls the wrapper function
             isSearching={isSearching}
           />
         </CardContent>

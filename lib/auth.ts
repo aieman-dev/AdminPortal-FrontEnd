@@ -130,16 +130,16 @@ export function getAuthToken(): string | null {
 
 export function canViewPackageManagement(department?: string): boolean {
   if (!department) return false;
-  // Rules: Everyone EXCEPT MIS_SUPPORT and IT_SUPPORT
-  const restricted = ["MIS_SUPPORT", "IT_SUPPORT"];
-  return !restricted.includes(department);
+  const deptUpper = department.toUpperCase();
+  // CRITICAL FIX: Allow all departments EXCEPT IT_ADMIN.
+  return deptUpper !== "IT_ADMIN";
 }
 
 export function canViewThemeParkSupport(department?: string): boolean {
   if (!department) return false;
-  // Rules: Only MIS and IT roles
-  const allowed = ["MIS_SUPERADMIN", "MIS_SUPPORT", "IT_ADMIN", "IT_SUPPORT"];
-  return allowed.includes(department);
+  const deptUpper = department.toUpperCase();
+  // CRITICAL FIX: Only MIS and IT roles. Exclude TP_ADMIN and FINANCE_ADMIN.
+  return deptUpper.includes("MIS") || deptUpper.includes("IT");
 }
 
 export function canCreatePackage(department?: string): boolean {
