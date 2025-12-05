@@ -1,7 +1,7 @@
 // components/themepark-support/tabs/Account/AccountManagementTab.tsx
 "use client"
 
-import { useState, useEffect, useCallback } from "react" // Added useCallback
+import { useState, useEffect, useCallback } from "react" 
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -82,16 +82,19 @@ export default function AccountManagementTab() {
   }, [toast])
 
 
-  // 4. CRITICAL FIX: Effect to run initial search if a saved email exists
+  // 4. FIX: This useEffect now runs only ONCE on mount to load the previously saved 
+  // email (if present), but crucially, it does NOT re-run on every keystroke, 
+  // eliminating the lag.
   useEffect(() => {
-    // Check if the initial state was populated from localStorage
     if (searchEmail) {
-        executeSearch(searchEmail);
+        // Trigger initial search only if a value was restored from localStorage
+        executeSearch(searchEmail); 
     }
-  }, [executeSearch, searchEmail]); 
+  }, [executeSearch]); // <-- Removed searchEmail from dependency array
 
-  // Function used by the SearchField component
+  // Function used by the SearchField component (called on button click/Enter key)
   const handleSearchClick = () => {
+    // CRITICAL FIX: Only trim and execute the search when the button is clicked.
     executeSearch(searchEmail.trim());
   }
 
@@ -103,12 +106,13 @@ export default function AccountManagementTab() {
     <div className="space-y-6">
       <Card>
         <CardContent>
+          {/* SearchField relies on handleSearchClick being the only trigger for a search */}
           <SearchField
             label="Email"
             placeholder="Enter email address"
             value={searchEmail}
             onChange={setSearchEmail}
-            onSearch={handleSearchClick} // Calls the wrapper function
+            onSearch={handleSearchClick} // Calls the function that triggers the API call
             isSearching={isSearching}
           />
         </CardContent>
