@@ -5,6 +5,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { PackageFormData } from "../type/packages";
 import { getAuthToken } from "@/lib/auth";
+import { BACKEND_API_BASE } from "@/lib/config";
 
 type Props = {
   form: PackageFormData;
@@ -26,14 +27,33 @@ const convertDateForSubmission = (date: Date): string => {
 };
 
 const DEFAULT_IMAGE = "/packages/DefaultPackageImage.png";
+const IMAGE_ASSET_API_PATH = "api/Package/image-asset?id=";
 
 function getProxiedImageUrl(url: string | null | undefined): string {
   if (!url) return DEFAULT_IMAGE;
-  // Check if it's already secured/local/blob
-  if (url.startsWith("https") || url.startsWith("blob:") || url.startsWith("/")) return url; 
-  // Proxy insecure HTTP
-  if (url.startsWith("http://")) return `/api/proxy-image?url=${encodeURIComponent(url)}`; 
-  return url;
+  
+  if (url.startsWith("https") || url.startsWith("blob:") || url.startsWith("/packages/")) return url;
+  
+  let targetUrl = url;
+
+  if (url.startsWith(BACKEND_API_BASE) || url.startsWith("http://")) {
+    targetUrl = url;
+  }
+  else if (url.startsWith("/")) {
+    targetUrl = `${BACKEND_API_BASE}${url}`;
+  }
+  else if (url.length > 0 && !url.includes('/')) {
+    targetUrl = `${BACKEND_API_BASE}/${IMAGE_ASSET_API_PATH}${url}`;
+  }
+  else {
+      return DEFAULT_IMAGE;
+  }
+  
+  if (targetUrl.startsWith(BACKEND_API_BASE) || targetUrl.startsWith("http://")) {
+    return `/api/proxy-image?url=${encodeURIComponent(targetUrl)}`;
+  }
+  
+  return DEFAULT_IMAGE;
 }
 
 const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {

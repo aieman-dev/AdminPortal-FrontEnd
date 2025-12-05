@@ -10,6 +10,7 @@ import { packageService } from "@/services/package-services";
 import { Package } from "@/type/packages"; 
 import { useAuth } from "@/hooks/use-auth";
 import { canCreatePackage } from "@/lib/auth"; 
+import { BACKEND_API_BASE } from "@/lib/config";
 import { useToast } from "@/hooks/use-toast";
 
 interface PackageListItem {
@@ -39,20 +40,42 @@ const formatShortDate = (dateString: string | undefined) => {
   });
 };
 
-// Add the image proxy helper function here
+const IMAGE_ASSET_API_PATH = "api/Package/image-asset?id=";
+
 function getProxiedImageUrl(url: string | null | undefined): string {
   const DEFAULT_IMAGE = "/packages/DefaultPackageImage.png";
   
   if (!url) return DEFAULT_IMAGE;
   
-  // Standard checks for valid URLs
-  if (url.startsWith("https") || url.startsWith("blob:") || url.startsWith("/")) return url;
+ if (url.startsWith("blob:") || url.startsWith("/packages/")) {
+    return url;
+  }
   
-  // Proxy insecure HTTP
-  if (url.startsWith("http://")) return `/api/proxy-image?url=${encodeURIComponent(url)}`;
+  let targetUrl = url;
+
+  // FIX 1: If the URL is a full URL starting with the BACKEND_API_BASE (e.g., https://ngrok...)
+  if (url.startsWith(BACKEND_API_BASE) || url.startsWith("http://")) {
+    targetUrl = url;
+  }
+  // If the URL is a relative path (e.g., /images/...)
+  else if (url.startsWith("/")) {
+    targetUrl = `${BACKEND_API_BASE}${url}`;
+  }
+  // If it's a bare Image ID (e.g., "395")
+  else if (url.length > 0 && !url.includes('/')) {
+    targetUrl = `${BACKEND_API_BASE}/${IMAGE_ASSET_API_PATH}${url}`;
+  }
+  else {
+      return DEFAULT_IMAGE;
+  }
   
-  // Fallback for any other invalid string
-  return DEFAULT_IMAGE;
+  // FIX 2: Pass the full external URL to the local proxy. 
+  // This ensures the Auth Token is added, fixing the ERR_BLOCKED_BY_ORB/401/403 issue.
+  if (targetUrl.startsWith(BACKEND_API_BASE) || targetUrl.startsWith("http://")) {
+    return `/api/proxy-image?url=${encodeURIComponent(targetUrl)}`;
+  }
+  
+  return DEFAULT_IMAGE; 
 }
 
 

@@ -9,8 +9,9 @@ import { packageService } from "@/services/package-services";
 import { ApprovalModal } from "@/components/PackageModals"; 
 import { useAuth } from "@/hooks/use-auth";
 import { isFinanceApprover } from "@/lib/auth";
+import { BACKEND_API_BASE } from "@/lib/config";
 import { useToast } from "@/hooks/use-toast";
-import { Separator } from "@/components/ui/separator"; // Import Separator
+import { Separator } from "@/components/ui/separator"; 
 
 // Props: We accept ID and Source from the parent page wrapper
 interface PackageDetailViewProps {
@@ -69,13 +70,34 @@ const formatExpiryDateTime = (dateString: string | undefined) => {
   }).replace(',', ' '); // Remove comma if toLocaleString adds one
 };
 
+const IMAGE_ASSET_API_PATH = "api/Package/image-asset?id=";
+
 // Helper to proxy HTTP images if needed
 function getProxiedImageUrl(url: string | null | undefined): string {
   const DEFAULT_IMAGE = "/packages/DefaultPackageImage.png";
   if (!url) return DEFAULT_IMAGE;
-  if (url.startsWith("https") || url.startsWith("blob:") || url.startsWith("/")) return url;
-  if (url.startsWith("http://")) return `/api/proxy-image?url=${encodeURIComponent(url)}`;
-  return url;
+  if (url.startsWith("blob:") || url.startsWith("/packages/")) return url;
+  
+  let targetUrl = url;
+
+  if (url.startsWith(BACKEND_API_BASE) || url.startsWith("http://")) {
+    targetUrl = url;
+  }
+  else if (url.startsWith("/")) {
+    targetUrl = `${BACKEND_API_BASE}${url}`;
+  }
+  else if (url.length > 0 && !url.includes('/')) {
+    targetUrl = `${BACKEND_API_BASE}/${IMAGE_ASSET_API_PATH}${url}`;
+  }
+  else {
+      return DEFAULT_IMAGE;
+  }
+  
+  if (targetUrl.startsWith(BACKEND_API_BASE) || targetUrl.startsWith("http://")) {
+    return `/api/proxy-image?url=${encodeURIComponent(targetUrl)}`;
+  }
+  
+  return DEFAULT_IMAGE;
 }
 
 export default function PackageDetailView({ id, source }: PackageDetailViewProps) {
@@ -390,7 +412,7 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
                       value={rejectionNotes}
                       onChange={(e) => setRejectionNotes(e.target.value)}
                       placeholder="Enter notes or rejection reason"
-                      className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 dark:bg-gray-700 dark:text-white resize-none text-sm text-gray-400"
+                      className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 dark:bg-gray-700 dark:text-white resize-none text-sm text-gray-900"
                       rows={2}
                     />
                   </div>
