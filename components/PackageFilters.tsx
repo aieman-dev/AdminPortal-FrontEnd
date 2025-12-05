@@ -6,7 +6,7 @@ import { Calendar, Search, RotateCcw, Play } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 // 1. Import the helper function
-import { canCreatePackage } from "@/lib/auth";
+import { canDraftPackage } from "@/lib/auth";
 
 interface PackageFiltersProps {
   activeFilter: string;
@@ -42,7 +42,7 @@ export default function PackageFilters({
   const visibleFilters = filters.filter(f => {
     if (f.value === "Draft") {
       // Use the centralized permission check
-      return canCreatePackage(userDepartment);
+      return canDraftPackage(userDepartment);
     }
     return true;
   });

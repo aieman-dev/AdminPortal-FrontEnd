@@ -10,6 +10,7 @@ import { packageService } from "@/services/package-services";
 import { Package } from "@/type/packages"; 
 import { useAuth } from "@/hooks/use-auth";
 import { canCreatePackage } from "@/lib/auth"; 
+import { useToast } from "@/hooks/use-toast";
 
 interface PackageListItem {
   id: number;
@@ -57,6 +58,7 @@ function getProxiedImageUrl(url: string | null | undefined): string {
 
 export default function PackagesPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
 
   // Determine if the current user belongs to the Finance department
   const isFinanceUser = user?.department?.toUpperCase().includes('FINANCE');
@@ -175,21 +177,31 @@ export default function PackagesPage() {
     }
   };
 
-  const handleEdit = (id: number) => router.push(`/portal/packages/${id}/edit`);
+  const handleEdit = (id: number) => router.push(`/portal/packages/form?id=${id}`);
   const handleAddNew = () => router.push("/portal/packages/form");
   
   // --- NEW HANDLER (Type error resolved by updating service) ---
   const handleDuplicate = async (id: number) => {
     try {
       setIsLoading(true);
-      // 'response' is now correctly typed as PackageDuplicateResponse
       const response = await packageService.duplicatePackage(id);
-      alert(`Package duplicated successfully! New ID: ${response.newPackageId}. Status: Draft.`);
+      
+      toast({
+          title: "Package Duplicated",
+          description: `New ID: ${response.newPackageId}. Status: Draft.`,
+          variant: "default",
+          duration: 5000,
+      });
+
       // After duplication, refresh the list and switch to 'Draft' filter to show the new package
       setActiveFilter("Draft");
     } catch (error) {
       console.error("Error duplicating package:", error);
-      alert("Failed to duplicate package.");
+      toast({
+          title: "Duplication Failed",
+          description: error instanceof Error ? error.message : "Failed to duplicate package.",
+          variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -205,16 +217,27 @@ export default function PackagesPage() {
         setIsLoading(true);
         // Logical delete: set status to 'Inactive' in the pending table
         await packageService.updateStatus(id, "Inactive"); 
-        alert("Draft package deleted successfully.");
+        
+        // NEW: Use toast
+        toast({
+            title: "Draft Deleted",
+            description: "Draft package successfully removed from the list.",
+            variant: "default",
+            duration: 5000,
+        });
         
         // Force a re-fetch of the Draft tab content
-        // This ensures the deleted item disappears immediately
         setActiveFilter(prev => (prev === "Draft" ? "Active" : "Draft"));
         setActiveFilter("Draft");
         
     } catch (error) {
         console.error("Error deleting package:", error);
-        alert("Failed to delete draft package.");
+        // NEW: Use toast
+        toast({
+            title: "Deletion Failed",
+            description: error instanceof Error ? error.message : "Failed to delete draft package.",
+            variant: "destructive",
+        });
     } finally {
         setIsLoading(false);
     }

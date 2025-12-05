@@ -12,9 +12,11 @@ import PackageFormStep3 from "@/components/PackageFormStep3";
 import { ConfirmationModal, DraftModal, SuccessModal } from '@/components/PackageModals';
 import { PackageFormData } from "@/type/packages";
 import { packageService } from "@/services/package-services"; 
+import { useToast } from "@/hooks/use-toast";
 
 const PackageFormPage = () => {
   const router = useRouter();
+  const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -65,10 +67,42 @@ const PackageFormPage = () => {
     router.push("/portal/packages");
   };
 
-  const handleSaveDraft = () => {
-    const existing = JSON.parse(localStorage.getItem("packages") || "[]");
-    localStorage.setItem("packages", JSON.stringify([...existing, form]));
-    setShowDraft(true);
+  const handleSaveDraft = async() => {
+    if (!form.packageName.trim()) {
+        toast({ title: "Input Required", 
+          description: "Package Name is required to save a draft.", 
+          variant: "default" });
+        return;
+    }
+      
+    setIsSubmitting(true);
+    
+    try {
+        let finalImageID : string | null = null;
+        
+        // Handle image upload if a new file is present
+        if (form.imageID instanceof File) {
+            finalImageID = await packageService.uploadImage(form.imageID);
+        } else if (typeof form.imageID === "string" && form.imageID) {
+            finalImageID = form.imageID;
+        }
+
+        // Call the new service function
+        await packageService.saveDraft(form, finalImageID || ""); // Pass empty string if null, as expected by the service.
+        
+        console.log("Package saved as draft successfully");
+        setShowDraft(true);
+
+    } catch (err) {
+        console.error("Save Draft error:", err);
+        toast({ 
+            title: "Save Failed", 
+            description: err instanceof Error ? err.message : "Failed to save draft package.",
+            variant: "destructive"
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   const handleConfirmSubmit = async () => {
@@ -86,7 +120,7 @@ const PackageFormPage = () => {
         finalImageID = form.imageID;
       }
 
-      await packageService.createPackage(form, finalImageID);
+      await packageService.createPackage(form, finalImageID || "");
       
       console.log("Package created successfully");
       setShowSuccess(true);

@@ -12,7 +12,7 @@ type Props = {
   onNext: () => void;
 };
 
-// FIX 4: Helper to format date to an ISO string using local date components, 
+// Helper to format date to an ISO string using local date components, 
 // forcing NOON (T12:00:00) without the UTC indicator (Z) to prevent rollback.
 const convertDateForSubmission = (date: Date): string => {
   if (!date) return "";
@@ -25,6 +25,16 @@ const convertDateForSubmission = (date: Date): string => {
   return `${year}-${month}-${day}T12:00:00`;
 };
 
+const DEFAULT_IMAGE = "/packages/DefaultPackageImage.png";
+
+function getProxiedImageUrl(url: string | null | undefined): string {
+  if (!url) return DEFAULT_IMAGE;
+  // Check if it's already secured/local/blob
+  if (url.startsWith("https") || url.startsWith("blob:") || url.startsWith("/")) return url; 
+  // Proxy insecure HTTP
+  if (url.startsWith("http://")) return `/api/proxy-image?url=${encodeURIComponent(url)}`; 
+  return url;
+}
 
 const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
   const [ageOptions, setAgeOptions] = useState<{ value: string; label: string }[]>([]);
@@ -67,6 +77,8 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
     if (form.imageID && form.imageID instanceof File) {
       objectUrl = URL.createObjectURL(form.imageID);
       setImagePreviewUrl(objectUrl);
+    } else if (typeof form.imageID === "string" && form.imageID) {
+      setImagePreviewUrl(getProxiedImageUrl(form.imageID));
     } else {
       setImagePreviewUrl(null);
     }

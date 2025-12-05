@@ -8,6 +8,7 @@ const ENDPOINTS = {
   // Existing/Unchanged
   CREATE: "/proxy-create-package",       
   UPLOAD: "/proxy-upload",
+  DRAFT:"/proxy-create-package/draft", 
   
   // NEW ENDPOINTS - Mapped to non-dynamic proxies
   UPDATE_STATUS: "/proxy-package-status/[id]",  
@@ -275,6 +276,57 @@ export const packageService = {
       // Log the specific error from the backend
       console.error(" Backend Error:", response.error);
       throw new Error(response.error || "Failed to create package");
+    }
+    return response.data;
+  },
+
+// --- NEW FUNCTION: saveDraft ---
+  saveDraft: async (form: PackageFormData, imageId: string) => {
+    const ageCode = extractAgeCode(form.ageCategory);
+    const effectiveDateStr = form.effectiveDate || new Date().toISOString();
+    const lastValidDateStr = form.lastValidDate || new Date().toISOString();
+    
+    const isPointPackage = form.packageType === "Point" || form.packageType === "Reward P";
+    
+    // 1. Item Mapping: Now uses lowercase 'value' field.
+    const mappedItems = form.packageitems.map((item) => {
+        const itemValue = !isPointPackage
+            ? (item.price || 0) 
+            : Math.floor(item.point || 0); 
+        // Note: For Draft, we don't strictly require > 0, but good practice to keep validation similar
+        if (itemValue < 0) {
+            throw new Error(`Item "${item.itemName}" must have a non-negative value.`);
+        }
+
+        return {
+            attractionId: item.attractionId, 
+            itemName: item.itemName,         
+            itemType: item.itemType || (isPointPackage ? "Point" : "Entry"),
+            entryQty: item.entryQty || 1,
+            value: itemValue, 
+        };
+    });
+      
+      const payload = {
+          name: form.packageName,
+          packageType: form.packageType,
+          effectiveDate: effectiveDateStr.split('T')[0], 
+          lastValidDate: lastValidDateStr.split('T')[0], 
+          remark: form.tpremark || "No remarks",
+          nationality: form.nationality,
+          dayPass: form.dayPass,
+          ageCategory: extractAgeCode(form.ageCategory), 
+          imageID: imageId,
+          items: mappedItems,
+    };
+
+    console.log("💾 Sending saveDraft payload:", JSON.stringify(payload, null, 2));
+
+    const response = await apiClient.post(ENDPOINTS.DRAFT, payload); 
+    
+    if (!response.success) {
+      console.error(" Backend Error:", response.error);
+      throw new Error(response.error || "Failed to save draft package");
     }
     return response.data;
   },

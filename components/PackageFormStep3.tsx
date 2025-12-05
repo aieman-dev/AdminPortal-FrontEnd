@@ -2,6 +2,8 @@
 "use client";
 import React, { useState } from "react";
 import { PackageFormData } from "../type/packages";
+import { useAuth } from "@/hooks/use-auth"; 
+import { canDraftPackage } from "@/lib/auth";
 
 type Props = {
   form: PackageFormData;
@@ -27,6 +29,9 @@ const PackageFormStep3: React.FC<Props> = ({ form, onBack, onSubmit, onSaveDraft
   const [activeTab, setActiveTab] = useState<"overview" | "items">("overview");
   const isPointMode = form.packageType === "Point";
   const validDays = calculateValidDays(form.effectiveDate, form.lastValidDate);
+
+  const { user } = useAuth();
+  const canDraft = canDraftPackage(user?.department);
 
   return (
     <div className="px-4 md:px-8 py-6">
@@ -55,11 +60,9 @@ const PackageFormStep3: React.FC<Props> = ({ form, onBack, onSubmit, onSaveDraft
               src={
                 form.imageID instanceof File 
                   ? URL.createObjectURL(form.imageID)
-                  // Use static fallback if imageID is a string but falsy/empty
                   : (typeof form.imageID === "string" && form.imageID !== "" ? form.imageID : DEFAULT_FALLBACK_IMAGE)
               }
               alt={form.packageName}
-              // FIX: Use the stable local fallback on image loading error
               onError={(e) => (e.currentTarget.src = DEFAULT_FALLBACK_IMAGE)}
               className="w-60 h-60 rounded-xl object-cover shadow-md bg-muted"
             />
@@ -141,8 +144,10 @@ const PackageFormStep3: React.FC<Props> = ({ form, onBack, onSubmit, onSaveDraft
       <div className="flex justify-between mt-10">
         <div className="flex gap-2">
           <button onClick={onBack} className="px-6 py-2 border border-border rounded-md text-foreground hover:bg-muted transition">Back</button>
-          <button onClick={onSaveDraft} className="px-6 py-2 bg-gray-400 dark:bg-gray-600 text-white rounded-md hover:bg-gray-500 dark:hover:bg-gray-500 transition">Save Draft</button>
-        </div>
+          {canDraft && (
+            <button onClick={onSaveDraft} className="px-6 py-2 bg-gray-400 dark:bg-gray-600 text-white rounded-md hover:bg-gray-500 dark:hover:bg-gray-500 transition">Save Draft</button>
+          )}
+          </div>
         <button onClick={onSubmit} className="px-8 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition">Proceed</button>
       </div>
     </div>

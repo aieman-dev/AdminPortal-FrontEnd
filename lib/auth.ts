@@ -149,6 +149,11 @@ export function canCreatePackage(department?: string): boolean {
   return allowed.includes(department);
 }
 
+export function canDraftPackage(department?: string): boolean {
+  if (!department) return false;
+  return department.toUpperCase() === "TP_ADMIN";
+}
+
 export function isFinanceApprover(department?: string): boolean {
   return department === "FINANCE_ADMIN";
 }
