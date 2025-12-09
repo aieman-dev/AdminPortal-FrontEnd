@@ -1,9 +1,8 @@
-//app/api/proxy-image/route.ts
+// app/api/(packages)/proxy-image/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
-    // Get the 'url' query parameter
     const { searchParams } = new URL(request.url);
     const imageUrl = searchParams.get("url");
 
@@ -11,26 +10,35 @@ export async function GET(request: NextRequest) {
       return new NextResponse("Missing 'url' query parameter", { status: 400 });
     }
 
-    // Fetch the image from the insecure http:// server
-    const response = await fetch(imageUrl);
+    // 1. Extract the Authorization header from the incoming request
+    const authHeader = request.headers.get("authorization");
+
+    // 2. Prepare headers for the backend request
+    const fetchHeaders: HeadersInit = {};
+    if (authHeader) {
+        fetchHeaders["Authorization"] = authHeader;
+    }
+    // Add ngrok skip warning just in case
+    fetchHeaders["ngrok-skip-browser-warning"] = "true";
+
+    // 3. Fetch from backend WITH the headers
+    const response = await fetch(imageUrl, {
+        headers: fetchHeaders
+    });
 
     if (!response.ok) {
       return new NextResponse("Failed to fetch image", { status: response.status });
     }
 
-    // Get the image data as a blob
     const imageBlob = await response.blob();
-    
-    // Get the original content-type (e.g., 'image/jpeg')
     const contentType = response.headers.get("content-type");
 
-    // Send the image back to your frontend
-    // We use NextResponse.blob() which is available in Next 14.2+
-    // For older versions, you'd use new Response(imageBlob, ...)
     const headers = new Headers();
     if (contentType) {
       headers.set("Content-Type", contentType);
     }
+    // Set cache control to improve performance
+    headers.set("Cache-Control", "public, max-age=31536000, immutable");
 
     return new Response(imageBlob, { headers });
 

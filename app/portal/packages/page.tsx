@@ -1,9 +1,8 @@
-// app/portal/packages/pages
 "use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Plus, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Trash2, AlertTriangle } from "lucide-react";
 import PackageFilters from "@/components/PackageFilters";
 import PackageCard from "@/components/PackageCard";
 import { packageService } from "@/services/package-services"; 
@@ -12,12 +11,24 @@ import { useAuth } from "@/hooks/use-auth";
 import { canCreatePackage } from "@/lib/auth"; 
 import { BACKEND_API_BASE } from "@/lib/config";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button"; 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface PackageListItem {
   id: number;
   name: string;
   price: string;
   category: string; 
+  ageDescription?: string;
   packageType: string;
   nationality: string;
   status: string;
@@ -27,11 +38,8 @@ interface PackageListItem {
   createdDate: string | undefined; 
 }
 
-
-// NEW HELPER: Formats a raw date string to a short display format (e.g., "24 Nov 2025")
 const formatShortDate = (dateString: string | undefined) => {
   if (!dateString) return "—";
-  // Safely grab the date part to avoid timezone issues
   const date = new Date(dateString.split('T')[0]);
   return date.toLocaleDateString("en-GB", {
     day: "2-digit",
@@ -44,63 +52,44 @@ const IMAGE_ASSET_API_PATH = "api/Package/image-asset?id=";
 
 function getProxiedImageUrl(url: string | null | undefined): string {
   const DEFAULT_IMAGE = "/packages/DefaultPackageImage.png";
-  
   if (!url) return DEFAULT_IMAGE;
-  
- if (url.startsWith("blob:") || url.startsWith("/packages/")) {
-    return url;
-  }
+  if (url.startsWith("blob:") || url.startsWith("/packages/")) return url;
   
   let targetUrl = url;
-
-  // FIX 1: If the URL is a full URL starting with the BACKEND_API_BASE (e.g., https://ngrok...)
   if (url.startsWith(BACKEND_API_BASE) || url.startsWith("http://")) {
     targetUrl = url;
-  }
-  // If the URL is a relative path (e.g., /images/...)
-  else if (url.startsWith("/")) {
+  } else if (url.startsWith("/")) {
     targetUrl = `${BACKEND_API_BASE}${url}`;
-  }
-  // If it's a bare Image ID (e.g., "395")
-  else if (url.length > 0 && !url.includes('/')) {
+  } else if (url.length > 0 && !url.includes('/')) {
     targetUrl = `${BACKEND_API_BASE}/${IMAGE_ASSET_API_PATH}${url}`;
-  }
-  else {
+  } else {
       return DEFAULT_IMAGE;
   }
   
-  // FIX 2: Pass the full external URL to the local proxy. 
-  // This ensures the Auth Token is added, fixing the ERR_BLOCKED_BY_ORB/401/403 issue.
   if (targetUrl.startsWith(BACKEND_API_BASE) || targetUrl.startsWith("http://")) {
     return `/api/proxy-image?url=${encodeURIComponent(targetUrl)}`;
   }
-  
   return DEFAULT_IMAGE; 
 }
-
 
 export default function PackagesPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
-  // Determine if the current user belongs to the Finance department
-  const isFinanceUser = user?.department?.toUpperCase().includes('FINANCE');
-
-  // Set the default filter: 'Pending' for Finance, 'Active' for others
-  const defaultFilter = isFinanceUser ? "Pending" : "Active";
-  
-  // FIX 2: Use the helper function logic instead of hardcoding
-  // This ensures IT_ADMIN, MIS_SUPERADMIN, and TP_ADMIN are all covered automatically
+  const defaultFilter = "Pending";
   const canCreate = canCreatePackage(user?.department);
-  
-  // Match backend default
   const ITEMS_PER_PAGE = 30; 
   
   const [activeFilter, setActiveFilter] = useState(defaultFilter);
   const [searchQuery, setSearchQuery] = useState("");
+  const [packageTypeFilter, setPackageTypeFilter] = useState("All"); 
   const [packages, setPackages] = useState<PackageListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
+  const [selectedPackageIds, setSelectedPackageIds] = useState<Set<number>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -110,163 +99,163 @@ export default function PackagesPage() {
     start: null,
     end: null
   });
-  
-  const router = useRouter();
+
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    const fetchPackages = async () => {
-      setIsLoading(true);
-      try {
-        const startStr = dateRange.start ? dateRange.start.toISOString() : undefined;
-        const endStr = dateRange.end ? dateRange.end.toISOString() : undefined;
+    setSelectedPackageIds(new Set());
+  }, [activeFilter]);
 
-        const { packages: rawData, totalPages: total, totalRecords: records } = await packageService.getPackages(
-          activeFilter, 
-          startStr, 
-          endStr, 
-          currentPage, 
-          searchQuery
-        );
+  const fetchPackages = async () => {
+      setIsLoading(true);
+      try {
+        const startStr = dateRange.start ? dateRange.start.toISOString() : undefined;
+        const endStr = dateRange.end ? dateRange.end.toISOString() : undefined;
 
-        const formatted: PackageListItem[] = rawData.map((pkg: Package) => {
-            // CRITICAL FIX 1: Determine the correct package value based on its type
-            const isPointOrReward = (pkg.packageType || pkg.PackageType || 'Entry').toLowerCase().includes('point') || (pkg.packageType || pkg.PackageType || 'Entry').toLowerCase().includes('reward p');
-			
-            const finalPrice = isPointOrReward 
-                ? (pkg.point ?? pkg.totalPrice ?? 0) 
+        const { packages: rawData, totalPages: total, totalRecords: records } = await packageService.getPackages(
+          activeFilter, 
+          startStr, 
+          endStr, 
+          currentPage, 
+          searchQuery,
+          packageTypeFilter 
+        );
+
+        const formatted: PackageListItem[] = rawData.map((pkg: Package) => {
+            const pType = (pkg.packageType || pkg.PackageType || 'Entry');
+            const isPoint = pType.toLowerCase().includes('point') && !pType.toLowerCase().includes('reward');
+            const finalPrice = isPoint
+                ? (pkg.point ?? 0) 
                 : (pkg.price ?? pkg.totalPrice ?? 0); 
             
             return ({
-          id: pkg.id,
-          name: pkg.name || pkg.PackageName || "Untitled", 
-          price: finalPrice.toString(), // Assign the correctly prioritized price
-          category: pkg.ageCategory || "N/A",
-          packageType: pkg.packageType || pkg.PackageType || "Entry",
-          createdDate: pkg.createdDate,
-          nationality: pkg.nationality || "N/A",
-          effectiveDate: pkg.effectiveDate,
-          lastValidDate: pkg.lastValidDate,
-          status: pkg.status || "Draft",
-          image: getProxiedImageUrl(pkg.imageUrl || pkg.imageID),
-        });
-        });
+              id: pkg.id,
+              name: pkg.name || pkg.PackageName || "Untitled", 
+              price: finalPrice.toString(), 
+              category: pkg.ageCategory || "N/A",
+              ageDescription: pkg.ageDescription,
+              packageType: pType,
+              createdDate: pkg.createdDate,
+              nationality: pkg.nationality || "N/A",
+              effectiveDate: pkg.effectiveDate,
+              lastValidDate: pkg.lastValidDate,
+              status: pkg.status || "Draft",
+              image: getProxiedImageUrl(pkg.imageUrl || pkg.imageID),
+            });
+        });
 
-        setPackages(formatted);
-        setTotalPages(total);
-        setTotalRecords(records);
+        setPackages(formatted);
+        setTotalPages(total);
+        setTotalRecords(records);
 
-      } catch (error) {
-        console.error("Error loading packages:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      } catch (error) {
+        console.error("Error loading packages:", error);
+      } finally {
+        setIsLoading(false);
+      }
+  };
 
+  useEffect(() => {
     const timer = setTimeout(() => {
       fetchPackages();
     }, 500);
-
     return () => clearTimeout(timer);
+  }, [activeFilter, currentPage, searchQuery, dateRange, packageTypeFilter]); 
 
-  }, [activeFilter, currentPage, searchQuery, dateRange]); 
-
-  const handleFilterChange = (filter: string) => {
-    setActiveFilter(filter);
-    setCurrentPage(1);
-  };
-
-  const handleSearchChange = (query: string) => {
-    setSearchQuery(query);
-    setCurrentPage(1);
-  };
-
-  const handleDateFilter = (start: Date | null, end: Date | null) => {
-    setDateRange({ start, end });
-    setCurrentPage(1);
-  };
-
-  const goToPage = (page: number) => {
-    const target = Math.max(1, page);
-    setCurrentPage(target);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  const handleFilterChange = (filter: string) => { setActiveFilter(filter); setCurrentPage(1); };
+  const handleSearchChange = (query: string) => { setSearchQuery(query); setCurrentPage(1); };
+  const handleDateFilter = (start: Date | null, end: Date | null) => { setDateRange({ start, end }); setCurrentPage(1); };
+  const goToPage = (page: number) => { setCurrentPage(Math.max(1, page)); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
   const handlePackageClick = (id: number) => {
     const pendingStatuses = ["Pending", "Draft", "Rejected"];
     if (pendingStatuses.includes(activeFilter)) {
-    router.push(`/portal/packages/pdetails/requests/${id}`);
+        router.push(`/portal/packages/pdetails/requests/${id}`);
     } else {
-    router.push(`/portal/packages/pdetails/package/${id}`);
+        router.push(`/portal/packages/pdetails/package/${id}`);
     }
   };
 
   const handleEdit = (id: number) => router.push(`/portal/packages/form?id=${id}`);
   const handleAddNew = () => router.push("/portal/packages/form");
   
-  // --- NEW HANDLER (Type error resolved by updating service) ---
   const handleDuplicate = async (id: number) => {
     try {
       setIsLoading(true);
       const response = await packageService.duplicatePackage(id);
-      
-      toast({
-          title: "Package Duplicated",
-          description: `New ID: ${response.newPackageId}. Status: Draft.`,
-          variant: "default",
-          duration: 5000,
-      });
-
-      // After duplication, refresh the list and switch to 'Draft' filter to show the new package
+      toast({ title: "Package Duplicated", description: `New ID: ${response.newPackageId}. Status: Draft.` });
       setActiveFilter("Draft");
     } catch (error) {
-      console.error("Error duplicating package:", error);
-      toast({
-          title: "Duplication Failed",
-          description: error instanceof Error ? error.message : "Failed to duplicate package.",
-          variant: "destructive",
-      });
+      toast({ title: "Duplication Failed", description: error instanceof Error ? error.message : "Failed to duplicate.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   }
 
-  // --- ADDED DELETE HANDLER ---
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this draft package? This action cannot be undone.")) {
-        return;
-    }
+  const handleDeleteClick = (id: number) => {
+    setDeleteId(id);
+  };
 
+  // --- UPDATED: Use Bulk Delete API for Single Delete ---
+  const handleConfirmDelete = async () => {
+    if (!deleteId) return;
+    
+    setIsDeleting(true);
     try {
-        setIsLoading(true);
-        // Logical delete: set status to 'Inactive' in the pending table
-        await packageService.updateStatus(id, "Inactive"); 
+        // FIX: Use bulkDeletePackages with a single ID array instead of updateStatus
+        await packageService.bulkDeletePackages([deleteId]); 
         
-        // NEW: Use toast
-        toast({
-            title: "Draft Deleted",
-            description: "Draft package successfully removed from the list.",
-            variant: "default",
-            duration: 5000,
+        toast({ 
+            title: "Draft Deleted", 
+            description: `Package ID ${deleteId} has been removed successfully.` 
         });
         
-        // Force a re-fetch of the Draft tab content
-        setActiveFilter(prev => (prev === "Draft" ? "Active" : "Draft"));
-        setActiveFilter("Draft");
-        
+        fetchPackages(); 
     } catch (error) {
-        console.error("Error deleting package:", error);
-        // NEW: Use toast
-        toast({
-            title: "Deletion Failed",
-            description: error instanceof Error ? error.message : "Failed to delete draft package.",
-            variant: "destructive",
-        });
+        toast({ title: "Deletion Failed", description: "Failed to delete package.", variant: "destructive" });
     } finally {
-        setIsLoading(false);
+        setIsDeleting(false);
+        setDeleteId(null);
     }
   };
 
-  // Original Page Numbers Logic
+  const handleSelectPackage = (id: number, checked: boolean) => {
+      const newSet = new Set(selectedPackageIds);
+      if (checked) newSet.add(id);
+      else newSet.delete(id);
+      setSelectedPackageIds(newSet);
+  };
+
+  const handleSelectAll = () => {
+      if (selectedPackageIds.size === packages.length) {
+          setSelectedPackageIds(new Set()); 
+      } else {
+          const allIds = new Set(packages.map(p => p.id));
+          setSelectedPackageIds(allIds);
+      }
+  };
+
+  const handleBulkDelete = async () => {
+      if (selectedPackageIds.size === 0) return;
+      if (!window.confirm(`Are you sure you want to delete ${selectedPackageIds.size} draft packages?`)) return;
+
+      setIsBulkDeleting(true);
+      try {
+          const ids = Array.from(selectedPackageIds);
+          await packageService.bulkDeletePackages(ids);
+          toast({ title: "Bulk Delete Success", description: `${ids.length} packages deleted.` });
+          setSelectedPackageIds(new Set());
+          fetchPackages(); 
+      } catch (error) {
+          toast({ title: "Bulk Delete Failed", description: "Some packages could not be deleted.", variant: "destructive" });
+      } finally {
+          setIsBulkDeleting(false);
+      }
+  };
+
+  const isDraftTab = activeFilter === "Draft";
+
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
     if (totalPages <= 5) {
@@ -286,10 +275,8 @@ export default function PackagesPage() {
   return (
     <div className="min-h-screen flex p-8 transition-colors duration-300 text-foreground">
       <div className="w-full">
-        <div className="rounded-lg shadow-sm border p-6 transition-colors duration-300 bg-card border-border text-card-foreground">
-          <h2 className="text-xl font-bold mb-6">
-            Package Status
-          </h2>
+        <div className="rounded-lg shadow-sm border p-6 bg-card border-border text-card-foreground">
+          <h2 className="text-xl font-bold mb-6">Package Status</h2>
 
           <PackageFilters
             activeFilter={activeFilter}
@@ -298,7 +285,35 @@ export default function PackagesPage() {
             setSearchQuery={handleSearchChange}
             onDateFilter={handleDateFilter}
             userDepartment={user?.department}
+            packageTypeFilter={packageTypeFilter}
+            setPackageTypeFilter={setPackageTypeFilter}
           />
+
+          {isDraftTab && packages.length > 0 && (
+              <div className="flex items-center gap-4 mb-4 bg-muted/30 p-2 rounded-lg">
+                  <div className="flex items-center gap-2">
+                      <input 
+                        type="checkbox" 
+                        className="w-4 h-4"
+                        checked={selectedPackageIds.size === packages.length && packages.length > 0}
+                        onChange={handleSelectAll}
+                      />
+                      <span className="text-sm font-medium">Select All</span>
+                  </div>
+                  {selectedPackageIds.size > 0 && (
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={handleBulkDelete} 
+                        disabled={isBulkDeleting}
+                        className="ml-auto"
+                      >
+                        {isBulkDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <Trash2 className="w-4 h-4 mr-2"/>}
+                        Delete Selected ({selectedPackageIds.size})
+                      </Button>
+                  )}
+              </div>
+          )}
 
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
@@ -311,28 +326,32 @@ export default function PackagesPage() {
                 Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, totalRecords || packages.length)} of {totalRecords || 'many'} packages
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 mt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 mt-4">
                 {packages.map((pkg, index) => (
                   <PackageCard
                     key={pkg.id ?? index}
                     id={pkg.id ?? index}
                     name={pkg.name} 
                     price={pkg.price}
-                    category={pkg.category}
-                    packageType ={pkg.packageType}
+                    category={pkg.category || "N/A"}
+                    description={pkg.ageDescription}
+                    packageType={pkg.packageType}
                     dateDisplay={formatShortDate(pkg.createdDate)} 
                     nationality={pkg.nationality}
                     status={pkg.status}
                     image={pkg.image}
+                    isSelectable={isDraftTab}
+                    isSelected={selectedPackageIds.has(pkg.id)}
+                    onSelectChange={(checked) => handleSelectPackage(pkg.id, checked)}
                     onClick={() => handlePackageClick(pkg.id)}
                     onDuplicate={() => handleDuplicate(pkg.id)}
                     onEdit={() => handleEdit(pkg.id)}
-                    onDelete={() => handleDelete(pkg.id)}
+                    onDelete={() => handleDeleteClick(pkg.id)}
                   />
                 ))}
               </div>
-
-              {(totalPages > 1 || packages.length === ITEMS_PER_PAGE) && (
+              
+               {(totalPages > 1 || packages.length === ITEMS_PER_PAGE) && (
                 <div className="mt-8 flex items-center justify-between bg-muted/50 rounded-lg px-6 py-4 border border-border">
                   <div className="text-sm text-muted-foreground">
                     Page <span className="font-semibold text-foreground">{currentPage}</span>
@@ -393,7 +412,6 @@ export default function PackagesPage() {
         </div>
       </div>
 
-      {/* Add New Button - Only shown if user has permission */}
       {canCreate && (
         <button
           onClick={handleAddNew}
@@ -403,6 +421,34 @@ export default function PackagesPage() {
           Add New
         </button>
       )}
+
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="h-5 w-5" />
+                Confirm Deletion
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this package? <br/>
+              <span className="font-semibold text-foreground">Package ID: {deleteId}</span>
+              <br/><br/>
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+                onClick={handleConfirmDelete} 
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete Package"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }

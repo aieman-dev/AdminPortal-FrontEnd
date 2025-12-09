@@ -1,14 +1,17 @@
 // services/package-services.ts
 import { apiClient, ApiResponse } from "@/lib/api-client";
-import { PackageFormData, Package, PackageDuplicateResponse, PackageItem } from "@/type/packages"; 
+import { PackageFormData, ImageItem, Package, PackageDuplicateResponse, PackageItem } from "@/type/packages"; 
 import { ItPoswfPackage, UnsyncedPackageDTO, SelectableItPoswfPackage } from "../type/themepark-support";
 
 
 const ENDPOINTS = {
   // Existing/Unchanged
-  CREATE: "/proxy-create-package",       
+  CREATE: "/proxy-create-package",
+  SEARCH_IMAGES: "/proxy-image-search",
   UPLOAD: "/proxy-upload",
   DRAFT:"/proxy-create-package/draft", 
+  BULK_DELETE: "/proxy-package-bulk-delete",
+  CREATION_DATA: "/proxy-create-package/creationdata",
   
   // NEW ENDPOINTS - Mapped to non-dynamic proxies
   UPDATE_STATUS: "/proxy-package-status/[id]",  
@@ -20,6 +23,34 @@ const ENDPOINTS = {
   UPDATE_ITPOSWF: "/proxy-package-group/update",
   BCOMPARE_SEARCH :"/proxy-bcompare/search",
   BCOMPARE_SYNC : "/proxy-bcompare/sync",
+};
+
+interface AgeCategoryMapData {
+    displayText: string; // "A1 - Adult"
+    description: string; // "Aged 11-59"
+}
+
+let ageCategoryCache: Record<string, AgeCategoryMapData> | null = null;
+
+const getAgeCategoryMap = async (): Promise<Record<string, AgeCategoryMapData>> => {
+  if (ageCategoryCache) return ageCategoryCache;
+  
+  try {
+    // Fetch the definition list (same as Step 1 dropdown)
+    const response = await apiClient.get<any>(ENDPOINTS.CREATION_DATA);
+    if (response.success && response.data?.ageCategories) {
+      const map: Record<string, AgeCategoryMapData> = {};
+      response.data.ageCategories.forEach((c: any) => {
+         // Map Code (A1) -> Display Text (A1 - Adult)
+         map[c.ageCode] = c.displayText;
+      });
+      ageCategoryCache = map;
+      return map;
+    }
+  } catch (e) {
+    console.error("Failed to fetch age categories for mapping", e);
+  }
+  return {};
 };
 
 // --- FIX: DEFINITION OF BackendPackageDTO ---
@@ -47,13 +78,12 @@ interface BackendPackageDTO {
     reviewedDate?: string;
     approvedBy?: string;
     
-    // START FIX: Add missing optional fields used for robust mapping
     PackageName?: string; 
     totalPrice?: number;
     PackageType?: string; 
     imageID?: string;
     packageitems?: any[];
-    // END FIX
+   
 
     // from IT-POSWF list response
     recordStatus?: string; 
@@ -67,48 +97,28 @@ interface BackendPackageDTO {
 // ---------------------------------------------
 
 
-const transformToFrontend = (pkg: BackendPackageDTO): Package => {
-  // FIX 1: Last Valid Date logic (Next Day at 3AM)
-  // Ensure we get a date string or fallback
-  const effDateStr = pkg.effectiveDate || pkg.createdDate || new Date().toISOString();
-  const lastValidDateStr = pkg.lastValidDate || new Date().toISOString();
-    
-  const start = new Date(effDateStr.split('T')[0]);
-  let end = new Date(lastValidDateStr.split('T')[0]);
-  end.setDate(end.getDate() + 1); // Advance by 1 day
-  end.setHours(3, 0, 0, 0); // Set time to 3 AM
-  const diffTime = Math.abs(end.getTime() - start.getTime());
-  const calculatedDuration = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+const transformToFrontend = (pkg: BackendPackageDTO, ageMap: Record<string, AgeCategoryMapData> = {}): Package => {
+  const effDateStr = pkg.effectiveDate || pkg.createdDate;
+  const lastValidDateStr = pkg.lastValidDate;
+   
+  const rawAgeCode =pkg.ageCategory || pkg.category || "";
+  const mappedData = ageMap[rawAgeCode];
+  
+  // DYNAMIC MAPPING: Use the map if available, otherwise fallback to code or legacy logic
+  const displayAgeCategory = mappedData?.displayText || rawAgeCode || pkg.category || "N/A";
+  const displayAgeDesc = mappedData?.description || "";
 
-  const rawAgeCode = pkg.ageCategory; // e.g. "C1"
-  const rawCategoryName = pkg.category; // e.g. "Child"
-
-  const displayAgeCategory = (() => {
-    // If the ageCategory field already contains a full label (like "A1 - Adult"), use it.
-    if (rawAgeCode && rawAgeCode.includes(' - ')) return rawAgeCode; 
-    
-    // If we have both a short code and a name, combine them (e.g., "C" + "Child" -> "C - Child").
-    if (rawAgeCode && rawCategoryName && rawAgeCode.length <= 2) {
-        return `${rawAgeCode} - ${rawCategoryName}`;
-    }
-    // Otherwise, fall back to whatever is most descriptive.
-    return rawAgeCode || rawCategoryName || "N/A";
-  })();
-
-  // 🌟 MAPPING LOGIC: Prioritize new fields for last action details
+  // MAPPING LOGIC: Prioritize new fields for last action details
   const finalReviewer = pkg.approvedBy ;
   const finalReviewDate = pkg.reviewedDate ;
-
-// --- CRITICAL MAPPINGS: Robustly checking for field names ---
-// FIX 3: Use the robust fallback variables now that they are defined on BackendPackageDTO
   const finalName = pkg.name || pkg.packageName || pkg.PackageName || "Untitled Package";
   
-// FIX 1: Correctly set finalPrice to point value if packageType is Point/Reward
-  const isPointType = (pkg.packageType || pkg.PackageType || '').toLowerCase().includes('point') || (pkg.packageType || pkg.PackageType || '').toLowerCase().includes('reward');
-  const finalPrice = (isPointType && pkg.point !== undefined)
+  const pType = (pkg.packageType || pkg.PackageType || '').toLowerCase();
+  const isPointType = pType.includes('point') && !pType.includes('reward');
+
+  const finalPrice = (isPointType && pkg.point !== undefined && pkg.point !== 0)
       ? pkg.point 
       : pkg.price ?? pkg.totalPrice ?? 0;
-// END FIX 1
   
   const finalType = pkg.packageType || pkg.PackageType || "N/A";
   const finalStatus = pkg.status || "Draft";
@@ -138,14 +148,14 @@ const transformToFrontend = (pkg: BackendPackageDTO): Package => {
     PackageType: finalType, // Legacy mapping
     totalPrice: finalPrice, // Legacy mapping
     ageCategory: displayAgeCategory,
+    ageDescription: displayAgeDesc,
     nationality: pkg.nationality || "N/A",
-    // FIX: Ensure correct string is passed for date fields
     effectiveDate: effDateStr, 
     lastValidDate: lastValidDateStr,
     createdDate: pkg.createdDate || pkg.dateCreated || new Date().toISOString(),
     status: finalStatus, // Use robust status
     imageID: finalImage, // Legacy mapping
-    durationDays: pkg.validDays ?? calculatedDuration, 
+    durationDays: pkg.validDays ?? 0, 
     createdBy: pkg.submittedBy || "System", 
     packageitems: finalItems, // Legacy mapping
     tpremark: pkg.remark || "",
@@ -155,16 +165,12 @@ const transformToFrontend = (pkg: BackendPackageDTO): Package => {
   };
 };
 
-const localTransform = (pkg: any): Package => {
-    return transformToFrontend(pkg as BackendPackageDTO);
-};
 
 // FIX 3: Helper to extract code from the display label (e.g., "A1 - Adult" -> "A1")
 const extractAgeCode = (ageCategory: string | undefined): string => {
-    if (!ageCategory) return "";
-    // Match: starts with one or more alphanumeric/hyphen characters, followed by a space and a hyphen
-    const match = ageCategory.match(/^([A-Za-z0-9\-]+)\s*-/);
-    return match ? match[1].trim() : ageCategory;
+    if (!ageCategory) return "";
+    const match = ageCategory.match(/^([A-Za-z0-9\-]+)\s*-/);
+    return match ? match[1].trim() : ageCategory;
 };
 
 const transformToItPoswfPackage = (pkg: BackendPackageDTO): ItPoswfPackage => {
@@ -227,43 +233,72 @@ export const packageService = {
     return response.data;
   },
 
+bulkDeletePackages: async (ids: number[]) => {
+    const payload = { packageIds: ids };
+    const response = await apiClient.put(ENDPOINTS.BULK_DELETE, payload);
+    
+    if (!response.success) {
+        throw new Error(response.error || "Failed to delete selected packages.");
+    }
+    return response.data;
+  },
+
+  searchImages: async (pageNumber: number = 1, pageSize: number = 50): Promise<{ images: ImageItem[], totalRecords: number }> => {
+    const payload = { 
+        PageNumber: pageNumber, 
+        PageSize: pageSize 
+    };
+    
+    const response = await apiClient.post<any>(ENDPOINTS.SEARCH_IMAGES, payload);
+
+    if (!response.success || !response.data) {
+      console.error("Failed to search images:", response.error);
+      return { images: [], totalRecords: 0 };
+    }
+
+    return {
+        images: response.data.images || [],
+        totalRecords: response.data.totalRecords || 0
+    };
+  },
+
   createPackage: async (form: PackageFormData, imageId: string) => {
     const ageCode = extractAgeCode(form.ageCategory);
-    const effectiveDateStr = form.effectiveDate || new Date().toISOString();
-    const lastValidDateStr = form.lastValidDate || new Date().toISOString();
-    
-    const isPointPackage = form.packageType === "Point" || form.packageType === "Reward P";
-    
-    // 1. Item Mapping: Now uses lowercase 'value' field.
-    const mappedItems = form.packageitems.map((item) => {
-        const itemValue = !isPointPackage
-            ? (item.price || 0) 
-            : Math.floor(item.point || 0); 
+    const typeLower = form.packageType.toLowerCase();
+    const isPoint = form.packageType === "Point";
 
-        if (itemValue <= 0) {
-            throw new Error(`Item "${item.itemName}" must have a value greater than zero. Current value: ${itemValue}`);
+    const rawValue = form.totalPrice || 0;
+    const formattedValue = Number(rawValue.toFixed(2));
+
+    let finalNationality = form.nationality;
+    if (finalNationality === "All" || finalNationality === "ALL") {
+        finalNationality = null as any;
         }
 
-        return {
-            attractionId: item.attractionId, 
-            itemName: item.itemName,         
-            itemType: item.itemType || (isPointPackage ? "Point" : "Entry"),
-            entryQty: item.entryQty || 1,
-            value: itemValue, 
-        };
-    });
-      
-      const payload = {
-        name: form.packageName,
-        packageType: form.packageType,
-        effectiveDate: effectiveDateStr.split('T')[0], 
-        lastValidDate: lastValidDateStr.split('T')[0], 
-        remark: form.tpremark || "No remarks",
-        nationality: form.nationality,
-        dayPass: form.dayPass,
-        ageCategory: extractAgeCode(form.ageCategory), 
-        imageID: imageId,
-        items: mappedItems,
+    const mappedItems = form.packageitems.map((item) => {
+        const itemVal = item.price || item.point || 0;
+        return {
+            attractionId: item.attractionId, 
+            itemName: item.itemName,         
+            itemType: item.itemType || (isPoint ? "Point" : "Entry"),
+            entryQty: item.entryQty || 1,
+            value: Number(itemVal.toFixed(2)), 
+        };
+    });
+     
+        const payload = {
+        name: form.packageName,
+        packageType: form.packageType,
+        effectiveDate: form.effectiveDate ? form.effectiveDate.split('T')[0] : null,
+        lastValidDate: form.lastValidDate ? form.lastValidDate.split('T')[0] : null,
+        remark: form.tpremark || "No remarks",
+        nationality: finalNationality,
+        dayPass: form.dayPass,
+        ageCategory: extractAgeCode(form.ageCategory), 
+        imageID: imageId,
+        items: mappedItems,
+        price: isPoint ? 0 : formattedValue, 
+        point: isPoint ? formattedValue : 0
     };
 
     // Debug log. Check your browser console to see exactly what is being sent.
@@ -283,41 +318,41 @@ export const packageService = {
 // --- NEW FUNCTION: saveDraft ---
   saveDraft: async (form: PackageFormData, imageId: string) => {
     const ageCode = extractAgeCode(form.ageCategory);
-    const effectiveDateStr = form.effectiveDate || new Date().toISOString();
-    const lastValidDateStr = form.lastValidDate || new Date().toISOString();
-    
-    const isPointPackage = form.packageType === "Point" || form.packageType === "Reward P";
-    
-    // 1. Item Mapping: Now uses lowercase 'value' field.
-    const mappedItems = form.packageitems.map((item) => {
-        const itemValue = !isPointPackage
-            ? (item.price || 0) 
-            : Math.floor(item.point || 0); 
-        // Note: For Draft, we don't strictly require > 0, but good practice to keep validation similar
-        if (itemValue < 0) {
-            throw new Error(`Item "${item.itemName}" must have a non-negative value.`);
-        }
+    const typeLower = form.packageType.toLowerCase();
+    const isPoint = form.packageType === "Point";
 
-        return {
-            attractionId: item.attractionId, 
-            itemName: item.itemName,         
-            itemType: item.itemType || (isPointPackage ? "Point" : "Entry"),
-            entryQty: item.entryQty || 1,
-            value: itemValue, 
-        };
-    });
+    const rawValue = form.totalPrice || 0;
+    const formattedValue = Number(rawValue.toFixed(2));
+
+    let finalNationality = form.nationality;
+    if (finalNationality === "All" || finalNationality === "ALL") {
+        finalNationality = null as any;
+        }
+    
+    const mappedItems = form.packageitems.map((item) => {
+        const itemVal = item.price || item.point || 0;
+        return {
+            attractionId: item.attractionId, 
+            itemName: item.itemName,         
+            itemType: item.itemType || (isPoint ? "Point" : "Entry"),
+            entryQty: item.entryQty || 1,
+            value: Number(itemVal.toFixed(2)), 
+        };
+    });
       
-      const payload = {
-          name: form.packageName,
-          packageType: form.packageType,
-          effectiveDate: effectiveDateStr.split('T')[0], 
-          lastValidDate: lastValidDateStr.split('T')[0], 
-          remark: form.tpremark || "No remarks",
-          nationality: form.nationality,
-          dayPass: form.dayPass,
-          ageCategory: extractAgeCode(form.ageCategory), 
-          imageID: imageId,
-          items: mappedItems,
+    const payload = {
+        name: form.packageName,
+        packageType: form.packageType,
+        effectiveDate: form.effectiveDate ? form.effectiveDate.split('T')[0] : null,
+        lastValidDate: form.lastValidDate ? form.lastValidDate.split('T')[0] : null,
+        remark: form.tpremark || "No remarks",
+        nationality: finalNationality,
+        dayPass: form.dayPass,
+        ageCategory: extractAgeCode(form.ageCategory), 
+        imageID: imageId,
+        items: mappedItems,
+        price: isPoint ? 0 : formattedValue, 
+        point: isPoint ? formattedValue : 0
     };
 
     console.log("💾 Sending saveDraft payload:", JSON.stringify(payload, null, 2));
@@ -337,10 +372,14 @@ export const packageService = {
     startDate?: string, 
     endDate?: string, 
     page: number = 1,
-    searchQuery: string = ""
+    searchQuery: string = "",
+    packageType?: string
   ): Promise<{ packages: Package[], totalPages: number, totalRecords: number }> => {
+    
+    const ageMap = await getAgeCategoryMap();
+
     const localTransform = (pkg: any): Package => {
-        return transformToFrontend(pkg as BackendPackageDTO);
+        return transformToFrontend(pkg as BackendPackageDTO, ageMap);
     };
     
     // Payload matches the C# PackageFilterModel structure
@@ -351,6 +390,7 @@ export const packageService = {
         PageSize: 30, 
         StartDate: startDate || null,
         EndDate: endDate || null,
+        PackageType: packageType === "All" ? null : packageType,
     };
     
     
@@ -376,9 +416,10 @@ export const packageService = {
 
 // --- STANDARD FUNCTIONS ---
   getPackageById: async (id: number, source?: string): Promise<Package | null> => {
-    // FIX: Use the complete transformToFrontend function here as well
+    const ageMap = await getAgeCategoryMap();
+
     const localTransformDetail = (pkg: any): Package => {
-        return transformToFrontend(pkg as BackendPackageDTO);
+        return transformToFrontend(pkg as BackendPackageDTO, ageMap);
     };
 
     // Payload matches the C# PackageDetailRequestModel structure
@@ -398,6 +439,7 @@ export const packageService = {
     return localTransformDetail(response.data);
   },
 
+
   // --- NEW FUNCTION: duplicatePackage (Typed to PackageDuplicateResponse) ---
   duplicatePackage: async (id: number): Promise<PackageDuplicateResponse> => {
       // Payload matches the C# PackageIdRequestModel structure
@@ -411,6 +453,7 @@ export const packageService = {
       }
       return response.data;
   },
+
 
   // --- ----------------------------ItPoswfPackage------------------------------------- ---
   

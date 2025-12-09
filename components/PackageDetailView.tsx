@@ -16,58 +16,46 @@ import { Separator } from "@/components/ui/separator";
 // Props: We accept ID and Source from the parent page wrapper
 interface PackageDetailViewProps {
   id: string;
-  source: "pending" | "active"; // 'active' = Live DB, 'pending' = Request DB
+  source: "pending" | "active"; 
 }
 
-const NATIONALITY_MAP = {
-  'L': 'Malaysia',
-  'F': 'International',
-};
+const getNationalityLabel = (code: string | undefined) => {
+  if (code === "L") return "Malaysian";
+  if (code === "F") return "International";
+  if (!code || code === "N/A") return "All";
+  return code;
+}
 
-// FIX 2.1: Renamed from formatDate to formatDisplayDate (used for Effective Date)
+// UPDATED: Date Formatters
 const formatDisplayDate = (dateString: string | undefined) => {
-  if (!dateString) return "—";
-
-  // 1. Get the date part only (e.g., '2025-12-13')
-  const datePart = dateString.split('T')[0];
-
-  // 2. CRITICAL FIX: Construct Date object from YYYY-MM-DD (defaults to local midnight) 
-  // and explicitly set time to 00:00:00 to prevent internal shifting.
-  const date = new Date(datePart); 
-  date.setHours(0, 0, 0, 0);
-  
-  return date.toLocaleString("en-GB", {
-    day: "2-digit", 
-    month: "short", 
-    year: "numeric",
-    hour: '2-digit', 
-    minute: '2-digit',
-    hour12: true,
-  }).replace(',', ' ');
-};
-
-// FIX 2.2: New helper for 3:00 AM next day logic (used for Last Valid Date)
-const formatExpiryDateTime = (dateString: string | undefined) => {
   if (!dateString) return "—";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
   
-  // 1. Get the date part and create a new Date object for the selected day in local context
-  const date = new Date(dateString)
-
-  // 2. Advance to the next day
-  date.setDate(date.getDate() + 1);
-  
-  // 3. Set the time to 3:00 AM (local time)
-  date.setHours(3, 0, 0, 0);
-
-  // 4. Format to include Date and Time
-  return date.toLocaleString("en-GB", {
+  return date.toLocaleString("en-GB", { 
     day: "2-digit", 
     month: "short", 
     year: "numeric",
     hour: '2-digit', 
-    minute: '2-digit',
-    hour12: true, // Use 24-hour format (03:00)
-  }).replace(',', ' '); // Remove comma if toLocaleString adds one
+    minute: '2-digit', 
+    hour12: true 
+  }).replace(',', ' ');
+};
+
+const formatExpiryDateTime = (dateString: string | undefined) => {
+  if (!dateString) return "—";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+
+  // No manual +1 day calculation here. Trusting backend data.
+  return date.toLocaleString("en-GB", { 
+    day: "2-digit", 
+    month: "short", 
+    year: "numeric", 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    hour12: true 
+  }).replace(',', ' ');
 };
 
 const IMAGE_ASSET_API_PATH = "api/Package/image-asset?id=";
@@ -79,24 +67,19 @@ function getProxiedImageUrl(url: string | null | undefined): string {
   if (url.startsWith("blob:") || url.startsWith("/packages/")) return url;
   
   let targetUrl = url;
-
   if (url.startsWith(BACKEND_API_BASE) || url.startsWith("http://")) {
     targetUrl = url;
-  }
-  else if (url.startsWith("/")) {
+  } else if (url.startsWith("/")) {
     targetUrl = `${BACKEND_API_BASE}${url}`;
-  }
-  else if (url.length > 0 && !url.includes('/')) {
+  } else if (url.length > 0 && !url.includes('/')) {
     targetUrl = `${BACKEND_API_BASE}/${IMAGE_ASSET_API_PATH}${url}`;
-  }
-  else {
+  } else {
       return DEFAULT_IMAGE;
   }
-  
+
   if (targetUrl.startsWith(BACKEND_API_BASE) || targetUrl.startsWith("http://")) {
     return `/api/proxy-image?url=${encodeURIComponent(targetUrl)}`;
   }
-  
   return DEFAULT_IMAGE;
 }
 
@@ -104,7 +87,6 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
   const router = useRouter();
   const { user } = useAuth();
   const isFinance = isFinanceApprover(user?.department);
-  
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<"overview" | "items">("overview");
@@ -116,7 +98,7 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
   
   // Modal State
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
-  
+
 
   useEffect(() => {
     const fetchPackage = async () => {
@@ -251,17 +233,16 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
   );
   const displayImage = getProxiedImageUrl(packageData.imageUrl || packageData.imageID);
   
-  const isPointPackage = packageData.packageType?.toLowerCase().includes('point') || packageData.packageType?.toLowerCase().includes('reward p');
+  const pType = (packageData.packageType || packageData.PackageType || 'Entry').toLowerCase();
+  const isPoint = pType.includes('point') && !pType.includes('reward');
+  const priceUnit = isPoint ? "Pts" : "RM";
+  const primaryDisplayValue = isPoint ? (packageData.point ?? 0) : (packageData.price ?? packageData.totalPrice ?? 0);
 
-  const primaryDisplayValue = isPointPackage
-  ? packageData.point ?? 0
-  : packageData.price ?? packageData.totalPrice ?? 0;
-
-  const priceContent = isPointPackage
-  ? `${Math.round(primaryDisplayValue).toLocaleString()} Pts`
-  : `RM ${primaryDisplayValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-  const priceDisplayValue = `<span style="color: #5B5FEF;">${priceContent}</span>`;
+  const formattedPrice = primaryDisplayValue.toLocaleString('en-US', { 
+      minimumFractionDigits: isPoint ? 0 : 2, 
+      maximumFractionDigits: isPoint ? 0 : 2
+  });
+  const priceContent = isPoint ? `${formattedPrice} ${priceUnit}` : `${priceUnit} ${formattedPrice}`;
 
   return (
     <>
@@ -329,19 +310,30 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
               <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-3 flex flex-wrap gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <Ticket className="text-indigo-600 dark:text-indigo-400" size={16} />
-                  <span>{packageData.packageType || packageData.PackageType || "-"}</span>
+                  <span>{packageData.PackageType === "RewardP" ? "Reward Point" : (packageData.PackageType || "-")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Globe className="text-indigo-600 dark:text-indigo-400" size={16} />
-                  <span>{NATIONALITY_MAP[packageData.nationality as keyof typeof NATIONALITY_MAP] || packageData.nationality || "-"}</span>
+                  <span>{getNationalityLabel(packageData.nationality)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <User className="text-indigo-600 dark:text-indigo-400" size={16} />
-                 <span>{packageData.ageCategory ?? "-" }</span>
+                 <div className="flex flex-col leading-none">
+                      {/* Label (e.g. A1 - Adult) */}
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        {packageData.ageCategory ?? "-"}
+                      </span>
+                      {/* Description (e.g. Aged 11-59) */}
+                      {packageData.ageDescription && (
+                          <span className="text-[11px] text-muted-foreground mt-0.5">
+                            {packageData.ageDescription}
+                          </span>
+                      )}
+                  </div>
                 </div>
               </div>
 
-              {/* 🌟 REFINED DISPLAY BLOCK: Submitter, Approver, and Remarks */}
+              {/* REFINED DISPLAY BLOCK: Submitter, Approver, and Remarks */}
               <div className="space-y-3 pt-2 text-sm">
                   {/* Submitter Info */}
                   <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
@@ -464,22 +456,26 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
                 </p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto">
-                  {filteredItems.map((item, index) => (
-                    <div key={index} className="bg-white dark:bg-gray-700 rounded-lg px-4 py-3 border border-gray-200 dark:border-gray-600 shadow-sm flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <span className="font-medium text-gray-700 dark:text-gray-200 text-sm">{item.itemName}</span>
-                        <span className="text-xs text-gray-400"> </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-gray-600 dark:text-gray-400 text-sm">
-                          {(item.price ?? 0) > 0 
-                            ? `RM ${(item.price as number).toLocaleString('en-US', { minimumFractionDigits: 2 })}` 
-                            : `${item.point ?? 0} Pts`}
-                        </span>
-                        <span className="text-gray-500 dark:text-gray-400 text-sm">Qty: {item.entryQty ?? 1}</span>
-                      </div>
-                    </div>
-                  ))}
+                  {filteredItems.map((item, index) => {
+                    // Logic for item display units (assuming item follows parent type logic if not explicit)
+                    const itemVal = isPoint ? (item.point || 0) : (item.price || 0);
+                    const formattedItem = itemVal.toLocaleString('en-US', { 
+                        minimumFractionDigits: isPoint ? 0 : 2,
+                        maximumFractionDigits: isPoint ? 0 : 2
+                     });
+
+                      return (
+                        <div key={index} className="bg-white dark:bg-gray-700 rounded-lg px-4 py-3 border border-gray-200 dark:border-gray-600 shadow-sm flex items-center justify-between">
+                        <div className="flex flex-col"><span className="font-medium text-gray-700 dark:text-gray-200 text-sm">{item.itemName}</span><span className="text-xs text-gray-400"> </span></div>
+                        <div className="flex items-center gap-3">
+                            <span className="text-gray-600 dark:text-gray-400 text-sm">
+                                {isPoint ? `${formattedItem} Pts` : `RM ${formattedItem}`}
+                            </span>
+                            <span className="text-gray-500 dark:text-gray-400 text-sm">Qty: {item.entryQty ?? 1}</span>
+                        </div>
+                        </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

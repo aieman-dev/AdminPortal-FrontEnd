@@ -1,182 +1,190 @@
-// components/PackageCard.tsx
-import { Calendar, User, Copy, Pencil, Trash2, Globe } from "lucide-react"; // Import Trash2
+import React from "react";
+import { Calendar, Globe, User, MoreHorizontal, Pencil, Copy, Trash2, Ticket, Layers } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface PackageCardProps {
   id: number;
   name: string;
   price: string;
   category: string;
+  description?: string;
   packageType: string;
   dateDisplay: string;
   nationality: string;
   status: string;
   image: string;
-  onClick?: () => void;        // For navigating to detail page
-  onDuplicate?: () => void;    // For duplicate action
-  onEdit?: () => void;         // For edit action
-  onDelete?: () => void;       // For delete action
+  isBundle?: boolean;
+  
+  // Functional props
+  isSelectable?: boolean;
+  isSelected?: boolean;
+  onSelectChange?: (checked: boolean) => void;
+  onClick?: () => void;
+  onDuplicate?: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 export default function PackageCard({
   name,
   price,
   category,
+  description,
   packageType,
   dateDisplay,
   nationality,
   status,
   image,
+  isBundle = false, 
+  isSelectable = false,
+  isSelected = false,
+  onSelectChange,
   onClick,
   onDuplicate,
   onEdit,
   onDelete,
 }: PackageCardProps) {
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "active":
-        return "bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-300";
-      case "expired":
-        return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
-      case "pending":
-        return "bg-yellow-100 text-yellow-700 dark:bg-yellow-800 dark:text-yellow-300";
-      case "rejected":
-        return "bg-red-100 text-red-700 dark:bg-red-600 dark:text-red-300";
-      case "draft":
-        return "bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300";
-        case "expiringsoon":
-        return "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300";
-      default:
-        return "bg-orange-100 text-orange-700 dark:bg-orange-800 dark:text-orange-300";
+  
+  const getStatusStyle = (status: string) => {
+    const normalized = status.toLowerCase().replace(/\s/g, '');
+    switch (normalized) {
+      case "active": return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+      case "pending": return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+      case "rejected": return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+      case "draft": return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300";
+      case "expiringsoon": return "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400";
+      default: return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
     }
   };
 
-  const statusLower = status.toLowerCase();
-  
-  // Logic for action visibility based on the user's rules:
-  const canEdit = statusLower === "draft";
-  const canDuplicate = ["pending", "draft", "rejected"].includes(statusLower);
-  const canDelete = statusLower === "draft";
+  const isPoint = packageType?.toLowerCase().includes('point') && !packageType?.toLowerCase().includes('reward');
+  const priceUnit = isPoint ? "Pts" : "RM";
+  const displayPrice = isPoint ? `${price} ${priceUnit}` : `${priceUnit} ${price}`;
 
-   // NEW FIX: Determine if the price should be shown as Points (Pts) or Ringgit Malaysia (RM)
-  const isPointOrReward = packageType.toLowerCase().includes('point') || packageType.toLowerCase().includes('reward p');
-   const priceUnit = isPointOrReward ? "Pts" : "RM";
+  const getNationalityLabel = (code: string) => {
+    if (code === "L") return "Local"; // Shortened for thin card
+    if (code === "F") return "Intl";  // Shortened for thin card
+    if (!code || code === "N/A") return "All"; 
+    return code;
+  };
 
-  const numericPrice = parseFloat(price);
-   const displayPrice = isPointOrReward
-     ? Math.round(numericPrice).toLocaleString() 
-     : numericPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const showActions = status.toLowerCase() === "draft";
 
   return (
-    <div
+    <div 
       onClick={onClick}
-      className="group relative bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-700 cursor-pointer rounded-xl overflow-hidden transform transition-all duration-300 hover:scale-[1.03] hover:shadow-lg"
+      className={`group relative flex flex-col w-full bg-white dark:bg-gray-900 rounded-xl border shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 overflow-hidden cursor-pointer
+        ${isSelected ? 'border-indigo-500 ring-2 ring-indigo-500' : 'border-gray-200 dark:border-gray-800'}
+      `}
     >
-      {/* Image */}
-      <div className="relative h-32">
+      
+      {/* 1. IMAGE HEADER (Reduced height slightly for narrower aspect) */}
+      <div className="relative h-32 w-full overflow-hidden shrink-0 bg-gray-100">
         <img 
           src={image} 
-          alt={name}
-          className="w-full h-full object-cover" 
+          alt={name} 
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
           onError={(e) => (e.currentTarget.src = "/packages/DefaultPackageImage.png")}
-         />
-        <span className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium">
-          Bundle
-        </span>
+        />
+        
+        <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-        {/* Hover Action Icons - CONDITIONALLY DISPLAYED */}
-        <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          
-          {/* Edit Button - Only available for Draft */}
-          {canEdit && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit?.();
-              }}
-              className="bg-white/80 dark:bg-gray-800 p-1 rounded-full hover:bg-yellow-100 dark:hover:bg-gray-700"
-              title="Edit"
-            >
-              <Pencil size={14} className="text-yellow-600 dark:text-yellow-300" />
-            </button>
-          )}
-
-          {/* Duplicate Button - Available for Pending, Draft, Rejected */}
-          {canDuplicate && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDuplicate?.();
-              }}
-              className="bg-white/80 dark:bg-gray-800 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-gray-700"
-              title="Duplicate"
-            >
-              <Copy size={14} className="text-blue-600 dark:text-blue-300" />
-            </button>
-          )}
-
-          {/* Trash Button - Only available for Draft */}
-          {canDelete && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete?.();
-              }}
-              className="bg-white/80 dark:bg-gray-800 p-1 rounded-full hover:bg-red-100 dark:hover:bg-gray-700"
-              title="Delete Draft"
-            >
-              <Trash2 size={14} className="text-red-600 dark:text-red-300" />
-            </button>
-          )}
+        {/* Top Left Badges */}
+        <div className="absolute top-2 left-2 z-20 flex flex-wrap gap-1 max-w-[85%]">
+            {isSelectable && (
+                <div onClick={(e) => e.stopPropagation()} className="mr-1">
+                    <Checkbox 
+                        checked={isSelected} 
+                        onCheckedChange={(c) => onSelectChange?.(!!c)}
+                        className="data-[state=checked]:bg-indigo-600 border-white bg-white/90 w-4 h-4 shadow-sm"
+                    />
+                </div>
+            )}
+            
+            {isBundle && (
+                 <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-purple-100/95 text-purple-700 backdrop-blur-md shadow-sm border border-purple-200/50" title="Bundle">
+                    <Layers size={12} className="stroke-[3]" />
+                </span>
+            )}
+             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/95 text-gray-800 text-[9px] font-extrabold uppercase tracking-wider backdrop-blur-md shadow-sm">
+                <Ticket size={10} className="stroke-[3]" /> {packageType === "RewardP" ? "Reward" : (packageType || "Pkg")}
+            </span>
         </div>
+
+        {/* Action Menu */}
+        {showActions && (
+            <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <button className="h-6 w-6 bg-white/90 dark:bg-gray-800/90 rounded-full flex items-center justify-center shadow-sm hover:bg-white transition-colors">
+                        <MoreHorizontal size={14} className="text-gray-700 dark:text-gray-200" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {onEdit && <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}><Pencil className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>}
+                      {onDuplicate && <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDuplicate(); }}><Copy className="mr-2 h-4 w-4" /> Duplicate</DropdownMenuItem>}
+                      {onDelete && <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-red-600 focus:text-red-600"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+            </div>
+        )}
       </div>
 
-      {/* Content */}
-      <div className="p-3">
-        <h3 className="font-semibold text-sm text-gray-900 dark:text-white mb-1 line-clamp-2">
-          {name}
+      {/* 2. BODY CONTENT (Compacted) */}
+      <div className="p-3 flex flex-col flex-1 gap-1">
+        
+        {/* Title: 2 lines max, slightly smaller font */}
+        <h3 
+            className="font-bold text-gray-900 dark:text-white text-xs leading-snug line-clamp-2 min-h-[2rem]" 
+            title={name}
+        >
+            {name}
         </h3>
-        <p className="text-sm text-blue-600 font-bold mb-2 dark:text-blue-400">
-          {/* FIX: Removed redundant "RM" prefix */}
-          {isPointOrReward 
-            ? `${displayPrice} ${priceUnit}` // Renders: 3 Pts
-            : `${priceUnit} ${displayPrice}` // Renders: RM 1.75
-          }
-        </p>
 
-        {/* Category & Nationality -  FIX 1: Add Nationality Display */}
-        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-300 mb-2">
-          {/* Age Category */}
-          <div className="flex items-center gap-1">
-            <User size={12} className="text-gray-400 dark:text-gray-300" />
-            <span>{category}</span>
-          </div>
-          {/* Nationality */}
-          {nationality && nationality !== 'N/A' && (
-            <div className="flex items-center gap-1">
-              <Globe size={12} className="text-gray-400 dark:text-gray-300" />
-              <span>{nationality}</span>
-            </div>
-          )}
+        {/* Price */}
+        <div className="text-blue-600 dark:text-blue-400 font-extrabold text-sm mb-1">
+            {displayPrice}
         </div>
 
-        {/* Footer - Date Range Display & Status */}
-        <div className="flex justify-between items-start text-xs">
-          {/*  FIX 2: Display the Date Range and ensure vertical alignment is to the start */}
-          <div className="flex items-start gap-1 text-gray-500 dark:text-gray-300 flex-1 flex-wrap pr-1">
-            <Calendar size={12} className="text-gray-400 dark:text-gray-300 mt-0.5 flex-shrink-0" />
-            <span className="leading-tight">{dateDisplay}</span>
-          </div>
-          
-          <span
-            //  FIX 3: Add shrink-0 and ml-2 to ensure badge is compact and spaced
-            className={`px-2 py-0.5 rounded text-xs font-medium shrink-0 ml-2 ${getStatusColor(
-              status
-            )}`}
-          >
-            {status === "ExpiringSoon" ? "Expiring Soon" : status}
-          </span>
+        {/* Metadata Pills - Stacked or wrapped for narrow width */}
+        <div className="flex flex-wrap gap-1.5">
+           <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-[10px] text-gray-600 dark:text-gray-300 font-medium cursor-help">
+                            <User size={10} className="text-gray-500" />
+                            <span className="truncate max-w-[100px]">{category || "N/A"}</span>
+                        </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" align="start" className="max-w-[200px] text-xs">
+                        <p className="font-bold">{category}</p>
+                        {description && <p className="text-muted-foreground">{description}</p>}
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+
+            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-[10px] text-gray-600 dark:text-gray-300 font-medium">
+                <Globe size={10} className="text-gray-500" />
+                <span>{getNationalityLabel(nationality)}</span>
+            </div>
+        </div>
+
+        <div className="flex-1" />
+
+        {/* 3. FOOTER */}
+        <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-1">
+            <div className="flex items-center gap-1 text-[10px] text-gray-400 font-medium min-w-0">
+                <Calendar size={10} className="shrink-0" />
+                <span className="truncate">{dateDisplay}</span>
+            </div>
+
+            <span className={`text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded tracking-wide shrink-0 whitespace-nowrap ${getStatusStyle(status)}`}>
+                {status === "ExpiringSoon" ? "Expiring" : status}
+            </span>
         </div>
       </div>
     </div>
   );
-}
+};

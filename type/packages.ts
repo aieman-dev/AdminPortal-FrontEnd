@@ -30,6 +30,7 @@ export interface Package {
   PackageType?: string;          
   totalPrice?:  number;          
   ageCategory?: string;
+  ageDescription?: string;
   nationality?: string;       
   effectiveDate?: string;      
   lastValidDate?: string;        
@@ -60,8 +61,15 @@ export interface PackageFormData {
   dayPass?: string;
   tpremark?: string;       
   imageID: File | string | null; 
+  imageUrl?: string;
   packageitems: PackageItem[];    // Page 2 — user-selected items
   totalPrice?: number;
+}
+
+export interface ImageItem {
+    imageID: number;
+    fileName: string;
+    imgUrl: string;
 }
 
 /* -----------------------------------------------------------

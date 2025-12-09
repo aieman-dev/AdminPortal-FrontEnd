@@ -1,11 +1,11 @@
-//components/PackageFormStep2
+// components/PackageFormStep2.tsx
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
 import { PackageFormData, PackageItem } from "../type/packages";
-import { Loader2 } from "lucide-react";
+import { Loader2, ShoppingCart, List, Trash2 } from "lucide-react"; 
 import { getAuthToken } from "@/lib/auth";
-import { useToast } from "@/hooks/use-toast"
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 
 type Props = {
   form: PackageFormData;
@@ -27,10 +27,8 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<PackageItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-
-  // FIX 3: Check if the package type is point-based (Point or Reward P)
-  const isPointMode = form.packageType === "Point" || form.packageType === "Reward P";
+  const [mobileTab, setMobileTab] = useState<"browse" | "summary">("browse");
+  const isPointMode = form.packageType === "Point"; 
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -48,15 +46,21 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
         if (response.ok) {
           const data = await response.json();
           const rawItems = data.attractions || [];
-          const mappedItems: PackageItem[] = rawItems.map((item: any) => ({
-            attractionId: item.terminalID || item.id,
-            itemName: item.attractionName || item.name || "Unknown",
-            price: 0, 
-            point: 0, 
-            entryQty: 0, 
-            image: getProxiedImageUrl(item.ImageURL || item.imageUrl || item.imageURL)
-          }));
-          setItems(mappedItems);
+          const uniqueMap = new Map();
+          rawItems.forEach((item: any) => {
+            const id = item.terminalID || item.id;
+            if (!uniqueMap.has(id)) {
+              uniqueMap.set(id, {
+                attractionId: id,
+                itemName: item.attractionName || item.name || "Unknown",
+                price: 0,
+                point: 0,
+                entryQty: 0,
+                image: getProxiedImageUrl(item.ImageURL || item.imageUrl || item.imageURL)
+              });
+            }
+          });
+          setItems(Array.from(uniqueMap.values()));
         }
       } catch (error) {
         console.error("Error fetching items:", error);
@@ -84,170 +88,267 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
     });
   };
 
-  const isSelected = (id: number) => form.packageitems.some((s) => s.attractionId === id);
-
   const handleItemChange = (item: PackageItem, field: "price" | "point" | "entryQty", value: string) => {
-    if (!isSelected(item.attractionId!)) toggleSelect(item);
-    let numVal = Number(value) || 0;
+    let numVal = Number(value); 
+    if (isNaN(numVal)) numVal = 0;
+    if (isPointMode && field === "point") numVal = Math.floor(numVal);
+    if (field === "entryQty") numVal = Math.max(1, numVal);
+    else numVal = Math.max(0, numVal);
 
-    if (isPointMode && (field === "point") && value.includes('.')) {
-        numVal = Math.floor(numVal); // Remove decimals by flooring
-        
-        // Show Toast
-        toast({ 
-            title: "Point Value Adjusted", 
-            description: "Points must be whole numbers (no decimals). Value has been adjusted.", 
-            variant: "default" 
-        });
-    }
-
-    // Ensure non-negative and minimum quantity is 1
-    numVal = Math.max(numVal, field === "entryQty" ? 1 : 0);
-
-    setForm((prev) => ({
-      ...prev,
-      packageitems: prev.packageitems.map((s) =>
-        s.attractionId === item.attractionId ? { ...s, [field]: numVal } : s
-      ),
-    }));
+    setForm((prev) => {
+      const exists = prev.packageitems.find((s) => s.attractionId === item.attractionId);
+      let newItems = [...prev.packageitems];
+      if (!exists) {
+        const newItem = { ...item, price: 0, point: 0, entryQty: 1, [field]: numVal };
+        newItems.push(newItem);
+      } else {
+        newItems = newItems.map((s) => 
+            s.attractionId === item.attractionId ? { ...s, [field]: numVal } : s
+        );
+      }
+      return { ...prev, packageitems: newItems };
+    });
   };
 
   useEffect(() => {
     const total = form.packageitems.reduce((sum, item) => {
       const val = isPointMode ? (item.point || 0) : (item.price || 0);
-      // Logic changed from sum + (val * qty) to sum + val
       return sum + val;
     }, 0);
     setForm((prev) => ({ ...prev, totalPrice: total }));
-  }, [form.packageitems, isPointMode, setForm]
-);
+  }, [form.packageitems, isPointMode, setForm]);
 
-  // Helper to determine display text for mode
   const getModeDisplayText = () => {
-    switch (form.packageType) {
-      case "Entry":
-        return "Price (RM)";
-      case "Point":
-        return "Points";
-      case "Reward P":
-        return "Reward Points";
-      default:
-        return "N/A";
-    }
-  };
-
-  const getCurrencyDisplay = () => {
-    return form.packageType === "Entry" ? "RM" : "Pts";
+    if (form.packageType === "Entry") return "Entry (RM)";
+    if (form.packageType === "Point") return "Point (Pts)";
+    if (form.packageType === "RewardP") return "Reward Point (RM)";
+    return "N/A";
   };
   
-  const getValueField = () => {
-    return isPointMode ? "point" : "price";
-  };
+  const getCurrencyDisplay = () => isPointMode ? "Pts" : "RM";
+  const getValueField = () => isPointMode ? "point" : "price";
   
   return (
-    <div className="flex flex-col xl:flex-row gap-6 h-auto xl:h-full">
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <h2 className="text-2xl font-bold mb-2 text-foreground">2. Package Items ({form.packageitems.length})</h2>
-        {/* FIX 3: Display current mode based on packageType */}
-        <div className="text-sm text-blue-600 dark:text-blue-400 mb-2">Mode: <b>{getModeDisplayText()}</b></div>
-        <div className="border-b border-border mb-4" />
+    <div className="flex flex-col h-[calc(100vh-200px)] min-h-[500px]">
+      
+      {/* MOBILE TABS */}
+      <div className="flex xl:hidden mb-4 bg-muted/50 p-1 rounded-lg">
+        <button
+          onClick={() => setMobileTab("browse")}
+          className={`flex-1 py-2 text-sm font-medium rounded-md transition-all flex items-center justify-center gap-2 ${
+            mobileTab === "browse" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <List size={16} /> Browse Items
+        </button>
+        <button
+          onClick={() => setMobileTab("summary")}
+          className={`flex-1 py-2 text-sm font-medium rounded-md transition-all flex items-center justify-center gap-2 relative ${
+            mobileTab === "summary" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <ShoppingCart size={16} /> Review Selection
+          {form.packageitems.length > 0 && (
+            <span className="absolute top-1.5 right-2 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+          )}
+        </button>
+      </div>
 
-        <div className="mb-4">
-          <input 
-            placeholder="Search items..." 
-            value={query} onChange={(e) => setQuery(e.target.value)} 
-            className="w-full sm:w-1/2 rounded-full border border-input px-4 py-2 bg-white dark:bg-gray-950 text-foreground outline-none placeholder:text-muted-foreground" 
-          />
-        </div>
+      <div className="flex flex-col xl:flex-row gap-6 flex-1 overflow-hidden relative">
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto pb-4 p-1 scrollbar-hide">
-          {loading ? (
-            <div className="col-span-full flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Loader2 className="h-8 w-8 animate-spin mb-2" />
-              <p>Loading items...</p>
+        {/* LEFT COLUMN: Search & List */}
+        <div className={`flex-col h-full overflow-hidden flex-1 ${mobileTab === "browse" ? "flex" : "hidden"} xl:flex`}>
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-2xl font-bold text-foreground">2. Package Items</h2>
+            <div className="text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded font-medium">
+              Package Type: <b>{getModeDisplayText()}</b>
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="col-span-full text-center py-8 text-muted-foreground">
-              No items found.
-            </div>
-          ) : (
-            filtered.map((item, index) => {
-              const activeItem = form.packageitems.find((s) => s.attractionId === item.attractionId);
-              const selected = !!activeItem;
-              const valueField = getValueField(); // Determine field once
+          </div>
+          <div className="border-b border-border mb-4" />
 
-              return (
-                <div 
-                  key={`${item.attractionId}-${index}`} 
-                  onClick={() => toggleSelect(item)}
-                  className={`relative cursor-pointer p-3 rounded-lg border border-border transition-all group
-                    ${selected 
-                      ? "ring-2 ring-indigo-600 bg-indigo-50/10 dark:bg-indigo-900/20 border-indigo-600 dark:border-indigo-500 shadow-md" 
-                      : "bg-card dark:bg-secondary/10 border-border dark:border-white/5 hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-700"
-                    }`}
-                >
-                  <div className="h-40 bg-muted rounded-md overflow-hidden relative">
-                    <img 
-                      src={item.image} 
-                      className="object-cover h-full w-full" 
-                      alt={item.itemName} 
-                      referrerPolicy="no-referrer"
-                      onError={(e) => (e.currentTarget.src = DEFAULT_IMAGE)}
-                    />
-                    
-                    <div 
-                      className={`absolute inset-0 bg-white/90 dark:bg-gray-950/90 flex flex-col justify-center p-4 transition-opacity duration-200
-                        ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-                    >
-                      <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-1">
-                        {isPointMode ? "Points" : "Price (RM)"}
-                      </label>
-                      <input
-                        type="number"
-                        value={activeItem?.[valueField] ?? ""}
-                        onChange={(e) => handleItemChange(item, valueField as "price" | "point", e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-full border-b border-gray-400 dark:border-gray-600 text-center focus:border-indigo-600 outline-none mb-3 bg-transparent text-foreground dark:text-white"
-                      />
-                      
-                      <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-1">Quantity</label>
-                      <input
-                        type="number"
-                        value={activeItem?.entryQty ?? ""}
-                        onChange={(e) => handleItemChange(item, "entryQty", e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-full border-b border-gray-400 dark:border-gray-600 text-center focus:border-indigo-600 outline-none bg-transparent text-foreground"
-                      />
+          <div className="mb-4">
+            <input 
+              placeholder="Search items..." 
+              value={query} 
+              onChange={(e) => setQuery(e.target.value)} 
+              className="w-full sm:w-1/2 rounded-full border border-input px-4 py-2 bg-white dark:bg-gray-950 text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-indigo-500/20 transition-all" 
+            />
+          </div>
+          
+          <div className="flex flex-col gap-2 overflow-y-auto pb-4 p-1 scrollbar-hide flex-1">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin mb-2" />
+                <p>Loading items...</p>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">No items found.</div>
+            ) : (
+              filtered.map((item) => {
+                const activeItem = form.packageitems.find((s) => s.attractionId === item.attractionId);
+                const selected = !!activeItem;
+                const valueField = getValueField();
+
+                return (
+                  <div
+                    key={item.attractionId} 
+                    onClick={() => toggleSelect(item)}
+                    className={`
+                      group flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all duration-200
+                      ${
+                        selected
+                          ? "bg-indigo-50 border-indigo-600 dark:bg-indigo-900/20 dark:border-indigo-500 shadow-sm"
+                          : "bg-card hover:bg-muted/50 border-border"
+                      }
+                    `}
+                  >
+                    <div className="shrink-0 relative">
+                      {/* 2. Added HoverCard for preview */}
+                      <HoverCard openDelay={200} closeDelay={100}>
+                        <HoverCardTrigger asChild>
+                          <div className="relative">
+                            <img
+                              src={item.image}
+                              alt={item.itemName}
+                              referrerPolicy="no-referrer"
+                              onError={(e) => (e.currentTarget.src = DEFAULT_IMAGE)}
+                              className="h-12 w-12 rounded-full object-cover border border-border bg-muted cursor-zoom-in"
+                            />
+                            {selected && (
+                                <div className="absolute -top-1 -right-1 bg-indigo-600 text-white rounded-full p-0.5 shadow-sm border border-white dark:border-gray-800">
+                                </div>
+                            )}
+                          </div>
+                        </HoverCardTrigger>
+                        <HoverCardContent 
+                          className="w-64 p-0 border-none bg-transparent shadow-none" 
+                          side="right" 
+                          align="start" 
+                          sideOffset={20}
+                        >
+                          <div className="relative rounded-lg overflow-hidden shadow-2xl border-2 border-white dark:border-gray-600">
+                            <img src={item.image} alt={item.itemName} className="w-full h-auto object-cover bg-black" onError={(e) => (e.currentTarget.src = DEFAULT_IMAGE)} />
+                            <div className="absolute bottom-0 inset-x-0 bg-black/70 p-2 text-white text-xs font-medium truncate">
+                                {item.itemName}
+                            </div>
+                          </div>
+                        </HoverCardContent>
+                      </HoverCard>
+                      {/* -------------------------------- */}
+                    </div>
+
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <span className={`font-semibold text-sm truncate ${selected ? "text-indigo-700 dark:text-indigo-300" : "text-foreground"}`}>
+                        {item.itemName}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      {/* 3. Fixed Alignment for RM/Pts Label */}
+                      <div className="flex flex-col w-20 sm:w-24 items-center justify-center gap-1">
+                        <label className="text-[10px] uppercase font-bold text-muted-foreground text-center w-full">
+                          {isPointMode ? "Points" : "RM"}
+                        </label>
+                        <input
+                          type="number"
+                          value={activeItem?.[valueField] || ""}
+                          onChange={(e) => handleItemChange(item, valueField as "price" | "point", e.target.value)}
+                          onClick={(e) => e.stopPropagation()} 
+                          placeholder="0"
+                          step={isPointMode ? "1" : "0.01"}
+                          className={`
+                            w-full h-8 px-2 text-sm text-center rounded border outline-none transition-colors
+                            [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
+                            ${
+                              selected
+                                ? "border-indigo-300 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 text-indigo-900 dark:text-indigo-100 bg-white dark:bg-gray-900"
+                                : "border-input text-muted-foreground bg-white dark:bg-gray-950 focus:border-indigo-400"
+                            }
+                          `}
+                        />
+                      </div>
+
+                      {/* 3. Fixed Alignment for Qty Label */}
+                      <div className="flex flex-col w-14 sm:w-16 items-center justify-center gap-1">
+                        <label className="text-[10px] uppercase font-bold text-muted-foreground text-center w-full">
+                          Qty
+                        </label>
+                        <input
+                          type="number"
+                          value={activeItem?.entryQty || ""}
+                          onChange={(e) => handleItemChange(item, "entryQty", e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          placeholder="1"
+                          className={`
+                            w-full h-8 px-2 text-sm text-center rounded border outline-none transition-colors
+                            [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
+                            ${
+                              selected
+                                ? "border-indigo-300 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 text-indigo-900 dark:text-indigo-100 bg-white dark:bg-gray-900"
+                                : "border-input text-muted-foreground bg-white dark:bg-gray-950 focus:border-indigo-400"
+                            }
+                          `}
+                        />
+                      </div>
                     </div>
                   </div>
-                  <div className="mt-2 text-center font-semibold text-foreground">{item.itemName}</div>
-                </div>
-              );
-            })
-          )}
+                );
+              })
+            )}
+          </div>
         </div>
-      </div>
-      
-      <div className="w-full lg:w-80 bg-muted/30 p-4 rounded-lg border border-border">
-        <h3 className="font-bold text-foreground mb-4">Selected Items</h3>
-        <div className="space-y-2 max-h-[500px] overflow-y-auto">
-          {form.packageitems.map((item, idx) => (
-            <div key={`${item.attractionId}-${idx}`} className="flex justify-between text-sm bg-card p-2 rounded border border-border">
-              <span className="text-foreground">{item.itemName}</span>
-              <span className="text-muted-foreground">
-                {item.entryQty} x {isPointMode ? `${item.point}pts` : `RM${item.price}`}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 pt-4 border-t border-border flex justify-between font-bold text-lg text-foreground">
-          <span>Total:</span>
-          {/* FIX 3: Display currency based on packageType */}
-          <span>{getCurrencyDisplay()} {form.totalPrice?.toLocaleString()}</span>
-        </div>
-        <div className="mt-6 flex gap-2">
-          <button onClick={onBack} className="flex-1 py-2 border border-border rounded-md text-foreground hover:bg-muted transition">Back</button>
-          <button onClick={onNext} className="flex-1 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">Next</button>
+        
+        {/* RIGHT COLUMN: Summary (Unchanged) */}
+        <div className={`w-full xl:w-80 flex-col bg-muted/30 p-4 rounded-lg border border-border h-full ${mobileTab === "summary" ? "flex" : "hidden"} xl:flex`}>
+          <h3 className="font-bold text-foreground mb-4 shrink-0 flex items-center justify-between">
+            <span>Selected Items</span>
+            <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">{form.packageitems.length}</span>
+          </h3>
+          
+          <div className="flex-1 overflow-y-auto space-y-2 min-h-0 pr-2 pt-2">
+              {form.packageitems.length === 0 && (
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50">
+                    <ShoppingCart size={40} className="mb-2 stroke-1" />
+                    <span className="text-sm italic">No items selected</span>
+                  </div>
+              )}
+              {form.packageitems.map((item) => (
+                  <div 
+                    key={item.attractionId} 
+                    className="group relative flex justify-between text-sm bg-card p-3 rounded border border-border shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-300"
+                  >
+                    <button
+                        onClick={() => toggleSelect(item)}
+                        className="absolute -top-2 -right-1 bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 scale-90 group-hover:scale-100"
+                        title="Remove from package"
+                    >
+                        <Trash2 size={12} />
+                    </button>
+                    <span className="text-foreground font-medium truncate w-[60%] select-none">{item.itemName}</span>
+                    <span className="text-muted-foreground text-xs flex flex-col items-end select-none">
+                        <span>Qty: {item.entryQty}</span>
+                        <span className="font-semibold text-indigo-600">{isPointMode ? `${item.point} pts` : `RM ${item.price}`}</span>
+                    </span>
+                  </div>
+              ))}
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-border shrink-0">
+              <div className="flex justify-between font-bold text-lg text-foreground mb-6">
+                  <span>Total:</span>
+                  <span>{getCurrencyDisplay()} {form.totalPrice?.toLocaleString()}</span>
+              </div>
+              <div className="flex gap-2">
+                  <button onClick={onBack} className="flex-1 py-2 border border-border rounded-md text-foreground hover:bg-white dark:hover:bg-gray-800 transition">Back</button>
+                  <button 
+                      onClick={onNext} 
+                      disabled={form.packageitems.length === 0}
+                      className="flex-1 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                  >
+                      Next Step
+                  </button>
+              </div>
+          </div>
         </div>
       </div>
     </div>

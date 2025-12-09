@@ -1,12 +1,11 @@
-// components/PackageFilters.tsx
 "use client";
 
 import { useState } from "react";
 import { Calendar, Search, RotateCcw, Play } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-// 1. Import the helper function
 import { canDraftPackage } from "@/lib/auth";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface PackageFiltersProps {
   activeFilter: string;
@@ -15,6 +14,8 @@ interface PackageFiltersProps {
   setSearchQuery: (query: string) => void;
   onDateFilter: (start: Date | null, end: Date | null) => void;
   userDepartment?: string;
+  packageTypeFilter: string;
+  setPackageTypeFilter: (type: string) => void;
 }
 
 export default function PackageFilters({
@@ -24,24 +25,23 @@ export default function PackageFilters({
   setSearchQuery,
   onDateFilter,
   userDepartment,
+  packageTypeFilter,
+  setPackageTypeFilter
 }: PackageFiltersProps) {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
 
   const filters = [
-    { label: "Active", value: "Active", color: "#006100", hover: "#008000" },
-    { label: "Expired", value: "Expired", color: "#6D28D9", hover: "#4900BA" },
-    { label: "Expiring Soon", value: "ExpiringSoon", color: "#FF9800", hover: "#FFB84D" },
     { label: "Pending", value: "Pending", color: "#9C6500", hover: "#C27C00" },
+    { label: "Active", value: "Active", color: "#006100", hover: "#008000" },
+    { label: "Expiring Soon", value: "ExpiringSoon", color: "#FF9800", hover: "#FFB84D" },
     { label: "Rejected", value: "Rejected", color: "#9C0005", hover: "#C40007" },
     { label: "Draft", value: "Draft", color: "#4F46E5", hover: "#080087" },
     { label: "Show All", value: "Show All", color: "#9CA3AF", hover: "#B0B6BD" },
   ];
 
-  // 2. Use the helper function in the filter
   const visibleFilters = filters.filter(f => {
     if (f.value === "Draft") {
-      // Use the centralized permission check
       return canDraftPackage(userDepartment);
     }
     return true;
@@ -55,6 +55,7 @@ export default function PackageFilters({
     setStartDate(null);
     setEndDate(null);
     setSearchQuery("");
+    setPackageTypeFilter("All");
     onDateFilter(null, null);
   };
 
@@ -62,6 +63,22 @@ export default function PackageFilters({
     <div className="flex flex-col gap-4 mb-6 relative z-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
+
+          {/* Package Type Filter */}
+          <div className="flex items-center rounded-full px-3 py-1.5 text-sm bg-gray-100 text-gray-600 relative z-20">
+            <Select value={packageTypeFilter} onValueChange={setPackageTypeFilter}>
+                {/* FIX: Use !important classes to force override default ShadCN button styles */}
+                <SelectTrigger className="w-36 !h-auto !bg-transparent !border-none !shadow-none !p-0 text-sm font-normal text-gray-600 focus:!ring-0 focus:!ring-offset-0 gap-1">
+                    <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="All">All Types</SelectItem>
+                    <SelectItem value="Entry">Entry</SelectItem>
+                    <SelectItem value="Point">Point</SelectItem>
+                    <SelectItem value="RewardP">Reward Point</SelectItem>
+                </SelectContent>
+            </Select>
+          </div>
 
           {/* Start Date */}
           <div className="flex items-center rounded-full px-3 py-1.5 text-sm bg-gray-100 text-gray-600 relative z-20">
@@ -121,30 +138,19 @@ export default function PackageFilters({
 
       {/* Filter Tabs */}
       <div className="flex flex-wrap gap-8 mt-3 border-b border-gray-200">
-        {/* 3. Render the visible filters */}
         {visibleFilters.map((filter) => {
           const isActive = activeFilter === filter.value;
-          const hoverStyle = isActive ? {} : {
-              color: filter.hover,
-              '--active-color': filter.color // Optional utility if we were using tailwind custom properties
-          };
           return (
             <button
               key={filter.value}
               onClick={() => setActiveFilter(filter.value)}
               className={`relative pb-2 text-[15px] font-semibold transition-all duration-150`}
               style={{ color: isActive ? filter.color : "#88888D" }}
-              
-              // 🌟 FIX: Implement hover effect using mouse events
               onMouseEnter={(e) => {
-                  if (!isActive) {
-                      e.currentTarget.style.color = filter.hover;
-                  }
+                  if (!isActive) e.currentTarget.style.color = filter.hover;
               }}
               onMouseLeave={(e) => {
-                  if (!isActive) {
-                      e.currentTarget.style.color = "#88888D";
-                  }
+                  if (!isActive) e.currentTarget.style.color = "#88888D";
               }}
             >
               {filter.label}
