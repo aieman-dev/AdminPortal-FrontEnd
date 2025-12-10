@@ -24,7 +24,7 @@ export function PasswordDisplay({
   return (
     <Card>
       <CardContent className="space-y-4">
-        <div className="text-lg font-semibold">QR Receipt Password</div>
+        <div className="text-lg font-semibold">Security Password</div>
 
         {resetSuccess && (
           <Alert className="bg-green-50 border-green-200">

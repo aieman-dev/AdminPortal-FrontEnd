@@ -1,4 +1,3 @@
-//app/portal/themepark-spport/account-master/[id]/account-details-clients.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -22,7 +21,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { BalanceCard } from "@/components/themepark-support/it-poswf/balance-card"
 import { ArrowLeft, CheckCircle2, Wallet, Clock } from "lucide-react"
-import type { Account, BalanceDetail, BalanceTransaction } from "@/type/themepark-support"
+import type { Account, BalanceDetail } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
 import { useToast } from "@/hooks/use-toast"
 
@@ -68,7 +67,6 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
         if (actionType === "reset-password") {
             response = await itPoswfService.resetAccountPassword(accId)
             if (response.success && response.data) {
-                // Backend response for reset password only contains a success message, not the password itself.
                 successToastMessage = `Password reset requested successfully.`;
             } else {
                 throw new Error(response.error || "Reset failed.");
@@ -168,8 +166,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
   }
 
   const handleExchangeTransaction = async () => {
-    if (!newEmail.trim()) return // Email is mandatory
-    // Note: The backend schema suggests newAccId is optional/null when not in use.
+    if (!newEmail.trim()) return
 
     setIsProcessing(true)
     try {
@@ -212,12 +209,11 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
             description: "Expired balance is zero. Nothing to activate.",
             variant: "default"
         });
-        setActionType(null); // Close any open action forms
+        setActionType(null);
         return;
     }
     setIsProcessing(true)
     try {
-        // NOTE: Uses account.id and account.email from the fetched data
         const response = await itPoswfService.activateExpiredBalance(account.accId, account.email);
         
         if (response.success) {
@@ -341,7 +337,24 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
         <CardContent>
           <h3 className="text-lg font-semibold mb-4">Account Actions</h3>
           <div className="space-y-4">
+            {/* Reordered Actions: Reset Password, Change Email, Exchange Trx, Activate Balance, Active, Inactive */}
             <div className="grid grid-cols-2 gap-3">
+              <Button variant="outline" onClick={() => handleAction("reset-password")} disabled={isProcessing}>
+                Reset Password
+              </Button>
+              <Button variant="outline" onClick={() => handleAction("change-email")} disabled={isProcessing}>
+                Change Email
+              </Button>
+              <Button variant="outline" onClick={() => handleAction("exchange")} disabled={isProcessing}>
+                Exchange Transaction
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setActionType("activate-balance")}
+                disabled={isProcessing}
+              >
+                Activate Balance
+              </Button>
               <Button
                 variant="outline"
                 onClick={handleActivateAccount}
@@ -355,25 +368,6 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
                 disabled={isProcessing || account.accountStatus === "Inactive"}
               >
                 Inactive Account
-              </Button>
-              <Button variant="outline" onClick={() => handleAction("reset-password")} disabled={isProcessing}>
-                Reset Password
-              </Button>
-              <Button variant="outline" onClick={() => handleAction("exchange")} disabled={isProcessing}>
-                Exchange Transaction
-              </Button>
-              <Button variant="outline" onClick={() => handleAction("change-email")} disabled={isProcessing}>
-                Change Email
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setActionType("activate-balance")
-                }}
-                disabled={isProcessing}
-                className="w-full"
-              >
-                {isProcessing ? "Activating..." : "Activate Balance"}
               </Button>
             </div>
 
@@ -443,7 +437,6 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
             {actionType === "activate-balance" && (
               <div className="space-y-4 p-4 border rounded-lg">
                 <h4 className="text-sm font-medium">Activate Balance</h4>
-              {/* NOTE: Balance Cards and Table still display mock data (creditBalance/expiredBalance) */}
                 <div className="grid gap-4 md:grid-cols-2">
                   <BalanceCard
                     title="Credit Balance"
@@ -475,7 +468,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {account.transactions.length === 0 ? (
+                        {balanceHistory.length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                               No transactions found
@@ -526,14 +519,14 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
                   ? "Reset Password"
                   : actionType === "inactive"
                     ? "Inactive Account"
-                    : "Activate Expired Balance"}
+                    : "Activate Account"}
               </AlertDialogTitle>
               <AlertDialogDescription>
                 {actionType === "reset-password"
                   ? "Are you sure you want to reset this account's password? The default password will be set to 123456."
                   : actionType === "inactive"
                     ? "Are you sure you want to inactive this account? The user will not be able to access their account."
-                    : "Are you sure you want to activate the expired balance? This will convert expired credits to active balance."}
+                    : "Are you sure you want to activate this account? The user will regain access."}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -546,4 +539,3 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
     </div>
   )
 }
-

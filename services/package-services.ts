@@ -36,13 +36,16 @@ const getAgeCategoryMap = async (): Promise<Record<string, AgeCategoryMapData>> 
   if (ageCategoryCache) return ageCategoryCache;
   
   try {
-    // Fetch the definition list (same as Step 1 dropdown)
     const response = await apiClient.get<any>(ENDPOINTS.CREATION_DATA);
     if (response.success && response.data?.ageCategories) {
       const map: Record<string, AgeCategoryMapData> = {};
+      
       response.data.ageCategories.forEach((c: any) => {
-         // Map Code (A1) -> Display Text (A1 - Adult)
-         map[c.ageCode] = c.displayText;
+         // --- FIX: Store the full object, not just the string ---
+         map[c.ageCode] = {
+             displayText: c.displayText,
+             description: c.description || "" 
+         };
       });
       ageCategoryCache = map;
       return map;
@@ -457,17 +460,23 @@ bulkDeletePackages: async (ids: number[]) => {
 
   // --- ----------------------------ItPoswfPackage------------------------------------- ---
   
-  getItPoswfPackages: async ( // <--- NEW FUNCTION
-    searchQuery: string = ""
-  ): Promise<{ packages: ItPoswfPackage[], totalPages: number, totalRecords: number }> => {
-    const transformToItPoswfPackage = (pkg: any): ItPoswfPackage => {
-        return {
-            id: String(pkg.packageID), 
-            packageId: pkg.packageID,
-            packageName: pkg.packageName,
-            packageType: pkg.packageType,
-            price: pkg.price,
-            status: pkg.recordStatus || pkg.status || "Unknown",
+ getItPoswfPackages: async ( // <--- NEW FUNCTION
+    searchQuery: string = ""
+  ): Promise<{ packages: ItPoswfPackage[], totalPages: number, totalRecords: number }> => {
+     const transformToItPoswfPackage = (pkg: any): ItPoswfPackage => {
+        return {
+            id: String(pkg.packageID), 
+            packageId: pkg.packageID,
+            packageName: pkg.packageName,
+            packageType: pkg.packageType,
+            price: pkg.price,
+            status: pkg.recordStatus || pkg.status || "Unknown",
+            lastValidDate: pkg.lastValidDate ? pkg.lastValidDate.split('T')[0] : "N/A",
+            description: pkg.remark || "",
+            createdBy: pkg.createdUserEmail,
+            lastModifiedBy: pkg.modifiedUserEmail,
+            createdDate: pkg.createdDate,
+            modifiedDate: pkg.modifiedDate
         } as ItPoswfPackage;
     };
     

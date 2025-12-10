@@ -8,28 +8,55 @@ import { SearchField } from "@/components/themepark-support/it-poswf/search-fiel
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { BalanceCard } from "@/components/themepark-support/it-poswf/balance-card"
-import { mockBalanceData, type BalanceData, type Transaction } from "@/lib/mock-data/it-poswf"
+import { itPoswfService } from "@/services/themepark-support"
+import { type BalanceDetail, type BalanceTransaction } from "@/type/themepark-support"
+import { useToast } from "@/hooks/use-toast"
 
 export default function ActivateBalancePage() {
+  const { toast } = useToast()
   const [email, setEmail] = useState("")
-  const [searchResult, setSearchResult] = useState<BalanceData | null>(null)
+  const [searchResult, setSearchResult] = useState<BalanceDetail | null>(null)
   const [isSearching, setIsSearching] = useState(false)
 
   const handleSearch = async () => {
     if (!email) return
 
     setIsSearching(true)
-    // Simulate API call
-    setTimeout(() => {
-      setSearchResult(mockBalanceData)
+    setSearchResult(null)
+
+    try {
+      // Use real service instead of mock data
+      const response = await itPoswfService.getAccountBalanceDetails(email.trim());
+      
+      if (response.success && response.data) {
+        setSearchResult(response.data)
+        toast({ 
+            title: "Search Complete", 
+            description: "Balance details retrieved successfully." 
+        })
+      } else {
+        toast({
+            title: "Search Failed",
+            description: response.error || "No balance details found for this email.",
+            variant: "destructive"
+        })
+      }
+    } catch (error) {
+        console.error("Search Error:", error)
+        toast({
+            title: "Network Error",
+            description: "Failed to connect to the server.",
+            variant: "destructive"
+        })
+    } finally {
       setIsSearching(false)
-    }, 500)
+    }
   }
 
-  const transactionColumns: TableColumn<Transaction>[] = [
+  const transactionColumns: TableColumn<BalanceTransaction>[] = [
     { header: "Invoice No", accessor: "invoiceNo", cell: (value) => <span className="font-medium">{value}</span> },
     { header: "Name", accessor: "name" },
-    { header: "Amount", accessor: "amount", cell: (value) => `$${value.toFixed(2)}` },
+    { header: "Amount", accessor: "amount", cell: (value) => `RM ${Number(value).toFixed(2)}` },
     { header: "Trx Type", accessor: "trxType", cell: (value) => <StatusBadge status={value} /> },
     { header: "Created Date", accessor: "createdDate" },
   ]
@@ -58,7 +85,7 @@ export default function ActivateBalancePage() {
           <div className="grid gap-4 md:grid-cols-2">
             <BalanceCard
               title="Credit Balance"
-              amount={searchResult.creditBalance}
+              amount={searchResult.currentBalance}
               description="Available balance"
               icon={Wallet}
               valueColor="text-green-600"
@@ -78,7 +105,7 @@ export default function ActivateBalancePage() {
               <div className="text-sm font-medium">Transaction History</div>
               <DataTable
                 columns={transactionColumns}
-                data={searchResult.transactions}
+                data={searchResult.history}
                 keyExtractor={(row) => row.invoiceNo}
                 emptyMessage="No transactions found"
               />

@@ -23,7 +23,7 @@ export function BalanceCard({
           <div className="text-sm font-medium">{title}</div>
           <Icon className="h-4 w-4 text-muted-foreground" />
         </div>
-        <div className={`text-2xl font-bold ${valueColor}`}>${amount.toFixed(2)}</div>
+        <div className={`text-2xl font-bold ${valueColor}`}>RM{amount.toFixed(2)}</div>
         <p className="text-xs text-muted-foreground">{description}</p>
       </CardContent>
     </Card>

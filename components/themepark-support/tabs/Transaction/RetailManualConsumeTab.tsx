@@ -331,7 +331,7 @@ export default function RetailManualConsumeTab() {
             {/* R1, C2: Email Address */}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium">
-                Email Address <span className="text-muted-foreground">{isSuperApp ? "(Required)" : "(Disabled)"}</span>
+                Email Address <span className="text-muted-foreground">{isSuperApp && "(Required)"}</span>
               </Label>
               <Input
                 id="email"
@@ -339,7 +339,7 @@ export default function RetailManualConsumeTab() {
                 placeholder="Enter email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-11"
+                className="h-11 disabled:bg-gray-200 dark:disabled:bg-gray-800 disabled:opacity-100 disabled:cursor-not-allowed"
                 disabled={isEmailDisabled}
               />
             </div>
@@ -347,7 +347,7 @@ export default function RetailManualConsumeTab() {
             {/* R1, C3: Mobile No */}
             <div className="space-y-2">
               <Label htmlFor="mobileNo" className="text-sm font-medium">
-                Mobile No <span className="text-muted-foreground">{isSuperApp ? "(Optional)" : "(Disabled)"}</span>
+                Mobile No <span className="text-muted-foreground">{isSuperApp && "(Optional)"}</span>
               </Label>
               <Input
                 id="mobileNo"
@@ -355,7 +355,7 @@ export default function RetailManualConsumeTab() {
                 placeholder="Enter mobile number"
                 value={mobileNo}
                 onChange={(e) => setMobileNo(e.target.value)}
-                className="h-11"
+                className="h-11 disabled:bg-gray-200 dark:disabled:bg-gray-800 disabled:opacity-100 disabled:cursor-not-allowed"
                 disabled={isMobileDisabled}
               />
             </div>
@@ -363,14 +363,14 @@ export default function RetailManualConsumeTab() {
             {/* R2, C1: Invoice No */}
             <div className="space-y-2">
               <Label htmlFor="invoiceNo" className="text-sm font-medium">
-                Invoice No <span className="text-muted-foreground">{isReceipt ? "(Required)" : "(Disabled)"}</span>
+                Invoice No <span className="text-muted-foreground">{isReceipt && "(Required)"}</span>
               </Label>
               <Input
                 id="invoiceNo"
                 placeholder="Enter invoice number"
                 value={invoiceNo}
                 onChange={(e) => setInvoiceNo(e.target.value)}
-                className="h-11"
+                className="h-11 disabled:bg-gray-200 dark:disabled:bg-gray-800 disabled:opacity-100 disabled:cursor-not-allowed"
                 disabled={isInvoiceDisabled}
               />
             </div>

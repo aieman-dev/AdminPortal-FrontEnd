@@ -1,4 +1,3 @@
-// components/it-poswf/tabs/Transaction/VoidTransactionTab.tsx
 "use client"
 
 import { useState } from "react"
@@ -7,12 +6,31 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { Search, XCircle } from "lucide-react"
+// Import Clock for the Date UI
+import { Search, XCircle, Clock } from "lucide-react" 
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { type VoidTransaction } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
 import { useToast } from "@/hooks/use-toast"
+// Import Badge for the Date UI
+import { Badge } from "@/components/ui/badge" 
+
+// --- Helper: Format Date to "10 Dec 2025, 7:01 pm" ---
+const formatDate = (dateString: string) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+
+  return new Intl.DateTimeFormat('en-GB', { 
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true 
+  }).format(date);
+};
 
 export default function VoidTransactionTab() {
   const { toast } = useToast()
@@ -27,7 +45,7 @@ export default function VoidTransactionTab() {
   const handleVoidSearch = async () => {
     if (!voidInvoiceNo) return
     setIsVoidSearching(true)
-    setVoidSearchResult([]) // Clear previous results
+    setVoidSearchResult([])
 
     try {
       const response = await itPoswfService.searchVoidTransactions(voidInvoiceNo.trim());
@@ -76,7 +94,7 @@ export default function VoidTransactionTab() {
         TrxID: Number(voidingTransaction.trxID), 
         InvoiceNo: voidingTransaction.invoiceNo,
         BalanceQty: -1, 
-        trxType: voidingTransaction.transactionType,
+        trxType: voidingTransaction.trxType, // Ensure your type has this field mapping
         itemType: voidingTransaction.itemType,
         Action: "Void" as const,
       };
@@ -87,8 +105,9 @@ export default function VoidTransactionTab() {
         throw new Error(response.error || "Failed to communicate with API.");
       }
       
+      // Update status locally to reflect the change immediately
       setVoidSearchResult((prev) => 
-        prev.map((t) => (t.id === voidingTransaction.id ? { ...t, status: "Voided" } : t))
+        prev.map((t) => (t.terminalID === voidingTransaction.terminalID ? { ...t, recordStatus: "Voided" } : t))
       )
       
       const responseMessage = response.data?.messaged || "Void request processed successfully.";
@@ -119,18 +138,33 @@ export default function VoidTransactionTab() {
       cell: (value) => <span className="font-medium">{value}</span>,
     },
     { header: "Invoice No", accessor: "invoiceNo" },
-    { header: "Transaction Type", accessor: "transactionType", cell: (value) => <StatusBadge status={value} /> },
+    
+    // Using your StatusBadge for consistency
+    { header: "Transaction Type", accessor: "trxType", cell: (value) => <StatusBadge status={value} /> }, // Checked JSON: key is 'trxType'
     { header: "Item Type", accessor: "itemType", cell: (value) => <StatusBadge status={value} /> },
-    { header: "Balance Quantity", accessor: "balanceQuantity" },
+    { header: "Balance Quantity", accessor: "balanceQty" }, // Checked JSON: key is 'balanceQty'
     { header: "Amount", accessor: "amount", cell: (value) => `RM ${(value ?? 0).toFixed(2)}`},
-    { header: "Terminal", accessor: "terminal" },
-    { header: "Status", accessor: "status", cell: (value) => <StatusBadge status={value} /> },
-    { header: "Created Date", accessor: "createdDate" },
+    { header: "Terminal", accessor: "terminalID" }, 
+    { header: "Status", accessor: "recordStatus", cell: (value) => <StatusBadge status={value} /> 
+    },
+    { header: "Created Date", accessor: "createdDate",
+        cell: (value) => (
+            <Badge variant="outline" className="font-normal text-xs text-gray-600 bg-gray-100 border-gray-200 gap-1.5 py-1 px-2.5 w-[160px] justify-center">
+                <Clock className="w-3.5 h-3.5 opacity-70" />
+                {formatDate(value as string)}
+            </Badge>
+        )
+    },
     {
       header: "Action",
-      accessor: "id",
+      accessor: "trxID", // Usually implies ID
       cell: (_, row) => (
-        <Button variant="destructive" size="sm" onClick={() => handleVoidClick(row)} disabled={row.status === "Voided"}>
+        <Button 
+            variant="destructive" 
+            size="sm" 
+            onClick={() => handleVoidClick(row)} 
+            disabled={row.recordStatus === "Voided"} // Check against recordStatus
+        >
           <XCircle className="h-4 w-4 mr-2" />
           Void
         </Button>
@@ -142,7 +176,7 @@ export default function VoidTransactionTab() {
     <>
       <Card>
         <CardContent>
-          <div className="space-y-2">
+          <div className="space-y-2 pt-6">
             <Label htmlFor="void-invoice" className="text-sm font-medium">
               Invoice Number
             </Label>
@@ -165,7 +199,7 @@ export default function VoidTransactionTab() {
 
       {voidSearchResult.length > 0 && (
         <Card>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pt-6">
             <div className="flex items-center gap-2 text-sm font-medium">
               <XCircle className="h-4 w-4" />
               Transaction Details
@@ -173,7 +207,7 @@ export default function VoidTransactionTab() {
             <DataTable
               columns={voidTransactionColumns}
               data={voidSearchResult}
-              keyExtractor={(row) => row.id}
+              keyExtractor={(row) => String(row.trxID)}
               emptyMessage="No transactions found"
             />
           </CardContent>

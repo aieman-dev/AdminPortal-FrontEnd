@@ -185,9 +185,13 @@ export const itPoswfService = {
     },
 
     // ADDED NEW SERVICE FUNCTION
-    searchShopifyOrder: async (orderId: string): Promise<ApiResponse<ShopifyOrder>> => {
+    searchShopifyOrder: async (orderName: string): Promise<ApiResponse<ShopifyOrder>> => {
+        const formattedOrderName = orderName.trim().startsWith("#") 
+            ? orderName.trim() 
+            : `#${orderName.trim()}`;
+
         const payload = {
-            orderId: orderId,
+            orderName: formattedOrderName,
         };
 
         const response = await apiClient.post<ShopifyOrder>(ENDPOINTS.SEARCH_SHOPIFY_ORDER, payload);

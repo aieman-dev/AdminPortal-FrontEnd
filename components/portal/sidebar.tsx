@@ -37,11 +37,11 @@ const navigation = [
         href: "/portal/themepark-support/attraction-master",
       },
       {
-        name: "Ticket Management",
+        name: "Ticket Master",
         href: "/portal/themepark-support/ticket-master",
       },
       {
-        name: "Account Management",
+        name: "Account Master",
         href: "/portal/themepark-support/account-master",
       },
     ],

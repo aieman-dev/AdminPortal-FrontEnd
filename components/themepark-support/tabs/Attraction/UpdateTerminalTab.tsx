@@ -1,4 +1,3 @@
-// components/it-poswf/tabs/Attraction/UpdateTerminalTab.tsx
 "use client"
 
 import { useState } from "react"
@@ -9,11 +8,29 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Search, Pencil, Settings } from "lucide-react"
+// 1. Added Badge and Clock imports
+import { Search, Pencil, Settings, Clock } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { type Terminal } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
 import { useToast } from "@/hooks/use-toast"
+
+// 2. Added Helper Function for Date
+const formatDate = (dateString: string) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+
+  return new Intl.DateTimeFormat('en-GB', { 
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true 
+  }).format(date);
+};
 
 export default function UpdateTerminalTab() {
   const { toast } = useToast()
@@ -78,7 +95,8 @@ export default function UpdateTerminalTab() {
                     ? { 
                         ...t, 
                         uuid: newUUID, 
-                        modifiedDate: new Date().toISOString().slice(0, 19).replace("T", " ")
+                        // Keep raw ISO string in state; the UI helper will format it nicely
+                        modifiedDate: new Date().toISOString() 
                     }
                     : t,
             );
@@ -110,7 +128,7 @@ export default function UpdateTerminalTab() {
     <>
       <Card>
         <CardContent>
-          <div className="space-y-2">
+          <div className="space-y-2 pt-6">
             <Label htmlFor="terminal-search" className="text-sm font-medium">
               Search Terminal
             </Label>
@@ -132,7 +150,7 @@ export default function UpdateTerminalTab() {
       </Card>
 
       <Card>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -140,8 +158,8 @@ export default function UpdateTerminalTab() {
                   <TableHead>Terminal Name</TableHead>
                   <TableHead>UUID</TableHead>
                   <TableHead>Terminal Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Modified Date</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-center">Modified Date</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
@@ -156,12 +174,22 @@ export default function UpdateTerminalTab() {
                   terminals.map((terminal) => (
                     <TableRow key={terminal.id}>
                       <TableCell className="font-medium">{terminal.terminalName}</TableCell>
-                      <TableCell className="font-mono text-sm">{terminal.uuid}</TableCell>
+                      <TableCell className="font-mono text-sm text-gray-600">{terminal.uuid}</TableCell>
                       <TableCell>{terminal.terminalType}</TableCell>
-                      <TableCell>
+                      
+                      {/* 3. Status Badge (Centered) */}
+                      <TableCell className="text-center">
                         <StatusBadge status={terminal.status} />
                       </TableCell>
-                      <TableCell>{terminal.modifiedDate}</TableCell>
+                      
+                      {/* 4. Modified Date (Formatted + Badge UI) */}
+                      <TableCell className="text-center">
+                        <Badge variant="outline" className="font-normal text-xs text-gray-600 bg-gray-100 border-gray-200 gap-1.5 py-1 px-2.5 w-[170px] justify-center mx-auto">
+                            <Clock className="w-3.5 h-3.5 opacity-70" />
+                            {formatDate(terminal.modifiedDate)}
+                        </Badge>
+                      </TableCell>
+
                       <TableCell className="text-right">
                         <Button variant="ghost" size="sm" onClick={() => handleEdit(terminal)}>
                           <Pencil className="h-4 w-4 mr-2" />

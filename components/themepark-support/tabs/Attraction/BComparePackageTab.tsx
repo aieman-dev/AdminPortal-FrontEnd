@@ -1,4 +1,3 @@
-// components/themepark-support/tabs/Attraction/BComparePackageTab.tsx
 "use client"
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -8,12 +7,12 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
+// Import your centralized badge
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
 import { packageService } from "@/services/package-services" 
 
-// Interface is defined in type/themepark-support.ts (using minimal interface here)
 interface SelectableItPoswfPackage {
     id: string;
     packageId: string | number;
@@ -21,7 +20,7 @@ interface SelectableItPoswfPackage {
     packageType: string;
     price: number;
     status: string;
-    lastValidDate: string; // Retained for model consistency, but not displayed
+    lastValidDate: string; 
     syncStatus: "Pending" | "Synced" | "Error";
 }
 
@@ -54,7 +53,7 @@ export default function BComparePackageTab() {
             
             if (response.success && response.data) {
                 setResults(response.data);
-                 if (response.data.length === 0) {
+                if (response.data.length === 0) {
                     toast({ title: "Search Complete", description: "No unsynced packages found matching the criteria." });
                 }
             } else {
@@ -69,7 +68,6 @@ export default function BComparePackageTab() {
         }
     };
 
-    // Load initial data
     useEffect(() => {
         fetchUnsyncedPackages();
     }, []); 
@@ -154,25 +152,24 @@ export default function BComparePackageTab() {
         },
         { header: "Package ID", accessor: "packageId", cell: (value) => <span className="font-medium">{value}</span> },
         { header: "Package Name", accessor: "packageName" },
+        
+        // Use StatusBadge directly
         { header: "Package Type", accessor: "packageType", cell: (value) => <StatusBadge status={value} /> },
+        
         { header: "Price", accessor: "price", cell: (value) => `RM ${(value ?? 0).toFixed(2)}` },
+        
+        // Use StatusBadge directly
         { header: "Status", accessor: "status", cell: (value) => <StatusBadge status={value} /> },
-        // REMOVED: { header: "Last Valid Date", accessor: "lastValidDate" },
-        { header: "Sync Status", accessor: "syncStatus", cell: (value) => {
-            const statusLower = (value as string).toLowerCase();
-            let color = "bg-gray-500/10 text-gray-500";
-            if (statusLower === "synced") color = "bg-green-500/10 text-green-500";
-            if (statusLower === "error") color = "bg-red-500/10 text-red-500";
-            return <StatusBadge status={value as string} colorMap={{}} variant="default" />;
-        }},
+        
+        // Use StatusBadge directly (Now supports 'Synced' and 'Error')
+        { header: "Sync Status", accessor: "syncStatus", cell: (value) => <StatusBadge status={value} /> },
     ];
 
     return (
         <div className="space-y-6">
             <Card>
                 <CardContent>
-                    {/* Filter Section (Mimics PackageListingTab) */}
-                    <div className="space-y-2">
+                    <div className="space-y-2 pt-6">
                         <Label htmlFor="package-search" className="text-sm font-medium">
                             Search Package
                         </Label>
@@ -208,13 +205,12 @@ export default function BComparePackageTab() {
             </Card>
             
             <Card>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 pt-6">
                     <div className="flex items-center gap-2">
                         <DivideCircle className="h-5 w-5 text-muted-foreground" />
                         <div className="text-lg font-semibold">Packages Pending Sync</div>
                     </div>
                     
-                    {/* Fixed Height Scrollable Table */}
                     <div className="overflow-y-auto max-h-[400px] border border-border rounded-lg">
                         <DataTable
                             columns={columns}
@@ -229,7 +225,6 @@ export default function BComparePackageTab() {
                             {packagesToDisplay.length} total unsynced packages found.
                         </p>
                         <div className="flex gap-3">
-                           {/* Select All Button */}
                            {packagesToDisplay.length > 0 && (
                              <Button 
                                 variant="outline"

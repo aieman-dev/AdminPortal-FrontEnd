@@ -1,4 +1,4 @@
-// components/it-poswf/tabs/Attraction/PackageListingTab.tsx
+// components/themepark-support/tabs/Attraction/PackageListingTab.tsx
 "use client"
 
 import { useState } from "react"
@@ -27,24 +27,29 @@ export default function PackageListingTab() {
   const [isPackageUpdating, setIsPackageUpdating] = useState(false)
   const [packageRemark, setPackageRemark] = useState("")
 
+  // --- 1. UPDATED DATE FORMATTER (dd-MMM-yyyy hh:mm am/pm) ---
   const formatDateTime = (dateString: string | undefined): string => {
-    if (!dateString || dateString === '0001-01-01T00:00:00') return 'N/A';
+    if (!dateString || dateString.startsWith('0001-01-01')) return 'N/A';
     
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return dateString; 
 
-    return date.toLocaleString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    }).replace(',', '');
+    // Format Day-Month-Year (e.g. 08-Dec-2025)
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = date.toLocaleString('en-GB', { month: 'short' });
+    const year = date.getFullYear();
+
+    // Format Time (e.g. 12:00 am)
+    const time = date.toLocaleString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit', 
+        hour12: true 
+    }).toLowerCase(); // force lowercase am/pm
+
+    return `${day}-${month}-${year} ${time}`;
   };
 
   const handlePackageSearch = async () => {
-    // Prevent redundant search if term is empty AND results are already loaded
     if (!packageSearchTerm.trim() && packages.length > 0) {
         return; 
     }
@@ -95,7 +100,6 @@ export default function PackageListingTab() {
             packageRemark
         );
 
-        // Update the local UI state on success
         const updatedPackages = packages.map((p) =>
             p.id === editingPackage.id
                 ? {
@@ -133,13 +137,35 @@ export default function PackageListingTab() {
     { header: "Package Name", accessor: "packageName" },
     { header: "Package Type", accessor: "packageType", cell: (value) => <StatusBadge status={value} /> },
     { header: "Price", accessor: "price", cell: (value) => `RM ${(value ?? 0).toFixed(2)}` },
-    { header: "Last Valid Date", accessor: "lastValidDate" },
+    
+    // --- 2. APPLY DATE FORMATTER ---
+    { 
+        header: "Last Valid Date", 
+        accessor: "lastValidDate",
+        cell: (value) => formatDateTime(value as string)
+    },
+    
     {
       header: "Description",
       accessor: "description",
-      cell: (value) => <div className="max-w-xs truncate">{value}</div>,
+      cell: (value) => <div className="max-w-xs truncate" title={value as string}>{value}</div>,
     },
-    { header: "Status", accessor: "status", cell: (value) => <StatusBadge status={value} /> },
+    
+    // --- 3. APPLY CUSTOM COLORS FOR STATUS ---
+    { 
+        header: "Status", 
+        accessor: "status", 
+        cell: (value) => (
+            <StatusBadge 
+                status={value as string} 
+                colorMap={{
+                    active: "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400",
+                    inactive: "bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400"
+                }}
+            /> 
+        )
+    },
+    
     {
       header: "Action",
       accessor: "id",
@@ -203,7 +229,8 @@ export default function PackageListingTab() {
                 <Input
                   id="edit-last-valid-date"
                   type="date"
-                  value={editingPackage.lastValidDate.split('T')[0]}
+                  // Handle potential N/A or empty date for the date picker input
+                  value={editingPackage.lastValidDate !== "N/A" ? editingPackage.lastValidDate.split('T')[0] : ""}
                   onChange={(e) => setEditingPackage({ ...editingPackage, lastValidDate: e.target.value })}
                   className="h-11"
                 />

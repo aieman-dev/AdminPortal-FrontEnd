@@ -210,15 +210,15 @@ export interface TerminalSearchPayload {
 }
 
 export interface VoidTransaction {
-  id: string
+  terminalID: string
   trxID: string
   invoiceNo: string
-  transactionType: "Purchase" | "Refund" | "Exchange"
+  trxType: "Purchase" | "Refund" | "Exchange"
   itemType: "Ticket" | "Credit" | "Reward"
-  balanceQuantity: number
+  balanceQty: number
   amount: number
   terminal: string
-  status: "Active" | "Voided" | "Pending"
+  recordStatus: "Active" | "Voided" | "Pending"
   createdDate: string
 }
 
