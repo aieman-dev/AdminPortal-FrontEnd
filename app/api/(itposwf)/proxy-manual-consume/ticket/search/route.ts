@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       terminalID: body.terminalID,
       ticketType: body.ticketType,
       ticketStatus: body.ticketStatus,
-      SourceType: body.SourceType, // Explicitly pass the new field
+      SourceType: body.SourceType, 
     };
 
     // Backend URL for Manual Consume Search (Ticket/Package)
@@ -35,15 +35,32 @@ export async function POST(request: NextRequest) {
     const responseText = await apiResponse.text();
     let data;
     try {
-        data = responseText ? JSON.parse(responseText) : {};
+        const parsed = responseText ? JSON.parse(responseText) : {};
+        data = (parsed && typeof parsed === 'object') ? parsed : {};
     } catch {
         // If parsing fails, create a generic error object to return
         data = { error: responseText, message: "Non-JSON response from backend" };
     }
 
     if (!apiResponse.ok) {
+      const errorMessage = data.ErrorMessage || data.message || data.error || JSON.stringify(data);
+
+      // Check if the error is specifically "No data found"
+      if (errorMessage && errorMessage.includes("No data found")) {
+          // Return a structured EMPTY response with 200 OK
+          return NextResponse.json({
+              creditBalance: 0,
+              tickets: [], // Empty array
+              accID: null, 
+              rrQrId: null,
+              myQr: null,
+              totalAmount: 0, 
+              totalRewardCredit: 0,
+          }, { status: 200 });
+      }
+
       return NextResponse.json(
-        { error: data.message || data.error ||`Backend Error: ${apiResponse.statusText}` }, 
+        { error: errorMessage || `Backend Error: ${apiResponse.statusText}` }, 
         { status: apiResponse.status }
       );
     }
@@ -51,13 +68,12 @@ export async function POST(request: NextRequest) {
     const finalData = {
         creditBalance: data.creditBalance || 0,
         tickets: (data.tickets || []).map((ticket: any) => ({
-            // CRITICAL: Map the frontend's unique 'id' key for React's DataTable
             id: String(ticket.TicketItemID), 
-            ...ticket, // Pass all other PascalCase fields as-is
+            ...ticket, 
         })),
         accID: data.accID, 
-        rrQRID: data.rrQrId, // Backend returns rQrId in ticket search as well
-        myQr: data.myQr, // New field from ticket search result
+        rrQrId: data.rrQrId, 
+        myQr: data.myQr, 
         totalAmount: 0, 
         totalRewardCredit: 0,
     };

@@ -110,20 +110,23 @@ interface TicketUpdatePayload {
     ticketsToUpdate: TicketUpdateItem[];
 }
 
-const mapToDeactivatableTicket = (raw: any): DeactivatableTicket => ({
-    id: String(raw.ticketID), // Use ticketID for React key
-    ticketID: raw.ticketID,
-    ticketNo: raw.ticketNo,
-    ticketName: raw.ticketName,
-    quantity: raw.ticketQty,
-    purchaseDate: raw.purchaseDate,
-    status: raw.recordStatus,
-    invoiceNo: raw.invoiceNo,
-});
+const mapToDeactivatableTicket = (raw: any): DeactivatableTicket => {
+    return {
+        id: String(raw.ticketID), 
+        ticketID: raw.ticketID,
+        ticketNo: raw.ticketNo,
+        ticketName: raw.ticketName,
+        quantity: raw.ticketQty,
+        purchaseDate: raw.purchaseDate,
+        status: raw.usageStatus,
+        invoiceNo: raw.invoiceNo,
+    };
+};
+
 
 // Helper to map consumption search result
 const mapToConsumptionHistory = (raw: any): ConsumptionHistory => ({
-    id: raw.ticketConsumptionNo, // Use consumption number as unique ID for key
+    id: raw.ticketConsumptionNo, 
     consumptionNo: raw.ticketConsumptionNo,
     trxNo: raw.trxNo,
     ticketNo: raw.ticketNo,
@@ -262,9 +265,18 @@ export const itPoswfService = {
     },
 
     // Search Transaction History by Terminal ID
-    searchTerminalHistory: async (terminalId: string): Promise<ApiResponse<TerminalHistoryData>> => {
+    searchTerminalHistory: async (terminalId: string, searchDate?: string | Date): Promise<ApiResponse<TerminalHistoryData>> => {
+        const dateObj = searchDate ? new Date(searchDate) : new Date();
+        
+        // Format: YYYY-MM-DDTHH:mm:ss (e.g. 2025-12-08T00:00:00)
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const formattedDate = `${year}-${month}-${day}T00:00:00`;
+
         const payload = {
             terminalID: terminalId,
+            searchDate: formattedDate,
         };
 
         // Call the new proxy
@@ -625,8 +637,10 @@ export const itPoswfService = {
     },
 
     searchDeactivatableTickets: async (searchQuery: string): Promise<ApiResponse<DeactivatableTicket[]>> => {
-        // Logic to determine if query is an InvoiceNo (contains '-') or TicketNo
-        const isInvoice = searchQuery.includes('-') || searchQuery.length > 10;
+        // FIX: Check for dash to identify Invoice Numbers (e.g. WSW01-...)
+        // This ensures Ticket Numbers (e.g. T251030FSJN) are treated as tickets regardless of length.
+        const isInvoice = searchQuery.includes('-'); 
+        
         const payload = {
             invoiceNo: isInvoice ? searchQuery.trim() : null,
             ticketNo: !isInvoice ? searchQuery.trim() : null,
@@ -646,7 +660,6 @@ export const itPoswfService = {
 
     // 2. Search Consumption History
     searchConsumptionHistory: async (invoiceNo: string, ticketNo: string = ""): Promise<ApiResponse<ConsumptionHistory[]>> => {
-        // This is primarily a search by (InvoiceNo + TicketNo), but we default ticketNo to empty/placeholder
         const payload = {
             ticketNo: ticketNo.trim(),
             invoiceNo: invoiceNo.trim(),

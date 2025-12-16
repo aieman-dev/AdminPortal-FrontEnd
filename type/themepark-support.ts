@@ -111,7 +111,7 @@ export interface RetailManualConsumeData {
   totalAmount: number
   totalRewardCredit: number
   accID?: number; 
-  rQRID?: string; 
+  rQrId?: string; 
 }
 
 export interface RetailManualConsumeSearchPayload {
@@ -177,8 +177,8 @@ export interface ConsumeExecuteItem {
 
 export interface ConsumeExecutePayload {
     consumeBySuperApp: boolean;
-    accID: number; 
-    rQRID: string; 
+    accID: number | null;
+    rQrId: string | null;
     terminalID: number;
     totalAmount: number;
     items: ConsumeExecuteItem[];

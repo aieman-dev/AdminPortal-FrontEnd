@@ -7,14 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
-// 1. Import your existing component
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { TransactionHistory, TicketHistory } from "@/type/themepark-support"; 
 import { itPoswfService } from "@/services/themepark-support"; 
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge"; 
-import { ChevronDown, ChevronRight, ArrowUpDown, Pencil, Clock } from "lucide-react";
+import { ChevronDown, ChevronRight, ArrowUpDown, Pencil } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
@@ -34,8 +32,6 @@ const formatDate = (dateString: string) => {
     hour12: true 
   }).format(date);
 };
-
-// Removed 'getTypeStyles' since we are using StatusBadge now
 
 function parseAmount(amount: string | number): number {
     if (typeof amount === 'number') return amount;
@@ -167,7 +163,7 @@ export default function SearchHistoryRecordTab() {
     { header: "Expiry Date", accessor: "expiryDate" },
     { header: "Last Valid Date", accessor: "lastValidDate" },
     { header: "Status", accessor: "status", cell: (value) => <StatusBadge status={value} /> },
-    { header: "Created Date", accessor: "createdDate", cell: (value) => <span className="font-mono text-sm">{formatDate(value as string)}</span> },
+    { header: "Created Date", accessor: "createdDate", cell: (value) => <span className="text-muted-foreground text-sm w-[180px]">{formatDate(value as string)}</span> },
   ]
 
   return (
@@ -178,7 +174,7 @@ export default function SearchHistoryRecordTab() {
             <div className="space-y-2">
               <Label htmlFor="searchType" className="text-sm font-medium">Search By</Label>
               <Select value={searchType} onValueChange={(value: any) => setSearchType(value)}>
-                <SelectTrigger id="searchType" className="h-11">
+                <SelectTrigger id="searchType" className="h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -242,38 +238,46 @@ export default function SearchHistoryRecordTab() {
                         sortedTransactions.map((group) => {
                             const isExpanded = expandedRows.has(group.id);
                             const uniqueTypes = Array.from(new Set(group.items.map(i => i.trxType)));
-                            // Calculate group type for the badge
                             const groupType = uniqueTypes.length > 1 ? 'Mixed' : uniqueTypes[0];
 
                             return (
                                 <React.Fragment key={group.id}>
                                     <TableRow 
-                                        className={cn("cursor-pointer hover:bg-muted/30 transition-colors", isExpanded && "bg-muted/30")}
+                                        className={cn(
+                                            "transition-colors border-b",
+                                            isExpanded ? "bg-muted/30 border-b-0" : "opacity-90 hover:bg-muted/30 cursor-pointer"
+                                        )}
                                         onClick={() => toggleRowExpand(group.id)}
                                     >
                                         <TableCell>
-                                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                            {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                                         </TableCell>
                                         
-                                        <TableCell className="font-medium text-indigo-600 dark:text-indigo-400">
-                                            {group.invoiceNo}
-                                            <span className="ml-2 text-[10px] text-muted-foreground font-normal">({group.items.length} items)</span>
+                                        <TableCell>
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-medium text-blue-600 dark:text-blue-400">
+                                              {group.invoiceNo}
+                                            </span>
+                                            {group.items.length > 0 && (
+                                              <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-blue-100 px-1 text-[10px] font-bold text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+                                                {group.items.length}
+                                              </span>
+                                            )}
+                                             </div>
                                         </TableCell>
 
-                                        <TableCell className="text-right font-bold text-gray-900">
+                                        <TableCell className="text-right font-medium text-gray-900 dark:text-gray-100">
                                             RM {group.totalAmount.toFixed(2)}
                                         </TableCell>
 
-                                        {/* 2. REPLACED: Use StatusBadge here */}
                                         <TableCell className="text-center">
                                             <StatusBadge status={groupType || 'N/A'} />
                                         </TableCell>
 
                                         <TableCell className="text-center">
-                                            <Badge variant="outline" className="font-normal text-xs text-gray-600 bg-gray-100 border-gray-200 gap-1.5 py-1 px-2.5 w-[170px] justify-center mx-auto">
-                                                <Clock className="w-3.5 h-3.5 opacity-70" />
+                                            <span className="text-muted-foreground text-sm w-[180px]">
                                                 {formatDate(group.createdDate)}
-                                            </Badge>
+                                            </span>
                                         </TableCell>
 
                                         <TableCell className="text-right pr-8">
@@ -291,37 +295,38 @@ export default function SearchHistoryRecordTab() {
                                         </TableCell>
                                     </TableRow>
 
-                                    {/* Expanded Sub-Table */}
                                     {isExpanded && (
-                                        <TableRow className="bg-muted/10 hover:bg-muted/10 border-t-0">
+                                        <TableRow className="bg-muted/10 hover:bg-muted/10 border-t-0 shadow-inner">
                                             <TableCell colSpan={6} className="p-0">
-                                                <div className="p-4 pl-4 bg-muted/20 border-b shadow-inner">
-                                                    <Table>
-                                                        <TableHeader>
-                                                            <TableRow className="border-b border-border/50 hover:bg-transparent">
-                                                                <TableHead className="w-[40px] h-8 text-xs font-semibold">#</TableHead>
-                                                                <TableHead className="w-[80px] h-8 text-xs font-semibold">Trx ID</TableHead>
-                                                                <TableHead className="h-8 text-xs font-semibold" style={{ width: "calc(30% - 86px)" }}>Attraction Name</TableHead>
-                                                                <TableHead className="h-8 text-xs font-semibold text-right" style={{ width: "15%" }}>Amount</TableHead>
-                                                                <TableHead className="h-8" style={{ width: "auto" }}></TableHead>
-                                                            </TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                            {group.items.map((item, index) => (
-                                                                <TableRow key={`${item.trxID}-${index}`} className="border-none hover:bg-transparent">
-                                                                    <TableCell className="py-2 text-xs text-muted-foreground">{index + 1}</TableCell>
-                                                                    <TableCell className="py-2 text-xs font-mono text-gray-600">{item.trxID}</TableCell>
-                                                                    <TableCell className="py-2 text-sm font-medium text-gray-800 break-words">
-                                                                        {item.attractionName}
-                                                                    </TableCell>
-                                                                    <TableCell className="py-2 text-sm text-right text-gray-900 font-bold">
-                                                                        RM {parseAmount(item.amount).toFixed(2)}
-                                                                    </TableCell>
-                                                                    <TableCell></TableCell>
-                                                                </TableRow>
-                                                            ))}
-                                                        </TableBody>
-                                                    </Table>
+                                                {/* STYLE UPDATE: Added pl-12 and border container to match Deactivate tab */}
+                                                <div className="py-2 pl-12 border-b border-border/50">
+                                                    <div className="w-full">
+                                                      {/* STYLE UPDATE: Custom header row to match 'Deactivate' Uppercase style */}
+                                                      <div className="flex items-center px-2 py-2 border-b border-border/30">
+                                                          <div className="w-[40px] text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">#</div>
+                                                          <div className="w-[80px] text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Trx ID</div>
+                                                          <div className="flex-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Attraction Name</div>
+                                                          <div className="w-[120px] text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wider pr-4">Amount</div>
+                                                      </div>
+                                                      
+                                                      <div className="flex flex-col">
+                                                        {group.items.map((item, index) => (
+                                                            <div 
+                                                                key={`${item.trxID}-${index}`} 
+                                                                className="flex items-center px-2 py-2 border-t border-border/30 first:border-0 hover:bg-white/40 dark:hover:bg-black/20 transition-colors"
+                                                            >
+                                                                <div className="w-[40px] text-xs text-muted-foreground">{index + 1}</div>
+                                                                <div className="w-[80px] text-xs font-mono text-gray-600">{item.trxID}</div>
+                                                                <div className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200 truncate pr-4">
+                                                                    {item.attractionName}
+                                                                </div>
+                                                                <div className="w-[120px] text-sm text-right text-gray-900 dark:text-gray-100 font-medium pr-4">
+                                                                    RM {parseAmount(item.amount).toFixed(2)}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                      </div>
+                                                    </div>
                                                 </div>
                                             </TableCell>
                                         </TableRow>

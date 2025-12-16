@@ -27,6 +27,7 @@ export function StatusBadge({ status, variant, colorMap, className }: StatusBadg
     expired: "bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200", 
     inactive: "bg-red-100 text-red-700 hover:bg-red-200 border-red-200",
     voided: "bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-200 decoration-line-through",
+    unused: "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300",
 
     // --- Sync Statuses (NEW) ---
     synced: "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-emerald-200", 

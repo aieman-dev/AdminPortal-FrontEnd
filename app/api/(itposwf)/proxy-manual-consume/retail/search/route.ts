@@ -38,13 +38,11 @@ export async function POST(request: NextRequest) {
     // Normalize the successful response fields for the frontend
     const finalData = {
         accID: data.accID, 
-        // Backend uses 'rQrId', proxy renames to 'rrQRID' for reuse in the frontend interface.
-        rrQRID: data.rQrId, 
+        rQrId: data.rQrId, 
         creditBalance: data.creditBalance || 0,
         items: (data.items || []).map((item: any) => ({
-            // CRITICAL: Map the frontend's unique 'id' key for React's DataTable
             id: String(item.itemID), 
-            ...item, // Pass all other fields as-is
+            ...item,
         })),
         totalAmount: 0, 
         totalRewardCredit: 0,
