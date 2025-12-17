@@ -18,12 +18,14 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
-  const renderedIcon =
-    typeof icon === "function"
-      ? React.createElement(icon as React.ComponentType<any>, {
-          className: "h-8 w-8 text-muted-foreground",
-        })
-      : icon
+  // FIX: Use isValidElement to distinguish between a rendered Element (<Icon />) 
+  // and a Component Definition (Icon).
+  // This correctly handles Functional Components, Class Components, and ForwardRef objects (like Lucide icons).
+  const renderedIcon = React.isValidElement(icon)
+    ? icon
+    : React.createElement(icon as React.ComponentType<any>, {
+        className: "h-8 w-8 text-muted-foreground",
+      })
 
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">

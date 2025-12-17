@@ -24,6 +24,14 @@ import { ArrowLeft, CheckCircle2, Wallet, Clock } from "lucide-react"
 import type { Account, BalanceDetail } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
 import { useToast } from "@/hooks/use-toast"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 
 type ActionType = "activate" | "inactive" | "reset-password" | "exchange" | "change-email" | "activate-balance" | null
 
@@ -245,10 +253,23 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
 
   return (
     <div className="space-y-6">
-      <Button variant="ghost" onClick={() => router.back()} className="gap-2">
-        <ArrowLeft className="h-4 w-4" />
-        Back to Account Management
-      </Button>
+      <div className="flex items-center justify-between">
+          <Breadcrumb>
+            <BreadcrumbList>
+                <BreadcrumbItem>
+                    <BreadcrumbLink href="/portal">Dashboard</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                    <BreadcrumbLink href="/portal/themepark-support/account-master">Account Master</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                    <BreadcrumbPage>Account Details ({account.accId})</BreadcrumbPage>
+                </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+      </div>
 
       {showSuccess && (
         <Alert className="border-green-500 bg-green-50 dark:bg-green-950">

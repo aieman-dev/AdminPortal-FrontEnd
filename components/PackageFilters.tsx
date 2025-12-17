@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, Search, RotateCcw, Play } from "lucide-react";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
+import { Search, RotateCcw, Play } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker"; // Standardized
 import { canDraftPackage } from "@/lib/auth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 interface PackageFiltersProps {
   activeFilter: string;
@@ -28,8 +28,8 @@ export default function PackageFilters({
   packageTypeFilter,
   setPackageTypeFilter
 }: PackageFiltersProps) {
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
   const filters = [
     { label: "Pending", value: "Pending", color: "#9C6500", hover: "#C27C00" },
@@ -48,12 +48,12 @@ export default function PackageFilters({
   });
 
   const handleRun = () => {
-    onDateFilter(startDate, endDate);
+    onDateFilter(startDate || null, endDate || null);
   };
 
   const handleReset = () => {
-    setStartDate(null);
-    setEndDate(null);
+    setStartDate(undefined);
+    setEndDate(undefined);
     setSearchQuery("");
     setPackageTypeFilter("All");
     onDateFilter(null, null);
@@ -65,10 +65,9 @@ export default function PackageFilters({
         <div className="flex flex-wrap items-center gap-3">
 
           {/* Package Type Filter */}
-          <div className="flex items-center rounded-full px-3 py-1.5 text-sm bg-gray-100 text-gray-600 relative z-20">
+          <div className="w-[140px]">
             <Select value={packageTypeFilter} onValueChange={setPackageTypeFilter}>
-                {/* FIX: Use !important classes to force override default ShadCN button styles */}
-                <SelectTrigger className="w-36 !h-auto !bg-transparent !border-none !shadow-none !p-0 text-sm font-normal text-gray-600 focus:!ring-0 focus:!ring-offset-0 gap-1">
+                <SelectTrigger className="h-9 bg-muted/50 border-transparent hover:bg-muted/80">
                     <SelectValue placeholder="All Types" />
                 </SelectTrigger>
                 <SelectContent>
@@ -81,63 +80,60 @@ export default function PackageFilters({
           </div>
 
           {/* Start Date */}
-          <div className="flex items-center rounded-full px-3 py-1.5 text-sm bg-gray-100 text-gray-600 relative z-20">
+          <div className="w-[140px]">
             <DatePicker
-              selected={startDate}
-              onChange={(date) => setStartDate(date)}
-              placeholderText="Start Date"
-              dateFormat="dd MMM yyyy"
-              className="bg-transparent outline-none w-36 text-sm text-gray-800 cursor-pointer"
-              popperClassName="!z-50"
+              date={startDate}
+              setDate={setStartDate}
+              placeholder="Start Date"
+              className="h-9 bg-muted/50 border-transparent hover:bg-muted/80"
             />
-            <Calendar size={16} className="ml-1 text-gray-400" />
           </div>
 
           {/* End Date */}
-          <div className="flex items-center rounded-full px-3 py-1.5 text-sm bg-gray-100 text-gray-600 relative z-20">
-            <DatePicker
-              selected={endDate}
-              onChange={(date) => setEndDate(date)}
-              placeholderText="End Date"
-              dateFormat="dd MMM yyyy"
-              className="bg-transparent outline-none w-36 text-sm text-gray-800 cursor-pointer"
-              popperClassName="!z-50"
+          <div className="w-[140px]">
+             <DatePicker
+              date={endDate}
+              setDate={setEndDate}
+              placeholder="End Date"
+              className="h-9 bg-muted/50 border-transparent hover:bg-muted/80"
             />
-            <Calendar size={16} className="ml-1 text-gray-400" />
           </div>
 
           {/* Run Button */}
-          <button 
+          <Button 
             onClick={handleRun}
-            className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 dark:bg-white dark:hover:bg-gray-200 text-primary-foreground  text-sm font-medium rounded-full px-4 py-1.5 shadow transition"
+            size="sm"
+            className="h-9 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md shadow-sm"
           >
-            <Play size={14} /> Run
-          </button>
+            <Play size={14} className="mr-2" /> Run
+          </Button>
 
           {/* Reset Button */}
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleReset}
-            className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 transition"
+            className="h-9 text-muted-foreground hover:text-foreground"
           >
-            <RotateCcw size={14} /> Reset All
-          </button>
+            <RotateCcw size={14} className="mr-2" /> Reset
+          </Button>
         </div>
 
         {/* Search Box */}
-        <div className="flex items-center rounded-full px-3 py-1.5 text-sm w-56 bg-gray-100 text-gray-600">
-          <input
+        <div className="relative w-64">
+           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search"
-            className="bg-transparent outline-none w-full placeholder-gray-400 text-gray-800"
+            placeholder="Search packages..."
+            className="w-full h-9 pl-9 pr-4 rounded-md border border-transparent bg-muted/50 text-sm outline-none focus:bg-background focus:border-indigo-500 transition-all placeholder:text-muted-foreground"
           />
-          <Search size={16} className="text-gray-400" />
+          <Search size={14} className="absolute left-3 top-2.5 text-muted-foreground" />
         </div>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex flex-wrap gap-8 mt-3 border-b border-gray-200">
+      <div className="flex flex-wrap gap-8 mt-3 border-b border-border">
         {visibleFilters.map((filter) => {
           const isActive = activeFilter === filter.value;
           return (
@@ -145,18 +141,12 @@ export default function PackageFilters({
               key={filter.value}
               onClick={() => setActiveFilter(filter.value)}
               className={`relative pb-2 text-[15px] font-semibold transition-all duration-150`}
-              style={{ color: isActive ? filter.color : "#88888D" }}
-              onMouseEnter={(e) => {
-                  if (!isActive) e.currentTarget.style.color = filter.hover;
-              }}
-              onMouseLeave={(e) => {
-                  if (!isActive) e.currentTarget.style.color = "#88888D";
-              }}
+              style={{ color: isActive ? filter.color : "var(--muted-foreground)" }}
             >
               {filter.label}
               {isActive && (
                 <span
-                  className="absolute -left-2 -right-2 -bottom-[2px] h-[4px] rounded-full transition-all duration-200"
+                  className="absolute -left-2 -right-2 -bottom-[2px] h-[3px] rounded-full transition-all duration-200"
                   style={{ backgroundColor: filter.color }}
                 />
               )}

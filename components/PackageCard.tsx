@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { Calendar, Globe, User, MoreHorizontal, Pencil, Copy, Trash2, Ticket, Layers } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton"; 
+import { cn } from "@/lib/utils"; 
 
 interface PackageCardProps {
   id: number;
@@ -46,6 +48,9 @@ export default function PackageCard({
   onEdit,
   onDelete,
 }: PackageCardProps) {
+
+  // State to track image loading
+  const [imageLoaded, setImageLoaded] = useState(false);
   
   const getStatusStyle = (status: string) => {
     const normalized = status.toLowerCase().replace(/\s/g, '');
@@ -80,13 +85,26 @@ export default function PackageCard({
       `}
     >
       
-      {/* 1. IMAGE HEADER (Reduced height slightly for narrower aspect) */}
-      <div className="relative h-32 w-full overflow-hidden shrink-0 bg-gray-100">
+      {/* 1. IMAGE HEADER */}
+      <div className="relative h-32 w-full overflow-hidden shrink-0 bg-gray-100 dark:bg-gray-800">
+        {/* Skeleton Loader */}
+        {!imageLoaded && (
+            <Skeleton className="absolute inset-0 h-full w-full" />
+        )}
+        
+        {/* Actual Image */}
         <img 
           src={image} 
           alt={name} 
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-          onError={(e) => (e.currentTarget.src = "/packages/DefaultPackageImage.png")}
+          className={cn(
+              "w-full h-full object-cover transition-transform duration-700 group-hover:scale-110",
+              !imageLoaded ? "opacity-0" : "opacity-100" // Smooth fade-in
+          )}
+          onLoad={() => setImageLoaded(true)}
+          onError={(e) => {
+              e.currentTarget.src = "/packages/DefaultPackageImage.png";
+              setImageLoaded(true); // Ensure skeleton disappears on error fallback
+          }}
         />
         
         <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />

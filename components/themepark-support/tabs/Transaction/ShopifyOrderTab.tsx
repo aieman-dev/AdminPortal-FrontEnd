@@ -3,21 +3,20 @@
 
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import { ShoppingBag,Search } from "lucide-react"
-import { Input } from "@/components/ui/input"
+import { ShoppingBag, Search } from "lucide-react"
+// REMOVE: import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
 import { ShopifyOrder } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
 import { useToast } from "@/hooks/use-toast"
+// ADD: Import Input Group Components
+import { InputGroup, InputGroupAddon, InputGroupText, InputGroupInput } from "@/components/ui/input-group"
 
-// Define a type for the table display based on the API result
 interface ShopifyTableData extends ShopifyOrder {
-    orderName?: string; // Add the search term for display
+    orderName?: string;
 }
-
 
 export default function ShopifyOrderTab() {
   const { toast } = useToast()
@@ -25,7 +24,6 @@ export default function ShopifyOrderTab() {
   const [searchResult, setSearchResult] = useState<ShopifyTableData | null>(null)
   const [isSearching, setIsSearching] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-
 
   const handleSearch = async () => {
     const rawInput = orderName.trim().replace(/#/g, '');
@@ -90,36 +88,35 @@ export default function ShopifyOrderTab() {
 
   const dataForTable = searchResult ? [searchResult] : []
 
-
   return (
     <div className="space-y-6">
       <Card>
         <CardContent>
-          <div className="flex gap-4 items-end">
+          <div className="flex gap-4 items-end pt-6"> {/* Added pt-6 for padding */}
             <div className="flex-1 space-y-2">
               <Label htmlFor="shopify-order-input" className="text-sm font-medium">
                 Shopify Order Name
               </Label>
-              <div className="relative">
-                {/* Hardcoded # Symbol */}
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold select-none">
-                  #
-                </span>
-                <Input
-                  id="shopify-order-input"
-                  type="text"
-                  placeholder="29174" 
-                  value={orderName}
-                  // Force remove # if user pastes it, ensuring state is pure numbers/text
-                  onChange={(e) => setOrderName(e.target.value.replace(/#/g, ''))} 
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  className="h-11 pl-7" // Added padding-left (pl-7) to make room for the #
-                  disabled={isSearching}
+              
+              {/* REPLACED: Input Group implementation */}
+              <InputGroup>
+                <InputGroupAddon>
+                    <InputGroupText>#</InputGroupText>
+                </InputGroupAddon>
+                <InputGroupInput 
+                    id="shopify-order-input"
+                    type="text"
+                    placeholder="29174" 
+                    value={orderName}
+                    onChange={(e) => setOrderName(e.target.value.replace(/#/g, ''))} 
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    disabled={isSearching}
                 />
-              </div>
+              </InputGroup>
+
             </div>
             <div className="flex items-end">
-              <Button onClick={handleSearch} disabled={isSearching || !orderName.trim()} className="h-11 px-8">
+              <Button onClick={handleSearch} disabled={isSearching || !orderName.trim()} className="h-9 px-8"> {/* Adjusted h-9 to match InputGroup default */}
                 <Search className="mr-2 h-4 w-4" />
                 {isSearching ? "Searching..." : "Search"}
               </Button>
@@ -138,7 +135,7 @@ export default function ShopifyOrderTab() {
 
       {(isSearching || dataForTable.length > 0) && (
         <Card>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pt-6">
             <div className="flex items-center gap-2">
               <ShoppingBag className="h-5 w-5" />
               <div className="text-lg font-semibold">Transaction Details</div>

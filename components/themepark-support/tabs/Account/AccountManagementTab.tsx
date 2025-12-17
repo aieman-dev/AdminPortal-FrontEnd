@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
+import { Skeleton } from "@/components/ui/skeleton";
 import { Pencil } from "lucide-react"
 import { itPoswfService } from "@/services/themepark-support" 
 import { Account } from "@/type/themepark-support" 
@@ -134,18 +135,25 @@ export default function AccountManagementTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {accounts.length === 0 && !isSearching ? (
+                {/* 1. LOADING STATE */}
+                {isSearching ? (
+                   Array.from({ length: 5 }).map((_, idx) => (
+                      <TableRow key={idx}>
+                          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                          <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                          <TableCell className="text-right"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
+                      </TableRow>
+                   ))
+                ) : accounts.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       No accounts found
                     </TableCell>
                   </TableRow>
-                  ) : isSearching ? (
-                  <TableRow>
-                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                            Loading accounts...
-                        </TableCell>
-                    </TableRow>
                 ) : (
                   accounts.map((account) => (
                     <TableRow key={account.id}>

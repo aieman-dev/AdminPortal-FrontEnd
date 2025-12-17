@@ -8,15 +8,15 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-// 1. Added Badge and Clock imports
-import { Search, Pencil, Settings, Clock } from "lucide-react"
+import { Pencil, Clock } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { type Terminal } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
 import { useToast } from "@/hooks/use-toast"
+// IMPORT SEARCH FIELD
+import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 
-// 2. Added Helper Function for Date
 const formatDate = (dateString: string) => {
   if (!dateString) return '';
   const date = new Date(dateString);
@@ -95,7 +95,6 @@ export default function UpdateTerminalTab() {
                     ? { 
                         ...t, 
                         uuid: newUUID, 
-                        // Keep raw ISO string in state; the UI helper will format it nicely
                         modifiedDate: new Date().toISOString() 
                     }
                     : t,
@@ -128,27 +127,21 @@ export default function UpdateTerminalTab() {
     <>
       <Card>
         <CardContent>
-          <div className="space-y-2 pt-6">
-            <Label htmlFor="terminal-search" className="text-sm font-medium">
-              Search Terminal
-            </Label>
-            <div className="flex gap-2">
-              <Input
-                id="terminal-search"
+          {/* REPLACED MANUAL INPUT WITH SEARCHFIELD */}
+          <div className="pt-6">
+              <SearchField 
+                label="Search Terminal"
                 placeholder="Enter terminal name or UUID"
                 value={terminalSearchTerm}
-                onChange={(e) => setTerminalSearchTerm(e.target.value)}
-                className="h-11"
+                onChange={setTerminalSearchTerm}
+                onSearch={handleTerminalSearch}
+                isSearching={isTerminalSearching}
               />
-              <Button onClick={handleTerminalSearch} disabled={isTerminalSearching} className="h-11 px-8">
-                <Search className="mr-2 h-4 w-4" />
-                {isTerminalSearching ? "Searching..." : "Search"}
-              </Button>
-            </div>
           </div>
         </CardContent>
       </Card>
 
+      {/* Rest of the component (Table, Dialog) remains unchanged */}
       <Card>
         <CardContent className="pt-6">
           <div className="overflow-x-auto">
@@ -176,20 +169,15 @@ export default function UpdateTerminalTab() {
                       <TableCell className="font-medium">{terminal.terminalName}</TableCell>
                       <TableCell className="font-mono text-sm text-gray-600">{terminal.uuid}</TableCell>
                       <TableCell>{terminal.terminalType}</TableCell>
-                      
-                      {/* 3. Status Badge (Centered) */}
                       <TableCell className="text-center">
                         <StatusBadge status={terminal.status} />
                       </TableCell>
-                      
-                      {/* 4. Modified Date (Formatted + Badge UI) */}
                       <TableCell className="text-center">
                         <Badge variant="outline" className="font-normal text-xs text-gray-600 bg-gray-100 border-gray-200 gap-1.5 py-1 px-2.5 w-[170px] justify-center mx-auto">
                             <Clock className="w-3.5 h-3.5 opacity-70" />
                             {formatDate(terminal.modifiedDate)}
                         </Badge>
                       </TableCell>
-
                       <TableCell className="text-right">
                         <Button variant="ghost" size="sm" onClick={() => handleEdit(terminal)}>
                           <Pencil className="h-4 w-4 mr-2" />
@@ -214,38 +202,17 @@ export default function UpdateTerminalTab() {
           {editingTerminal && (
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-name" className="text-sm font-medium">
-                  Terminal Name
-                </Label>
-                <Input
-                  id="edit-name"
-                  value={editingTerminal.terminalName}
-                  className="h-11"
-                  disabled
-                />
+                <Label htmlFor="edit-name" className="text-sm font-medium">Terminal Name</Label>
+                <Input id="edit-name" value={editingTerminal.terminalName} className="h-11" disabled />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-uuid" className="text-sm font-medium">
-                  UUID
-                </Label>
-                <Input
-                  id="edit-uuid"
-                  value={editingTerminal.uuid}
-                  onChange={(e) => setEditingTerminal({ ...editingTerminal, uuid: e.target.value })}
-                  className="h-11 font-mono text-sm"
-                />
+                <Label htmlFor="edit-uuid" className="text-sm font-medium">UUID</Label>
+                <Input id="edit-uuid" value={editingTerminal.uuid} onChange={(e) => setEditingTerminal({ ...editingTerminal, uuid: e.target.value })} className="h-11 font-mono text-sm" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-type" className="text-sm font-medium">
-                  Terminal Type
-                </Label>
-                <Select
-                  value={editingTerminal.terminalType}
-                  disabled
-                >
-                  <SelectTrigger id="edit-type" className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
+                <Label htmlFor="edit-type" className="text-sm font-medium">Terminal Type</Label>
+                <Select value={editingTerminal.terminalType} disabled>
+                  <SelectTrigger id="edit-type" className="h-11"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="POS">POS</SelectItem>
                     <SelectItem value="Kiosk">Kiosk</SelectItem>
@@ -255,16 +222,9 @@ export default function UpdateTerminalTab() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-status" className="text-sm font-medium">
-                  Status
-                </Label>
-                <Select
-                  value={editingTerminal.status}
-                  disabled
-                >
-                  <SelectTrigger id="edit-status" className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
+                <Label htmlFor="edit-status" className="text-sm font-medium">Status</Label>
+                <Select value={editingTerminal.status} disabled>
+                  <SelectTrigger id="edit-status" className="h-11"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Active">Active</SelectItem>
                     <SelectItem value="Inactive">Inactive</SelectItem>
@@ -275,12 +235,8 @@ export default function UpdateTerminalTab() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isUpdating}>
-              Cancel
-            </Button>
-            <Button onClick={handleTerminalUpdate} disabled={isUpdating}>
-              {isUpdating ? "Updating..." : "Update Terminal"}
-            </Button>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isUpdating}>Cancel</Button>
+            <Button onClick={handleTerminalUpdate} disabled={isUpdating}>{isUpdating ? "Updating..." : "Update Terminal"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

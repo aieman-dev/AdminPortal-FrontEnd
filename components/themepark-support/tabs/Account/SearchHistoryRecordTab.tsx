@@ -12,9 +12,10 @@ import { TransactionHistory, TicketHistory } from "@/type/themepark-support";
 import { itPoswfService } from "@/services/themepark-support"; 
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronRight, ArrowUpDown, Pencil } from "lucide-react";
+import { ChevronDown, ChevronRight, ArrowUpDown, Pencil, SearchX } from "lucide-react"; 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
+import { EmptyState } from "@/components/portal/empty-state"
 
 // --- Helper Functions ---
 
@@ -77,9 +78,14 @@ export default function SearchHistoryRecordTab() {
     try {
         const response = await itPoswfService.searchHistory(searchType, searchTerm);
         if (response.success && response.data) { 
-            setRawHistoryData(response.data.transactionHistory); 
-            setTicketData(response.data.ticketHistory);
-            if (response.data.transactionHistory.length === 0 && response.data.ticketHistory.length === 0) {
+            // FIX: Default to empty array [] if property is undefined to prevent crashes
+            const transactions = response.data.transactionHistory || [];
+            const tickets = response.data.ticketHistory || [];
+
+            setRawHistoryData(transactions); 
+            setTicketData(tickets);
+
+            if (transactions.length === 0 && tickets.length === 0) {
                  toast({ title: "Search Complete", description: "No records found." });
             }
         } else {
@@ -95,7 +101,8 @@ export default function SearchHistoryRecordTab() {
   const groupedTransactions = useMemo(() => {
       const groups: Record<string, GroupedInvoice> = {};
 
-      rawHistoryData.forEach(item => {
+      // FIX: Add safety check (rawHistoryData || []) to ensure forEach never runs on undefined
+      (rawHistoryData || []).forEach(item => {
           const key = item.invoiceNo || `TRX-${item.trxID}`;
           
           if (!groups[key]) {
@@ -231,9 +238,24 @@ export default function SearchHistoryRecordTab() {
                   </TableHeader>
                   <TableBody>
                     {isSearching ? (
-                        <TableRow><TableCell colSpan={6} className="h-24 text-center">Searching...</TableCell></TableRow>
+                        <TableRow>
+                            <TableCell colSpan={6} className="h-64 align-middle">
+                                <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                                    <p>Searching transactions...</p>
+                                </div>
+                            </TableCell>
+                        </TableRow>
                     ) : sortedTransactions.length === 0 ? (
-                        <TableRow><TableCell colSpan={6} className="h-24 text-center text-muted-foreground">No records found.</TableCell></TableRow>
+                        <TableRow>
+                            <TableCell colSpan={6} className="p-0">
+                                <EmptyState 
+                                    icon={SearchX} 
+                                    title="No Transactions Found" 
+                                    description={searchTerm ? "No records found for this search criteria." : "Enter a search term to find history."}
+                                />
+                            </TableCell>
+                        </TableRow>
                     ) : (
                         sortedTransactions.map((group) => {
                             const isExpanded = expandedRows.has(group.id);
@@ -298,10 +320,8 @@ export default function SearchHistoryRecordTab() {
                                     {isExpanded && (
                                         <TableRow className="bg-muted/10 hover:bg-muted/10 border-t-0 shadow-inner">
                                             <TableCell colSpan={6} className="p-0">
-                                                {/* STYLE UPDATE: Added pl-12 and border container to match Deactivate tab */}
                                                 <div className="py-2 pl-12 border-b border-border/50">
                                                     <div className="w-full">
-                                                      {/* STYLE UPDATE: Custom header row to match 'Deactivate' Uppercase style */}
                                                       <div className="flex items-center px-2 py-2 border-b border-border/30">
                                                           <div className="w-[40px] text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">#</div>
                                                           <div className="w-[80px] text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Trx ID</div>
@@ -345,11 +365,12 @@ export default function SearchHistoryRecordTab() {
         <TabsContent value="ticket" className="mt-0">
           <Card className="rounded-tl-none">
             <CardContent>
+              {/* Uses the updated DataTable which now supports EmptyState internally */}
               <DataTable
                 columns={ticketColumns}
                 data={ticketData}
                 keyExtractor={(row, index) => (row.ticketNo || `tk-${index}`).toString()}
-                emptyMessage={isSearching ? "Searching..." : "No ticket records found"}
+                emptyMessage={searchTerm ? "No ticket records found for this search." : "Enter a search term to find tickets."}
               />
             </CardContent>
           </Card>

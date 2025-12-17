@@ -1,0 +1,151 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { itPoswfService } from "@/services/themepark-support"
+import { Terminal } from "@/type/themepark-support"
+
+interface TerminalSelectorProps {
+  value: string
+  onChange: (value: string) => void
+  label?: string
+  placeholder?: string
+  disabled?: boolean
+}
+
+export function TerminalSelector({
+  value,
+  onChange,
+  label = "Terminal Search & Select",
+  placeholder = "Search terminal name or ID...",
+  disabled = false
+}: TerminalSelectorProps) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState("")
+  const [terminals, setTerminals] = useState<Terminal[]>([])
+  const [loading, setLoading] = useState(false)
+  
+  // Persist the selected terminal object so the label doesn't disappear
+  // when the search results change.
+  const [selectedTerminal, setSelectedTerminal] = useState<Terminal | null>(null)
+
+  // 1. Debounced Search Effect
+  useEffect(() => {
+    const fetchTerminals = async () => {
+      if (!query.trim()) {
+        if (terminals.length === 0) setTerminals([])
+        return
+      }
+
+      setLoading(true)
+      try {
+        const response = await itPoswfService.searchTerminals(query)
+        if (response.success && response.data) {
+          setTerminals(response.data.slice(0, 30))
+        } else {
+          setTerminals([])
+        }
+      } catch (error) {
+        console.error("Terminal search error:", error)
+        setTerminals([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    const timer = setTimeout(fetchTerminals, 300)
+    return () => clearTimeout(timer)
+  }, [query])
+
+  // 2. Handle Selection
+  const handleSelect = (terminal: Terminal) => {
+    setSelectedTerminal(terminal)
+    onChange(terminal.id)
+    setOpen(false)
+  }
+
+  // Display label logic: Use selected object -> fallback to search list -> fallback to ID
+  const displayLabel = selectedTerminal?.terminalName 
+    || terminals.find((t) => t.id === value)?.terminalName 
+    || (value ? `Terminal ID: ${value}` : "Select terminal...")
+
+  return (
+    // FIX: Changed from 'space-y-2' to 'flex flex-col gap-3' for better vertical spacing
+    <div className="flex flex-col gap-3">
+      {label && <Label className="mb-0">{label}</Label>}
+      
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between font-normal"
+            disabled={disabled}
+          >
+            <span className="truncate">{displayLabel}</span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        
+        <PopoverContent className="w-[300px] p-0" align="start">
+          <Command shouldFilter={false}>
+            <CommandInput 
+              placeholder={placeholder} 
+              value={query} 
+              onValueChange={setQuery} 
+            />
+            <CommandList>
+              {loading && (
+                <div className="py-6 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Searching...
+                </div>
+              )}
+              
+              {!loading && terminals.length === 0 && (
+                <CommandEmpty>No terminal found.</CommandEmpty>
+              )}
+
+              <CommandGroup>
+                {terminals.map((t) => (
+                  <CommandItem
+                    key={t.id}
+                    value={t.id}
+                    onSelect={() => handleSelect(t)}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        value === t.id ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    <div className="flex flex-col">
+                      <span>{t.terminalName}</span>
+                      <span className="text-xs text-muted-foreground">ID: {t.id}</span>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
+  )
+}

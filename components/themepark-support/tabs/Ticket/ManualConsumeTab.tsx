@@ -10,9 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge" 
 import { Separator } from "@/components/ui/separator"
-import { Search, Wallet, TrendingUp, AlertTriangle, Ticket, ArrowLeft, CheckCircle2, Loader2, Minus, Plus } from "lucide-react"
+import { Search, Wallet, TrendingUp, AlertTriangle, Ticket, ArrowLeft, CheckCircle2, Loader2, Minus, Plus, SearchX, ChevronsUpDown, Check } from "lucide-react"
 import { BalanceCard } from "@/components/themepark-support/it-poswf/balance-card"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
+import { TerminalSelector } from "@/components/themepark-support/it-poswf/terminal-selector"
+import { EmptyState } from "@/components/portal/empty-state"
 import {
   type ManualConsumeData,
   type ManualConsumeSearchPayload,
@@ -23,13 +25,24 @@ import {
 import { itPoswfService } from "@/services/themepark-support"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
 type Step = 'selection' | 'confirmation';
 
 export default function ManualConsumeTab() {
   const { toast } = useToast()
-
-  // -- Workflow State --
   const [currentStep, setCurrentStep] = useState<Step>('selection');
 
   // -- Form State --
@@ -37,17 +50,11 @@ export default function ManualConsumeTab() {
   const [email, setEmail] = useState("")
   const [mobileNo, setMobileNo] = useState("")
   const [invoiceNo, setInvoiceNo] = useState("")
-  const [terminalId, setTerminalId] = useState<string>("")
   const [ticketType, setTicketType] = useState<string>("")
   const [ticketStatus, setTicketStatus] = useState<string>("")
   
-  // -- Terminal Search State --
-  const [terminalSearchQuery, setTerminalSearchQuery] = useState("") 
-  const [filteredTerminals, setFilteredTerminals] = useState<Terminal[]>([]) 
-  const [isTerminalLoading, setIsTerminalLoading] = useState(false)
-  
-  // -- VISUAL CUE STATE --
-  const [highlightDropdown, setHighlightDropdown] = useState(false)
+  // -- Terminal Search State (Combobox) --
+  const [terminalId, setTerminalId] = useState<string>("")
   
   // -- Data & Cart State --
   const [consumeSearchResult, setConsumeSearchResult] = useState<ManualConsumeData | null>(null)
@@ -63,66 +70,14 @@ export default function ManualConsumeTab() {
   const isEmailDisabled = isReceipt;
   const isMobileDisabled = isReceipt;
   const isInvoiceDisabled = isSuperApp;
+ 
 
-  // --- 1. Terminal Auto-Complete Logic (With Visual Cue) ---
-  useEffect(() => {
-    const fetchFilteredTerminals = async () => {
-        if (!terminalSearchQuery.trim()) {
-             if (filteredTerminals.length > 0) {
-                 setFilteredTerminals([]);
-                 setHighlightDropdown(false); // Reset highlight
-             }
-             return;
-        }
-
-        setIsTerminalLoading(true);
-        setHighlightDropdown(false); // Reset before search
-        if (terminalSearchQuery && terminalId) setTerminalId(""); 
-        
-        try {
-            const response = await itPoswfService.searchTerminals(terminalSearchQuery);
-            if (response.success && response.data) {
-                setFilteredTerminals(response.data.slice(0, 30));
-                
-                // TRIGGER VISUAL CUE if results found
-                if (response.data.length > 0) {
-                    setHighlightDropdown(true);
-                    const exactMatch = response.data.find(t => t.id === terminalSearchQuery);
-                         if (!exactMatch) {
-                             toast({ 
-                                 title: "Terminals Found", 
-                                 description: `Found ${response.data.length} matches. Please select one from the list.`,
-                                 duration: 3000 
-                             });
-                         }
-                }
-            } else {
-                setFilteredTerminals([]);
-            }
-        } catch (error) {
-            console.error("Network error fetching terminals:", error);
-            setFilteredTerminals([]);
-        } finally {
-            setIsTerminalLoading(false);
-        }
-    };
-    
-    const debounceTimeout = setTimeout(fetchFilteredTerminals, 300);
-    return () => clearTimeout(debounceTimeout);
-  }, [terminalSearchQuery]);
-  
-  useEffect(() => {
-      if (terminalId && !filteredTerminals.some(t => t.id === terminalId)) {
-          setTerminalId(""); 
-      }
-  }, [filteredTerminals, terminalId]);
-
-  // --- 2. Main Search Logic ---
+  // --- 1. Main Search Logic ---
   const handleConsumeSearch = async () => {
     let missingFields: string[] = [];
 
     if (!consumeType) missingFields.push("Consume Type");
-    if (!terminalId) missingFields.push("Terminal ID");
+    if (!terminalId) missingFields.push("Terminal");
     
     if (isSuperApp && !email.trim()) missingFields.push("Email Address");
     if (isReceipt && !invoiceNo.trim()) missingFields.push("Invoice No");
@@ -131,7 +86,7 @@ export default function ManualConsumeTab() {
         toast({
             title: "Input Required",
             description: `Missing: ${missingFields.join(", ")}`,
-            variant: "destructive",
+            variant: "default", // Changed from destructive to default (yellow/warning feel)
         });
         return;
     }
@@ -157,37 +112,23 @@ export default function ManualConsumeTab() {
 
         if (response.success && response.data) {
             
-            // 1. Check for Empty Data
             const hasTickets = response.data.tickets && response.data.tickets.length > 0;
 
             if (!hasTickets) {
                 setConsumeSearchResult(response.data);
-                toast({ 
-                    title: "Search Complete", 
-                    description: "No records found matching your criteria.", 
-                    variant: "default" 
-                });
+                // No toast needed here, EmptyState will render
                 return; 
             }
 
-            // 2. Validate SuperApp Requirements
             if (isSuperApp && !response.data.accID) {
                  toast({ 
                     title: "Account Data Missing", 
-                    description: "Search successful, but Account ID is missing.", 
+                    description: "Account ID is missing.", 
                     variant: "destructive" 
                 });
                 return;
             }
             
-            if (!response.data.myQr) { 
-                toast({ 
-                    title: "System Data Missing", 
-                    description: "Search successful, but QR Data (myQr) is missing.", 
-                    variant: "destructive" 
-                });
-            }
-
             setConsumeSearchResult(response.data);
             toast({ title: "Search Complete", description: "Manual consume details retrieved." });
 
@@ -208,11 +149,9 @@ export default function ManualConsumeTab() {
   }
 
   // --- 3. Quantity Handlers ---
-  const updateQuantity = (itemId: string, delta: number, maxQty: number) => {
+  const updateQuantity = (itemId: string, val: number, maxQty: number) => {
       setQuantities(prev => {
-          const current = prev[itemId] || 0;
-          const updated = Math.min(Math.max(0, current + delta), maxQty); 
-          
+          const updated = Math.min(Math.max(0, val), maxQty); 
           const newMap = { ...prev, [itemId]: updated };
           if (updated === 0) delete newMap[itemId]; 
           return newMap;
@@ -238,7 +177,6 @@ export default function ManualConsumeTab() {
         if (!consumeSearchResult) return;
         
         const selectedTickets = consumeSearchResult.tickets.filter(t => (quantities[t.id] || 0) > 0);
-
         if (selectedTickets.length === 0) return;
         
         const totalPoints = selectedTickets.reduce((sum, item) => sum + (item.ItemPoint * quantities[item.id]), 0);
@@ -318,163 +256,177 @@ export default function ManualConsumeTab() {
 
 
   // --- VIEW: SELECTION TABLE ---
-  const renderSelectionView = () => (
-    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-      <div className="grid gap-4 md:grid-cols-2">
-        <BalanceCard
-          title="Credit Balance"
-          amount={consumeSearchResult?.creditBalance || 0}
-          description="Available balance"
-          icon={Wallet}
-          valueColor="text-green-600"
-        />
-        <Card>
-            <CardContent className="space-y-2 p-6">
-                <div className="flex items-center justify-between">
-                    <div className="text-sm font-medium">Ticket Summary</div>
-                    <AlertTriangle className="h-4 w-4 text-orange-500" />
-                </div>
-                <div className="text-2xl font-bold">
-                    {activeTicketsCount} Active <span className="text-muted-foreground text-lg font-normal">/ {consumeSearchResult?.tickets.length} Total</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Inactive/Expired tickets cannot be selected.</p>
-            </CardContent>
-        </Card>
-      </div>
+  const renderSelectionView = () => {
+    const hasItems = consumeSearchResult?.tickets && consumeSearchResult.tickets.length > 0;
 
-      <Card>
-        <CardContent className="p-0 overflow-hidden">
-            <div className="bg-muted/40 px-6 py-3 border-b flex justify-between items-center">
-                <h3 className="font-semibold flex items-center gap-2">
-                    <Ticket className="w-4 h-4" /> Available Tickets
-                </h3>
-                <span className="text-xs text-muted-foreground">
-                    {consumeSearchResult?.tickets.length} results found
-                </span>
-            </div>
-
-            <div className="overflow-x-auto max-h-[400px]">
-                <Table>
-                    <TableHeader className="bg-background sticky top-0 z-10 shadow-sm">
-                        <TableRow>
-                            <TableHead className="w-[45%] pl-6">Item Details</TableHead>
-                            <TableHead className="w-[10%] text-center">Type</TableHead>
-                            <TableHead className="w-[15%] text-center">Terminal</TableHead>
-                            <TableHead className="w-[10%] text-right">Points</TableHead>
-                            <TableHead className="w-[10%] text-center">Quantity</TableHead>
-                            <TableHead className="w-[10%] text-right pr-6">Line Total</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {consumeSearchResult?.tickets.map((ticket) => {
-                            const qty = quantities[ticket.id] || 0;
-                            const isActive = ticket.PackageStatus.toLowerCase() === 'active';
-                            const maxQty = ticket.BalanceQty;
-                            
-                            const isSelected = qty > 0;
-
-                            return (
-                                <TableRow key={ticket.id} className={isSelected ? "bg-muted/30" : ""}>
-                                    <TableCell className="pl-6">
-                                        <div className="flex flex-col gap-1">
-                                            <span className={cn("font-medium text-sm transition-colors", isSelected ? "text-indigo-700 dark:text-indigo-300" : "text-foreground")}>
-                                                {ticket.PackageName}
-                                            </span>
-                                            
-                                            <span className="text-xs text-muted-foreground">
-                                                {ticket.ItemName}
-                                            </span>
-
-                                            <div className="flex items-center gap-2 mt-1.5">
-                                                <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-mono bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800">
-                                                    #{ticket.TicketItemID}
-                                                </Badge>
-
-                                                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80 font-mono">
-                                                    <span>PID:{ticket.PackageID}</span>
-                                                    <span className="w-px h-3 bg-border"></span>
-                                                    <span>PIID:{ticket.PackageItemID}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        <StatusBadge status={ticket.TicketType} className="w-auto px-2" />
-                                    </TableCell>
-                                    <TableCell className="text-center text-xs font-mono text-muted-foreground">
-                                        {ticket.ConsumeTerminal}
-                                    </TableCell>
-                                    <TableCell className="text-right font-medium">
-                                        {ticket.ItemPoint.toLocaleString()}
-                                    </TableCell>
-                                    
-                                    <TableCell>
-                                        <div className="flex items-center justify-center gap-2">
-                                            <Button 
-                                                variant="outline" 
-                                                size="icon" 
-                                                className="h-7 w-7 rounded-full"
-                                                onClick={() => updateQuantity(ticket.id, -1, maxQty)}
-                                                disabled={!isActive || qty === 0}
-                                            >
-                                                <Minus className="h-3 w-3" />
-                                            </Button>
-                                            <span className={`w-8 text-center font-semibold ${qty > 0 ? "text-primary" : "text-muted-foreground"}`}>
-                                                {qty}
-                                            </span>
-                                            <Button 
-                                                variant="outline" 
-                                                size="icon" 
-                                                className="h-7 w-7 rounded-full"
-                                                onClick={() => updateQuantity(ticket.id, 1, maxQty)}
-                                                disabled={!isActive || qty >= maxQty}
-                                            >
-                                                <Plus className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right pr-6">
-                                        <span className={`font-bold ${qty > 0 ? "text-foreground" : "text-muted-foreground/30"}`}>
-                                            {(ticket.ItemPoint * qty).toLocaleString()}
-                                        </span>
-                                    </TableCell>
-                                </TableRow>
-                            );
-                        })}
-                    </TableBody>
-                </Table>
-            </div>
-          
-            <div className="bg-muted/10 border-t p-6">
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div className="text-sm text-muted-foreground">
-                        Total items selected: {Object.values(quantities).reduce((a, b) => a + b, 0)}
+    return (
+        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="grid gap-4 md:grid-cols-2">
+            <BalanceCard
+            title="Credit Balance"
+            amount={consumeSearchResult?.creditBalance || 0}
+            description="Available balance"
+            icon={Wallet}
+            valueColor="text-green-600"
+            />
+            <Card>
+                <CardContent className="space-y-2 p-6">
+                    <div className="flex items-center justify-between">
+                        <div className="text-sm font-medium">Ticket Summary</div>
+                        <AlertTriangle className="h-4 w-4 text-orange-500" />
                     </div>
-                    
-                    <div className="flex items-center gap-6 w-full md:w-auto">
-                        <div className="flex flex-col items-end">
-                            <span className="text-sm text-muted-foreground">Total Points</span>
-                            <div className="flex items-center gap-2 text-2xl font-bold text-primary">
-                                <TrendingUp className="h-5 w-5" />
-                                {totalPoints.toLocaleString()}
-                            </div>
+                    <div className="text-2xl font-bold">
+                        {activeTicketsCount} Active <span className="text-muted-foreground text-lg font-normal">/ {consumeSearchResult?.tickets.length || 0} Total</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Inactive/Expired tickets cannot be selected.</p>
+                </CardContent>
+            </Card>
+        </div>
+
+        <Card>
+            <CardContent className="p-0 overflow-hidden">
+                <div className="bg-muted/40 px-6 py-3 border-b flex justify-between items-center">
+                    <h3 className="font-semibold flex items-center gap-2">
+                        <Ticket className="w-4 h-4" /> Available Tickets
+                    </h3>
+                    <span className="text-xs text-muted-foreground">
+                        {consumeSearchResult?.tickets.length} results found
+                    </span>
+                </div>
+
+                {!hasItems ? (
+                     <div className="py-12">
+                        <EmptyState 
+                            icon={SearchX}
+                            title="No Tickets Found"
+                            description="We couldn't find any tickets matching your search criteria."
+                        />
+                     </div>
+                ) : (
+                    <div className="overflow-x-auto max-h-[400px]">
+                        <Table>
+                            <TableHeader className="bg-background sticky top-0 z-10 shadow-sm">
+                                <TableRow>
+                                    <TableHead className="w-[45%] pl-6">Item Details</TableHead>
+                                    <TableHead className="w-[10%] text-center">Type</TableHead>
+                                    <TableHead className="w-[15%] text-center">Terminal</TableHead>
+                                    <TableHead className="w-[10%] text-right">Points</TableHead>
+                                    <TableHead className="w-[10%] text-center">Quantity</TableHead>
+                                    <TableHead className="w-[10%] text-right pr-6">Line Total</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {consumeSearchResult?.tickets.map((ticket) => {
+                                    const qty = quantities[ticket.id] || 0;
+                                    const isActive = ticket.PackageStatus.toLowerCase() === 'active';
+                                    const maxQty = ticket.BalanceQty;
+                                    const isSelected = qty > 0;
+
+                                    return (
+                                        <TableRow key={ticket.id} className={isSelected ? "bg-muted/30" : ""}>
+                                            <TableCell className="pl-6">
+                                                <div className="flex flex-col gap-1">
+                                                    <span className={cn("font-medium text-sm transition-colors", isSelected ? "text-indigo-700 dark:text-indigo-300" : "text-foreground")}>
+                                                        {ticket.PackageName}
+                                                    </span>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {ticket.ItemName}
+                                                    </span>
+                                                    <div className="flex items-center gap-2 mt-1.5">
+                                                        <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-mono bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800">
+                                                            #{ticket.TicketItemID}
+                                                        </Badge>
+                                                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80 font-mono">
+                                                            <span>PID:{ticket.PackageID}</span>
+                                                            <span className="w-px h-3 bg-border"></span>
+                                                            <span>PIID:{ticket.PackageItemID}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <StatusBadge status={ticket.TicketType} className="w-auto px-2" />
+                                            </TableCell>
+                                            <TableCell className="text-center text-xs font-mono text-muted-foreground">
+                                                {ticket.ConsumeTerminal}
+                                            </TableCell>
+                                            <TableCell className="text-right font-medium">
+                                                {ticket.ItemPoint.toLocaleString()}
+                                            </TableCell>
+                                            
+                                            {/* IMPROVED QUANTITY SELECTOR */}
+                                            <TableCell>
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <Button 
+                                                        variant="outline" size="icon" className="h-7 w-7 rounded-l-md border-r-0"
+                                                        onClick={() => updateQuantity(ticket.id, qty - 1, maxQty)}
+                                                        disabled={!isActive || qty === 0}
+                                                    >
+                                                        <Minus className="h-3 w-3" />
+                                                    </Button>
+                                                    <Input 
+                                                        type="number" 
+                                                        // FIX: Added classes to hide spinners
+                                                        className="h-7 w-12 text-center rounded-none border-x-0 focus-visible:ring-0 px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                        value={qty.toString()}
+                                                        onChange={(e) => updateQuantity(ticket.id, parseInt(e.target.value) || 0, maxQty)}
+                                                        disabled={!isActive}
+                                                    />
+                                                    <Button 
+                                                        variant="outline" size="icon" className="h-7 w-7 rounded-r-md border-l-0"
+                                                        onClick={() => updateQuantity(ticket.id, qty + 1, maxQty)}
+                                                        disabled={!isActive || qty >= maxQty}
+                                                    >
+                                                        <Plus className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+
+                                            <TableCell className="text-right pr-6">
+                                                <span className={`font-bold ${qty > 0 ? "text-foreground" : "text-muted-foreground/30"}`}>
+                                                    {(ticket.ItemPoint * qty).toLocaleString()}
+                                                </span>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
+            
+                {/* STICKY FOOTER */}
+                <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t p-6 sticky bottom-0 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div className="text-sm text-muted-foreground">
+                            Total items selected: {Object.values(quantities).reduce((a, b) => a + b, 0)}
                         </div>
                         
-                        <Button 
-                            onClick={handleNextStep} 
-                            disabled={totalPoints === 0 || isExecuting} 
-                            size="lg"
-                            className="min-w-[150px]"
-                        >
-                            Next
-                        </Button>
+                        <div className="flex items-center gap-6 w-full md:w-auto">
+                            <div className="flex flex-col items-end">
+                                <span className="text-sm text-muted-foreground">Total Points</span>
+                                <div className="flex items-center gap-2 text-2xl font-bold text-primary">
+                                    <TrendingUp className="h-5 w-5" />
+                                    {totalPoints.toLocaleString()}
+                                </div>
+                            </div>
+                            
+                            <Button 
+                                onClick={handleNextStep} 
+                                disabled={totalPoints === 0 || isExecuting} 
+                                size="lg"
+                                className="min-w-[150px]"
+                            >
+                                Next
+                            </Button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+            </CardContent>
+        </Card>
+        </div>
+    );
+  };
 
   // --- VIEW: CONFIRMATION SUMMARY ---
   const renderConfirmationView = () => {
@@ -492,14 +444,11 @@ export default function ManualConsumeTab() {
                     <CardDescription>Please review the tickets to consume.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    
                     <div className="flex justify-between items-center bg-muted/50 p-4 rounded-lg border">
                         <span className="text-sm font-medium text-muted-foreground">Credit Balance</span>
                         <span className="text-xl font-bold text-primary">RM {creditBalance.toFixed(2)}</span>
                     </div>
-
                     <Separator />
-
                     <div className="space-y-4">
                         <h4 className="text-sm font-medium text-muted-foreground">Selected Items:</h4>
                         <div className="max-h-[300px] overflow-y-auto pr-2 space-y-3">
@@ -522,27 +471,18 @@ export default function ManualConsumeTab() {
                             })}
                         </div>
                     </div>
-
                     <Separator />
-
                     <div className="flex justify-between items-center pt-2">
                         <span className="text-lg font-bold">Total Points Deduction:</span>
                         <span className="text-2xl font-bold text-primary">{totalPoints.toLocaleString()} Pts</span>
                     </div>
-
                 </CardContent>
                 <CardFooter className="flex justify-between bg-muted/10 p-6">
                     <Button variant="outline" onClick={() => setCurrentStep('selection')} disabled={isExecuting}>
                         <ArrowLeft className="h-4 w-4 mr-2" /> Back
                     </Button>
                     <Button onClick={handleConsumeExecute} disabled={isExecuting} className="min-w-[140px]">
-                        {isExecuting ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
-                            </>
-                        ) : (
-                            "Submit"
-                        )}
+                        {isExecuting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : "Submit"}
                     </Button>
                 </CardFooter>
             </Card>
@@ -552,138 +492,90 @@ export default function ManualConsumeTab() {
 
   return (
     <>
-      {/* Search Form - Only visible in Selection Step */}
       {currentStep === 'selection' && (
         <Card>
             <CardContent>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 pt-6">
+            {/* UPDATED LAYOUT (Matches Retail Tab) */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 pt-6 items-end">
                 
+                {/* ROW 1: Consume Type | Email | Mobile */}
                 <div className="space-y-2">
-                <Label htmlFor="consumeType">Consume Type</Label>
-                <Select value={consumeType} onValueChange={setConsumeType}>
-                    <SelectTrigger id="consumeType"><SelectValue placeholder="Select type" /></SelectTrigger>
-                    <SelectContent>
-                    <SelectItem value="superapp">By Superapp</SelectItem>
-                    <SelectItem value="receipt">By Receipt</SelectItem>
-                    </SelectContent>
-                </Select>
-                </div>
-
-                <div className="space-y-2">
-                <Label htmlFor="email">Email Address {isSuperApp && "*"}</Label>
-                <Input 
-                    id="email"
-                    value={email} onChange={(e) => setEmail(e.target.value)} 
-                    disabled={isReceipt} 
-                    className="disabled:opacity-50 disabled:bg-muted"
-                    placeholder="customer@email.com"
-                />
-                </div>
-
-                <div className="space-y-2">
-                <Label htmlFor="mobileNo">Mobile No</Label>
-                <Input 
-                    id="mobileNo"
-                    value={mobileNo} onChange={(e) => setMobileNo(e.target.value)} 
-                    disabled={isReceipt}
-                    className="disabled:opacity-50 disabled:bg-muted" 
-                />
-                </div>
-                
-                <div className="space-y-2">
-                <Label htmlFor="invoiceNo">Invoice No {isReceipt && "*"}</Label>
-                <Input 
-                    id="invoiceNo"
-                    value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} 
-                    disabled={isSuperApp}
-                    className="disabled:opacity-50 disabled:bg-muted" 
-                />
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="terminal-search-input">Terminal Search</Label>
-                    <Input
-                        id="terminal-search-input"
-                        placeholder={isTerminalLoading ? "Searching..." : "Type to search..."}
-                        value={terminalSearchQuery}
-                        onChange={(e) => setTerminalSearchQuery(e.target.value)}
-                    />
-                </div>
-
-                <div className="space-y-2">
-                    {/* VISUAL CUE ADDED HERE */}
-                    <div className="flex items-center gap-2 mb-2">
-                        <Label htmlFor="terminalId" className="mb-0">Select Terminal *</Label>
-                         {highlightDropdown && !terminalId && (
-                            <span className="relative flex h-2.5 w-2.5">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-                            </span>
-                        )}
-                    </div>
-                    <Select 
-                        value={terminalId} 
-                        onValueChange={(val) => {
-                            setTerminalId(val);
-                            setHighlightDropdown(false);
-                        }} 
-                        disabled={isTerminalLoading}
-                    >
-                        <SelectTrigger 
-                            id="terminalId"
-                            className={cn(
-                                "transition-all duration-300",
-                                highlightDropdown && !terminalId ? "border-amber-500 ring-2 ring-amber-200" : ""
-                            )}
-                        >
-                            <SelectValue placeholder={isTerminalLoading ? "Searching..." : "Select Terminal"} />
-                        </SelectTrigger>
+                    <Label htmlFor="consumeType">Consume Type</Label>
+                    <Select value={consumeType} onValueChange={setConsumeType}>
+                        <SelectTrigger id="consumeType"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                            {filteredTerminals.length === 0 ? (
-                                <SelectItem value="no-results" disabled>
-                                    {terminalSearchQuery.trim().length > 0 
-                                        ? "No terminals found" 
-                                        : "Type in 'Terminal Search' first"}
-                                </SelectItem>
-                            ) : (
-                                filteredTerminals.map((t) => (
-                                    <SelectItem key={t.id} value={t.id}>
-                                        {t.terminalName}
-                                    </SelectItem>
-                                ))
-                            )}
+                            <SelectItem value="superapp">By Superapp</SelectItem>
+                            <SelectItem value="receipt">By Receipt</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
+                <div className="space-y-2">
+                    <Label htmlFor="email">Email Address {isSuperApp && "*"}</Label>
+                    <Input 
+                        id="email"
+                        value={email} onChange={(e) => setEmail(e.target.value)} 
+                        disabled={isReceipt} 
+                        placeholder="customer@email.com"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="mobileNo">Mobile No</Label>
+                    <Input 
+                        id="mobileNo"
+                        value={mobileNo} onChange={(e) => setMobileNo(e.target.value)} 
+                        disabled={isReceipt}
+                    />
+                </div>
+
+                {/* ROW 2: Invoice No | Terminal Combobox | Ticket Type */}
+                <div className="space-y-2">
+                    <Label htmlFor="invoiceNo">Invoice No {isReceipt && "*"}</Label>
+                    <Input 
+                        id="invoiceNo"
+                        value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} 
+                        disabled={isSuperApp}
+                    />
+                </div>
+                
+                 {/*TERMINAL Selector */}
+                 <TerminalSelector 
+                    value={terminalId}
+                    onChange={setTerminalId}
+                    label="Terminal Search & Select *"
+                 />
                 
                 <div className="space-y-2">
-                <Label htmlFor="ticketType">Ticket Type</Label>
-                <Select value={ticketType} onValueChange={setTicketType}>
-                    <SelectTrigger id="ticketType"><SelectValue placeholder="Select ticket type" /></SelectTrigger>
-                    <SelectContent>
-                    <SelectItem value="ticket">Ticket</SelectItem>
-                    <SelectItem value="credit">Credit</SelectItem>
-                    <SelectItem value="reward">Reward</SelectItem>
-                    </SelectContent>
-                </Select>
+                    <Label htmlFor="ticketType">Ticket Type</Label>
+                    <Select value={ticketType} onValueChange={setTicketType}>
+                        <SelectTrigger id="ticketType"><SelectValue placeholder="Select type" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="ticket">Ticket</SelectItem>
+                            <SelectItem value="credit">Credit</SelectItem>
+                            <SelectItem value="reward">Reward</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
 
+                {/* ROW 3: Ticket Status | [Empty] | Search Button */}
                 <div className="space-y-2">
-                <Label htmlFor="ticketStatus">Ticket Status</Label>
-                <Select value={ticketStatus} onValueChange={setTicketStatus}>
-                    <SelectTrigger id="ticketStatus"><SelectValue placeholder="Select status" /></SelectTrigger>
-                    <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="unused">Unused</SelectItem>
-                    </SelectContent>
-                </Select>
+                    <Label htmlFor="ticketStatus">Ticket Status</Label>
+                    <Select value={ticketStatus} onValueChange={setTicketStatus}>
+                        <SelectTrigger id="ticketStatus"><SelectValue placeholder="Select status" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="unused">Unused</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
 
-                <div className="space-y-2 flex flex-col justify-end"> 
-                <Button onClick={handleConsumeSearch} disabled={isConsumeSearching} className="w-full">
-                    <Search className="mr-2 h-4 w-4" />
-                    {isConsumeSearching ? "Searching..." : "Search"}
-                </Button>
+                {/* Empty Spacer Column */}
+                <div></div>
+
+                <div className="flex justify-end pt-2"> 
+                    <Button onClick={handleConsumeSearch} disabled={isConsumeSearching} className="w-full">
+                        <Search className="mr-2 h-4 w-4" />
+                        {isConsumeSearching ? "Searching..." : "Search"}
+                    </Button>
                 </div>
                 
             </div>
@@ -691,10 +583,7 @@ export default function ManualConsumeTab() {
         </Card>
       )}
 
-      {/* Logic to show either Selection Table or Confirmation Summary */}
-      {consumeSearchResult && (
-          currentStep === 'selection' ? renderSelectionView() : renderConfirmationView()
-      )}
+      {consumeSearchResult && (currentStep === 'selection' ? renderSelectionView() : renderConfirmationView())}
     </>
   )
 }

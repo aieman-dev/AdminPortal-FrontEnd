@@ -1,20 +1,18 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import { History, Search, Calendar } from "lucide-react"
+import { History, Search } from "lucide-react"
 import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { useToast } from "@/hooks/use-toast"
 import { itPoswfService } from "@/services/themepark-support"
 import { 
-    type Terminal, 
     type TerminalTransaction, 
 } from "@/type/themepark-support"
-import { cn } from "@/lib/utils"
+import { TerminalSelector } from "@/components/themepark-support/it-poswf/terminal-selector"
+import { DatePicker } from "@/components/ui/date-picker"
 
 function formatHistoryDate(dateString: string): string {
     if (!dateString) return "—";
@@ -30,71 +28,32 @@ function formatHistoryDate(dateString: string): string {
 export default function ConsumeHistoryByTerminalTab() {
     const { toast } = useToast();
     
-    // States
-    const [terminalSearchQuery, setTerminalSearchQuery] = useState("") 
-    const [filteredTerminals, setFilteredTerminals] = useState<Terminal[]>([]) 
-    const [isTerminalLoading, setIsTerminalLoading] = useState(false)
+    // -- SIMPLIFIED STATE --
     const [selectedTerminalId, setSelectedTerminalId] = useState<string>("")
-    const [highlightDropdown, setHighlightDropdown] = useState(false)
+    // Default to today's date
     const [searchDate, setSearchDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    
     const [consumeHistory, setConsumeHistory] = useState<TerminalTransaction[]>([])
     const [isHistorySearching, setIsHistorySearching] = useState(false)
 
-    // Auto-Search Effect
-    useEffect(() => {
-        const fetchFilteredTerminals = async () => {
-            if (!terminalSearchQuery.trim()) {
-                setFilteredTerminals([]);
-                setHighlightDropdown(false);
-                return;
-            }
-
-            setIsTerminalLoading(true);
-            setHighlightDropdown(false); 
-            
-            try {
-                const response = await itPoswfService.searchTerminals(terminalSearchQuery);
-                if (response.success && response.data) {
-                    setFilteredTerminals(response.data.slice(0, 30)); 
-                    if (response.data.length > 0) {
-                         setHighlightDropdown(true); 
-                         const exactMatch = response.data.find(t => t.id === terminalSearchQuery);
-                         if (!exactMatch) {
-                             toast({ 
-                                 title: "Terminals Found", 
-                                 description: `Found ${response.data.length} matches. Please select one from the list.`,
-                                 duration: 3000 
-                             });
-                         }
-                    }
-                } else {
-                    setFilteredTerminals([]);
-                }
-            } catch (error) {
-                console.error("Network error fetching terminals:", error);
-                setFilteredTerminals([]);
-            } finally {
-                setIsTerminalLoading(false);
-            }
-        };
-        
-        const debounceTimeout = setTimeout(() => {
-            fetchFilteredTerminals();
-        }, 300);
-
-        return () => clearTimeout(debounceTimeout);
-    }, [terminalSearchQuery]);
-
-    const matchingTerminal = filteredTerminals.find(t => 
-        t.id === terminalSearchQuery.trim() || 
-        t.terminalName.toLowerCase() === terminalSearchQuery.trim().toLowerCase()
-    );
+    // Helper for date picker state sync
+    const handleDateSelect = (date: Date | undefined) => {
+        if (date) {
+            const offset = date.getTimezoneOffset();
+            const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+            setSearchDate(localDate.toISOString().split('T')[0]);
+        } else {
+            setSearchDate("");
+        }
+    };
 
     const handleHistorySearch = async () => {
-        let finalTerminalId = selectedTerminalId || matchingTerminal?.id || terminalSearchQuery.trim();
-
-        if (!finalTerminalId) {
-            toast({ title: "Input Required", description: "Please enter a Terminal ID or Name.", variant: "default" });
+        if (!selectedTerminalId) {
+            toast({ 
+                title: "Input Required", 
+                description: "Please select a Terminal.", 
+                variant: "default" 
+            });
             return;
         }
 
@@ -102,17 +61,13 @@ export default function ConsumeHistoryByTerminalTab() {
         setConsumeHistory([]);
 
         try {
-            const response = await itPoswfService.searchTerminalHistory(finalTerminalId, searchDate);
+            const response = await itPoswfService.searchTerminalHistory(selectedTerminalId, searchDate);
 
             if (response.success && response.data) {
                 setConsumeHistory(response.data.consumeHistory);
                 
-                if (!selectedTerminalId && matchingTerminal) {
-                    setSelectedTerminalId(matchingTerminal.id);
-                }
-
                 if (response.data.consumeHistory.length === 0) {
-                     toast({ title: "Search Complete", description: `No consumption history found for terminal ${finalTerminalId} on ${searchDate}.` });
+                     toast({ title: "Search Complete", description: `No consumption history found for this terminal on ${searchDate}.` });
                 } else {
                      toast({ title: "Search Complete", description: "History data retrieved." });
                 }
@@ -137,110 +92,42 @@ export default function ConsumeHistoryByTerminalTab() {
         { header: "Created By", accessor: "createdBy" },
     ];
 
-    const isButtonEnabled = terminalSearchQuery.trim().length > 0 || !!selectedTerminalId;
-
     return (
         <div className="space-y-6">
             <Card>
                 <CardContent>
-                    {/* RESPONSIVE LAYOUT:
-                        - Mobile: Grid 1 col (Vertical Stack)
-                        - Tablet (md): Grid 2 cols (2x2 Grid)
-                        - Desktop (lg): Flex Row (Single Line)
+                    {/* RESPONSIVE LAYOUT: 
+                        Desktop: [ Selector (Flex 1) ] [ Date (180px) ] [ Button ]
                     */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:flex lg:flex-row gap-4 items-end pt-6 lg:justify-start">
+                    <div className="flex flex-col lg:flex-row gap-4 items-end pt-6">
                         
-                        {/* 1. Search Input 
-                           - Mobile/Tablet: w-full 
-                           - Desktop: flex-1 (fills space)
-                        */}
+                        {/* 1. Unified Terminal Selector */}
                         <div className="w-full lg:flex-1 space-y-2">
-                            <Label htmlFor="terminal-search-input" className="text-sm font-medium">
-                                Terminal Search / ID
-                            </Label>
-                            <Input
-                                id="terminal-search-input"
-                                placeholder={isTerminalLoading ? "Loading..." : "Enter ID (e.g. 383) or Name"}
-                                value={terminalSearchQuery}
-                                onChange={(e) => setTerminalSearchQuery(e.target.value)}
-                                onKeyDown={(e) => e.key === "Enter" && isButtonEnabled && handleHistorySearch()} 
-                                className="h-11"
+                            <TerminalSelector 
+                                value={selectedTerminalId}
+                                onChange={setSelectedTerminalId}
+                                label="Terminal Search / ID"
+                                placeholder="Enter ID (e.g. 383) or Name"
                             />
                         </div>
 
-                        {/* 2. Select Dropdown 
-                           - Mobile/Tablet: w-full
-                           - Desktop: Fixed 250px
-                        */}
-                        <div className="w-full lg:w-[250px] space-y-2">
-                            <div className="flex items-center gap-2 mb-2">
-                                <Label htmlFor="terminalId-select" className="text-sm font-medium mb-0">
-                                    Select Terminal (Optional)
-                                </Label>
-                                {highlightDropdown && !selectedTerminalId && (
-                                    <span className="relative flex h-2.5 w-2.5">
-                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-                                    </span>
-                                )}
-                            </div>
-
-                            <Select 
-                                value={selectedTerminalId} 
-                                onValueChange={(val) => {
-                                    setSelectedTerminalId(val);
-                                    setHighlightDropdown(false);
-                                }}
-                                disabled={filteredTerminals.length === 0}
-                            >
-                                <SelectTrigger 
-                                    id="terminalId-select" 
-                                    className={cn(
-                                        "h-11 transition-all duration-300",
-                                        highlightDropdown && !selectedTerminalId ? "border-amber-500 ring-2 ring-amber-200" : ""
-                                    )}
-                                >
-                                    <SelectValue placeholder={
-                                        filteredTerminals.length === 0 
-                                            ? (terminalSearchQuery ? "No matches" : "Select...") 
-                                            : `Select from ${filteredTerminals.length} results`
-                                    } />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {filteredTerminals.map((terminal) => (
-                                        <SelectItem key={terminal.id} value={terminal.id}>
-                                            {`${terminal.terminalName} (${terminal.id})`}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* 3. Date Picker
-                           - Mobile/Tablet: w-full
-                           - Desktop: Fixed 180px
-                        */}
+                        {/* 2. Date Picker (Standardized) */}
                         <div className="w-full lg:w-[180px] space-y-2">
                             <Label htmlFor="search-date" className="text-sm font-medium">
                                 Search Date
                             </Label>
-                            <Input
-                                id="search-date"
-                                type="date"
-                                value={searchDate}
-                                onChange={(e) => setSearchDate(e.target.value)}
-                                className="h-11"
+                            <DatePicker
+                                date={searchDate ? new Date(searchDate) : undefined}
+                                setDate={handleDateSelect}
+                                className="h-9"
                             />
                         </div>
 
-                        {/* 4. Search Button 
-                           - Mobile/Tablet: w-full
-                           - Desktop: Auto width (fit text)
-                        */}
+                        {/* 3. Search Button */}
                         <div className="w-full lg:w-auto space-y-2">
                             <Button onClick={handleHistorySearch} 
-                                    disabled={!isButtonEnabled || isHistorySearching} 
-                                    className="h-11 px-8 w-full lg:w-auto">
+                                    disabled={!selectedTerminalId || isHistorySearching} 
+                                    className="h-9 px-8 w-full lg:w-auto">
                                 <Search className="mr-2 h-4 w-4" />
                                 {isHistorySearching ? "Searching..." : "Search"}
                             </Button>

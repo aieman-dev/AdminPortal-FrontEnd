@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DatePicker } from "@/components/ui/date-picker";
 import { Search, Pencil, PackageIcon } from "lucide-react"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { type TableColumn, DataTable } from "@/components/themepark-support/it-poswf/data-table"
@@ -226,13 +227,16 @@ export default function PackageListingTab() {
                 <Label htmlFor="edit-last-valid-date" className="text-sm font-medium">
                   Last Valid Date
                 </Label>
-                <Input
-                  id="edit-last-valid-date"
-                  type="date"
-                  // Handle potential N/A or empty date for the date picker input
-                  value={editingPackage.lastValidDate !== "N/A" ? editingPackage.lastValidDate.split('T')[0] : ""}
-                  onChange={(e) => setEditingPackage({ ...editingPackage, lastValidDate: e.target.value })}
-                  className="h-11"
+                <DatePicker
+                    date={editingPackage.lastValidDate !== "N/A" ? new Date(editingPackage.lastValidDate) : undefined}
+                    setDate={(date) => {
+                        if (date) {
+                             const offset = date.getTimezoneOffset();
+                             const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+                             setEditingPackage({ ...editingPackage, lastValidDate: localDate.toISOString().split('T')[0] })
+                        }
+                    }}
+                    className="h-11 w-full"
                 />
               </div>
               <div className="space-y-2">
