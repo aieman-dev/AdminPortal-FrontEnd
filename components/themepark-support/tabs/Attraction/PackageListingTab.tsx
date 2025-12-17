@@ -211,6 +211,7 @@ export default function PackageListingTab() {
             data={packages}
             keyExtractor={(row) => row.id.toString()}
             emptyMessage={isPackageSearching ? "Searching..." : "No packages found"}
+            isLoading={isPackageSearching}
           />
         </CardContent>
       </Card>

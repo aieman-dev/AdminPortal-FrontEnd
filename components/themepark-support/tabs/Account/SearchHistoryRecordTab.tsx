@@ -16,6 +16,7 @@ import { ChevronDown, ChevronRight, ArrowUpDown, Pencil, SearchX } from "lucide-
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import { EmptyState } from "@/components/portal/empty-state"
+import { Skeleton } from "@/components/ui/skeleton";
 
 // --- Helper Functions ---
 
@@ -238,14 +239,17 @@ export default function SearchHistoryRecordTab() {
                   </TableHeader>
                   <TableBody>
                     {isSearching ? (
-                        <TableRow>
-                            <TableCell colSpan={6} className="h-64 align-middle">
-                                <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                                    <p>Searching transactions...</p>
-                                </div>
-                            </TableCell>
-                        </TableRow>
+                        // SKELETON ROWS for Transactions
+                        Array.from({ length: 5 }).map((_, idx) => (
+                            <TableRow key={idx}>
+                                <TableCell><Skeleton className="h-4 w-4" /></TableCell>
+                                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                                <TableCell className="text-right"><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                                <TableCell><Skeleton className="h-6 w-20 rounded-full mx-auto" /></TableCell>
+                                <TableCell><Skeleton className="h-4 w-32 mx-auto" /></TableCell>
+                                <TableCell><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
+                            </TableRow>
+                        ))
                     ) : sortedTransactions.length === 0 ? (
                         <TableRow>
                             <TableCell colSpan={6} className="p-0">
@@ -371,6 +375,7 @@ export default function SearchHistoryRecordTab() {
                 data={ticketData}
                 keyExtractor={(row, index) => (row.ticketNo || `tk-${index}`).toString()}
                 emptyMessage={searchTerm ? "No ticket records found for this search." : "Enter a search term to find tickets."}
+                isLoading={isSearching}
               />
             </CardContent>
           </Card>

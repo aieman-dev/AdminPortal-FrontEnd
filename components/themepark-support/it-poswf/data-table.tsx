@@ -1,8 +1,8 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { EmptyState } from "@/components/portal/empty-state"
-import { SearchX, ChevronLeft, ChevronRight } from "lucide-react"
+import { SearchX } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton" // Import Skeleton
 import type { ReactNode } from "react"
-// ADD: Pagination imports
 import {
   Pagination,
   PaginationContent,
@@ -30,12 +30,21 @@ interface DataTableProps<T> {
   data: T[]
   keyExtractor: (row: T, index: number) => string 
   emptyMessage?: string
-  // New Optional Prop
-  pagination?: PaginationProps; 
+  pagination?: PaginationProps;
+  isLoading?: boolean; // New Prop
 }
 
-export function DataTable<T>({ columns, data, keyExtractor, emptyMessage = "No data available", pagination }: DataTableProps<T>) {
-  if (data.length === 0) {
+export function DataTable<T>({ 
+  columns, 
+  data, 
+  keyExtractor, 
+  emptyMessage = "No data available", 
+  pagination,
+  isLoading = false // Default to false
+}: DataTableProps<T>) {
+
+  // 1. Handle Empty State (Only if NOT loading and NO data)
+  if (!isLoading && data.length === 0) {
     return (
       <div className="border rounded-md bg-background">
         <EmptyState 
@@ -47,12 +56,11 @@ export function DataTable<T>({ columns, data, keyExtractor, emptyMessage = "No d
     )
   }
 
-  // Helper to generate page numbers with ellipsis
+  // Helper for pagination
   const getPageNumbers = () => {
     if (!pagination) return [];
     const { currentPage, totalPages } = pagination;
     const pages: (number | string)[] = [];
-    
     if (totalPages <= 5) {
       for (let i = 1; i <= totalPages; i++) pages.push(i);
     } else {
@@ -79,33 +87,45 @@ export function DataTable<T>({ columns, data, keyExtractor, emptyMessage = "No d
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.map((row, index) => (
-              <TableRow key={keyExtractor(row, index)}>
-                {columns.map((column, colIndex) => {
-                  const value = typeof column.accessor === "function" ? column.accessor(row) : (row[column.accessor] as any)
-                  const cellContent = column.cell ? column.cell(value, row) : value
+            {/* 2. Handle Loading State */}
+            {isLoading ? (
+               Array.from({ length: 5 }).map((_, rowIndex) => (
+                  <TableRow key={`skeleton-row-${rowIndex}`}>
+                    {columns.map((_, colIndex) => (
+                      <TableCell key={`skeleton-cell-${colIndex}`}>
+                        <Skeleton className="h-4 w-full rounded-full opacity-50" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+               ))
+            ) : (
+              // 3. Render Data
+              data.map((row, index) => (
+                <TableRow key={keyExtractor(row, index)}>
+                  {columns.map((column, colIndex) => {
+                    const value = typeof column.accessor === "function" ? column.accessor(row) : (row[column.accessor] as any)
+                    const cellContent = column.cell ? column.cell(value, row) : value
 
-                  return <TableCell key={colIndex}>{cellContent}</TableCell>
-                })}
-              </TableRow>
-            ))}
+                    return <TableCell key={colIndex}>{cellContent}</TableCell>
+                  })}
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
 
-      {/* Render Pagination Control if enabled and multiple pages exist */}
-      {pagination && pagination.totalPages > 1 && (
+      {/* Render Pagination only if not loading and pages exist */}
+      {!isLoading && pagination && pagination.totalPages > 1 && (
         <Pagination>
             <PaginationContent>
                 <PaginationItem>
                     <PaginationPrevious 
                         onClick={() => pagination.onPageChange(Math.max(1, pagination.currentPage - 1))}
                         isActive={pagination.currentPage > 1}
-                        // Change: Disable button look if first page, handled by generic button style or custom logic
                         className={pagination.currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                     />
                 </PaginationItem>
-                
                 {getPageNumbers().map((page, i) => (
                     <PaginationItem key={i}>
                         {page === '...' ? (
@@ -121,7 +141,6 @@ export function DataTable<T>({ columns, data, keyExtractor, emptyMessage = "No d
                         )}
                     </PaginationItem>
                 ))}
-
                 <PaginationItem>
                     <PaginationNext 
                         onClick={() => pagination.onPageChange(Math.min(pagination.totalPages, pagination.currentPage + 1))}

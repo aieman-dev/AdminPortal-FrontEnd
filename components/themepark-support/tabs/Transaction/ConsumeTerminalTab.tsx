@@ -12,7 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { itPoswfService } from "@/services/themepark-support"
 import { type TerminalTransaction } from "@/type/themepark-support"
-// IMPORT PAGINATION
 import { PaginationControls } from "@/components/ui/pagination-controls"
 
 function formatHistoryDate(dateString: string): string {
@@ -155,6 +154,7 @@ export default function ConsumeTerminalTab() {
                                 data={paginatedPurchase}
                                 keyExtractor={(row) => row.id} 
                                 emptyMessage={isHistorySearching ? "Loading..." : "No purchase records found."}
+                                isLoading={isHistorySearching}
                             />
                             <PaginationControls
                                 currentPage={currentPagePurchase}
@@ -175,6 +175,7 @@ export default function ConsumeTerminalTab() {
                                 data={paginatedConsume}
                                 keyExtractor={(row) => row.id}
                                 emptyMessage={isHistorySearching ? "Loading..." : "No consumption records found."}
+                                isLoading={isHistorySearching}
                             />
                             <PaginationControls
                                 currentPage={currentPageConsume}
