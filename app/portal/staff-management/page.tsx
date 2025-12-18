@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
-import { Pencil, Plus } from "lucide-react"
+import { UserPlus, Pencil, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { StaffAccountModal } from "@/components/staff-management/StaffAccountModal" 
 import { useRouter } from "next/navigation" 
@@ -84,14 +84,13 @@ export default function UsersStaffManagementPage() {
 
   return (
     <div className="space-y-6">
-      
       <PageHeader 
           title="Staff User Management" 
-          description="Manage access and details for internal system staff accounts."
+          description="Search for existing users and assign administrative roles."
       >
         <Button onClick={handleOpenCreateModal}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add New Account
+          <UserPlus className="h-4 w-4 mr-2" />
+          Assign Role to User
         </Button>
       </PageHeader>
 
@@ -167,7 +166,7 @@ export default function UsersStaffManagementPage() {
           isOpen={isModalOpen} 
           onOpenChange={handleModalClose}
           onSuccess={handleCreationSuccess}
-          initialData={null} // Ensure it's always null for creation
+          initialData={null}
       />
     </div>
   )

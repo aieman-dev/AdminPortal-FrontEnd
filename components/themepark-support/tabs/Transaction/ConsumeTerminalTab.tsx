@@ -107,7 +107,7 @@ export default function ConsumeTerminalTab() {
         <div className="space-y-6">
             <Card>
                 <CardContent>
-                    <div className="flex flex-col lg:flex-row gap-4 items-end pt-6">
+                    <div className="flex flex-col lg:flex-row gap-4 items-end">
                         <div className="w-full lg:flex-1 space-y-2">
                             <TerminalSelector 
                                 value={selectedTerminalId}

@@ -176,7 +176,7 @@ export default function VoidTransactionTab() {
     <>
       <Card>
         <CardContent>
-          <div className="space-y-2 pt-6">
+          <div className="space-y-2">
             <Label htmlFor="void-invoice" className="text-sm font-medium">
               Invoice Number
             </Label>

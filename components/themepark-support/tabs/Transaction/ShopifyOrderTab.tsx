@@ -92,7 +92,7 @@ export default function ShopifyOrderTab() {
     <div className="space-y-6">
       <Card>
         <CardContent>
-          <div className="flex gap-4 items-end pt-6"> {/* Added pt-6 for padding */}
+          <div className="flex gap-4 items-end"> 
             <div className="flex-1 space-y-2">
               <Label htmlFor="shopify-order-input" className="text-sm font-medium">
                 Shopify Order Name

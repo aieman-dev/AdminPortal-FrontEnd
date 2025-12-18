@@ -1,15 +1,38 @@
-// app/portal/it-poswf/attraction-master/page.tsx
 "use client"
 
 import { PageHeader } from "@/components/portal/page-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { PackageIcon, Settings, History, DivideCircle } from "lucide-react"
+import { PackageIcon, Settings, History, DivideCircle, Loader2 } from "lucide-react"
+import dynamic from "next/dynamic"
 
-// Import Extracted Tab Components
-import PackageListingTab from "@/components/themepark-support/tabs/Attraction/PackageListingTab"
-import UpdateTerminalTab from "@/components/themepark-support/tabs/Attraction/UpdateTerminalTab"
-import ConsumeHistoryByTerminalTab from "@/components/themepark-support/tabs/Attraction/ConsumeHistoryByTerminalTab"
-import BComparePackageTab from "@/components/themepark-support/tabs/Attraction/BComparePackageTab"
+// --- LAZY LOADING COMPONENTS ---
+// This splits the code into small chunks. They are only fetched when needed.
+const PackageListingTab = dynamic(
+  () => import("@/components/themepark-support/tabs/Attraction/PackageListingTab"),
+  { loading: () => <TabLoadingState /> }
+)
+const UpdateTerminalTab = dynamic(
+  () => import("@/components/themepark-support/tabs/Attraction/UpdateTerminalTab"),
+  { loading: () => <TabLoadingState /> }
+)
+const ConsumeHistoryByTerminalTab = dynamic(
+  () => import("@/components/themepark-support/tabs/Attraction/ConsumeHistoryByTerminalTab"),
+  { loading: () => <TabLoadingState /> }
+)
+const BComparePackageTab = dynamic(
+  () => import("@/components/themepark-support/tabs/Attraction/BComparePackageTab"),
+  { loading: () => <TabLoadingState /> }
+)
+
+// Reusable Loading Component for Tabs
+function TabLoadingState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-muted-foreground h-[400px] border rounded-lg bg-muted/10">
+      <Loader2 className="h-10 w-10 animate-spin mb-4 text-primary" />
+      <p>Loading module...</p>
+    </div>
+  )
+}
 
 export default function AttractionMasterPage() {
   return (
@@ -19,28 +42,48 @@ export default function AttractionMasterPage() {
         description="Manage packages, terminal access, and retrieve consumption history by terminal."
       />
 
-      <Tabs defaultValue="package-listing" className="space-y-6">
+      {/* FIX: Added 'w-full' to Tabs to ensure full width.
+         Note: The default value determines which tab loads first. 
+         Only 'package-listing' code will download initially.
+      */}
+      <Tabs defaultValue="package-listing" className="space-y-6 w-full">
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
           <TabsList className="inline-flex h-auto p-0 bg-transparent border-b w-full md:w-auto min-w-full md:min-w-0 justify-start rounded-none">
+            
             <TabsTrigger value="package-listing" className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px relative data-[state=active]:z-10">
               <PackageIcon className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> Package Listing
             </TabsTrigger>
+            
             <TabsTrigger value="update-terminal" className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px -ml-px relative data-[state=active]:z-10">
               <Settings className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> Update Terminal
             </TabsTrigger>
+            
             <TabsTrigger value="consume-history-by-terminal" className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px -ml-px relative data-[state=active]:z-10">
-              <History className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> Consume History by Terminal
+              <History className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> Consume History
             </TabsTrigger>
+            
             <TabsTrigger value="bcompare-package" className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px -ml-px relative data-[state=active]:z-10">
               <DivideCircle className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> BCompare Package
             </TabsTrigger>
+
           </TabsList>
         </div>
 
-        <TabsContent value="package-listing" className="mt-0 space-y-6"><PackageListingTab /></TabsContent>
-        <TabsContent value="update-terminal" className="mt-0 space-y-6"><UpdateTerminalTab /></TabsContent>
-        <TabsContent value="consume-history-by-terminal" className="mt-0 space-y-6"><ConsumeHistoryByTerminalTab /></TabsContent>
-        <TabsContent value="bcompare-package" className="mt-0 space-y-6"><BComparePackageTab /></TabsContent>
+        <TabsContent value="package-listing" className="mt-0 space-y-6">
+            <PackageListingTab />
+        </TabsContent>
+        
+        <TabsContent value="update-terminal" className="mt-0 space-y-6">
+            <UpdateTerminalTab />
+        </TabsContent>
+        
+        <TabsContent value="consume-history-by-terminal" className="mt-0 space-y-6">
+            <ConsumeHistoryByTerminalTab />
+        </TabsContent>
+        
+        <TabsContent value="bcompare-package" className="mt-0 space-y-6">
+            <BComparePackageTab />
+        </TabsContent>
       </Tabs>
     </div>
   )

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Trash2, AlertTriangle } from "lucide-react";
+import { Plus, Loader2, Trash2, AlertTriangle, Search } from "lucide-react";
 import PackageFilters from "@/components/PackageFilters";
 import PackageCard from "@/components/PackageCard";
 import { packageService } from "@/services/package-services"; 
@@ -22,6 +22,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+// IMPORT STANDARDIZED PAGINATION
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 interface PackageListItem {
   id: number;
@@ -163,10 +165,15 @@ export default function PackagesPage() {
     return () => clearTimeout(timer);
   }, [activeFilter, currentPage, searchQuery, dateRange, packageTypeFilter]); 
 
+  // Reset page to 1 when filters change
   const handleFilterChange = (filter: string) => { setActiveFilter(filter); setCurrentPage(1); };
   const handleSearchChange = (query: string) => { setSearchQuery(query); setCurrentPage(1); };
   const handleDateFilter = (start: Date | null, end: Date | null) => { setDateRange({ start, end }); setCurrentPage(1); };
-  const goToPage = (page: number) => { setCurrentPage(Math.max(1, page)); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  
+  const goToPage = (page: number) => { 
+      setCurrentPage(Math.max(1, page)); 
+      window.scrollTo({ top: 0, behavior: 'smooth' }); 
+  };
 
   const handlePackageClick = (id: number) => {
     const pendingStatuses = ["Pending", "Draft", "Rejected"];
@@ -197,13 +204,11 @@ export default function PackagesPage() {
     setDeleteId(id);
   };
 
-  // --- UPDATED: Use Bulk Delete API for Single Delete ---
   const handleConfirmDelete = async () => {
     if (!deleteId) return;
     
     setIsDeleting(true);
     try {
-        // FIX: Use bulkDeletePackages with a single ID array instead of updateStatus
         await packageService.bulkDeletePackages([deleteId]); 
         
         toast({ 
@@ -256,22 +261,6 @@ export default function PackagesPage() {
 
   const isDraftTab = activeFilter === "Draft";
 
-  const getPageNumbers = () => {
-    const pages: (number | string)[] = [];
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      if (currentPage <= 3) {
-        pages.push(1, 2, 3, 4, '...', totalPages);
-      } else if (currentPage >= totalPages - 2) {
-        pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
-      } else {
-        pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
-      }
-    }
-    return pages;
-  };
-
   return (
     <div className="min-h-screen flex p-8 transition-colors duration-300 text-foreground">
       <div className="w-full">
@@ -322,6 +311,7 @@ export default function PackagesPage() {
             </div>
           ) : packages.length > 0 ? (
             <>
+              {/* Pagination Info at Top (Optional, but kept from original) */}
               <div className="text-sm text-muted-foreground mt-4 mb-2">
                 Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, totalRecords || packages.length)} of {totalRecords || 'many'} packages
               </div>
@@ -351,63 +341,22 @@ export default function PackagesPage() {
                 ))}
               </div>
               
-               {(totalPages > 1 || packages.length === ITEMS_PER_PAGE) && (
-                <div className="mt-8 flex items-center justify-between bg-muted/50 rounded-lg px-6 py-4 border border-border">
-                  <div className="text-sm text-muted-foreground">
-                    Page <span className="font-semibold text-foreground">{currentPage}</span>
-                    {totalPages > 1 && currentPage <= totalPages && (
-                      <> of <span className="font-semibold text-foreground">{totalPages}</span></>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => goToPage(1)} disabled={currentPage === 1} className="p-2 rounded-lg border border-input hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                      <ChevronsLeft className="w-5 h-5" />
-                    </button>
-                    
-                    <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} className="p-2 rounded-lg border border-input hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    
-                    <div className="hidden sm:flex items-center gap-1">
-                      {getPageNumbers().map((page, index) => (
-                        page === '...' ? (
-                          <span key={`ellipsis-${index}`} className="px-3 py-2 text-muted-foreground">...</span>
-                        ) : (
-                          <button
-                            key={page}
-                            onClick={() => goToPage(page as number)}
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                              currentPage === page 
-                                ? 'bg-primary text-primary-foreground' 
-                                : 'border border-input hover:bg-accent hover:text-accent-foreground text-muted-foreground'
-                            }`}
-                          >
-                            {page}
-                          </button>
-                        )
-                      ))}
-                    </div>
-                    
-                    <button onClick={() => goToPage(currentPage + 1)} disabled={packages.length < ITEMS_PER_PAGE} className="p-2 rounded-lg border border-input hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                    
-                    <button onClick={() => goToPage(totalPages)} disabled={currentPage === totalPages} className="p-2 rounded-lg border border-input hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                      <ChevronsRight className="w-5 h-5" />
-                    </button>
-                  </div>
-                  
-                  <div className="text-sm text-muted-foreground">
-                    Items per page: <span className="font-semibold text-foreground">{ITEMS_PER_PAGE}</span>
-                  </div>
-                </div>
-              )}
+               {/* --- STANDARDIZED PAGINATION --- */}
+               <PaginationControls 
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalRecords={totalRecords}
+                  pageSize={ITEMS_PER_PAGE}
+                  onPageChange={goToPage}
+               />
+               {/* ------------------------------- */}
             </>
           ) : (
-            <p className="text-center text-muted-foreground mt-12 py-10 bg-muted/30 rounded-lg border border-border border-dashed">
-              No packages found in <strong>{activeFilter}</strong>.
-            </p>
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-dashed rounded-lg bg-muted/30 mt-12">
+               <Search className="h-10 w-10 mb-4 opacity-50" />
+               <p className="text-lg font-medium">No packages found</p>
+               <p className="text-sm">Try adjusting your filters or search query.</p>
+            </div>
           )}
         </div>
       </div>

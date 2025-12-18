@@ -1,13 +1,26 @@
-// app/portal/themepark-support/account-master/page.tsx
 "use client"
 
 import { PageHeader } from "@/components/portal/page-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Users, History } from "lucide-react"
+import { Users, History, Loader2 } from "lucide-react"
+import dynamic from "next/dynamic"
 
-// CORRECTED IMPORTS for Account Master tabs
-import AccountManagementTab from "@/components/themepark-support/tabs/Account/AccountManagementTab"
-import SearchHistoryRecordTab from "@/components/themepark-support/tabs/Account/SearchHistoryRecordTab"
+// --- LAZY LOADING ---
+const TabLoading = () => (
+  <div className="flex flex-col items-center justify-center py-20 text-muted-foreground h-[300px] border rounded-lg bg-muted/10">
+    <Loader2 className="h-8 w-8 animate-spin mb-3 text-primary" />
+    <p>Loading account module...</p>
+  </div>
+)
+
+const AccountManagementTab = dynamic(
+  () => import("@/components/themepark-support/tabs/Account/AccountManagementTab"), 
+  { loading: () => <TabLoading /> }
+)
+const SearchHistoryRecordTab = dynamic(
+  () => import("@/components/themepark-support/tabs/Account/SearchHistoryRecordTab"), 
+  { loading: () => <TabLoading /> }
+)
 
 export default function AccountMasterPage() {
   return (
@@ -29,8 +42,12 @@ export default function AccountMasterPage() {
           </TabsList>
         </div>
 
-        <TabsContent value="account-management" className="mt-0 space-y-6"><AccountManagementTab /></TabsContent>
-        <TabsContent value="search-history-record" className="mt-0 space-y-6"><SearchHistoryRecordTab /></TabsContent>
+        <TabsContent value="account-management" className="mt-0 space-y-6">
+            <AccountManagementTab />
+        </TabsContent>
+        <TabsContent value="search-history-record" className="mt-0 space-y-6">
+            <SearchHistoryRecordTab />
+        </TabsContent>
       </Tabs>
     </div>
   )

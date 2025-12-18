@@ -1,16 +1,42 @@
-// app/portal/it-poswf/transaction-master/page.tsx
 "use client"
 
 import { PageHeader } from "@/components/portal/page-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { XCircle, Wallet, CheckCircle2, ShoppingBag, Settings } from "lucide-react"
+import { XCircle, Wallet, CheckCircle2, ShoppingBag, Settings, Loader2 } from "lucide-react"
+import dynamic from "next/dynamic"
 
-// Import Extracted Tab Components
-import VoidTransactionTab from "@/components/themepark-support/tabs/Transaction/voidTransactionTab"
-import ResyncTransactionTab from "@/components/themepark-support/tabs/Transaction/ResyncTransactionTab"
-import ShopifyOrderTab from "@/components/themepark-support/tabs/Transaction/ShopifyOrderTab"
-import ConsumeTerminalTab from "@/components/themepark-support/tabs/Transaction/ConsumeTerminalTab"
-import RetailManualConsumeTab from "@/components/themepark-support/tabs/Transaction/RetailManualConsumeTab"
+// --- LAZY LOADING COMPONENTS ---
+const VoidTransactionTab = dynamic(
+    () => import("@/components/themepark-support/tabs/Transaction/voidTransactionTab"),
+    { loading: () => <TabLoadingState /> }
+)
+const RetailManualConsumeTab = dynamic(
+    () => import("@/components/themepark-support/tabs/Transaction/RetailManualConsumeTab"),
+    { loading: () => <TabLoadingState /> }
+)
+const ResyncTransactionTab = dynamic(
+    () => import("@/components/themepark-support/tabs/Transaction/ResyncTransactionTab"),
+    { loading: () => <TabLoadingState /> }
+)
+const ShopifyOrderTab = dynamic(
+    () => import("@/components/themepark-support/tabs/Transaction/ShopifyOrderTab"),
+    { loading: () => <TabLoadingState /> }
+)
+const ConsumeTerminalTab = dynamic(
+    () => import("@/components/themepark-support/tabs/Transaction/ConsumeTerminalTab"),
+    { loading: () => <TabLoadingState /> }
+)
+
+// Reusable Loading Component (Same visual style)
+function TabLoadingState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-muted-foreground h-[400px] border rounded-lg bg-muted/10">
+      <Loader2 className="h-10 w-10 animate-spin mb-4 text-primary" />
+      <p>Loading module...</p>
+    </div>
+  )
+}
+
 
 export default function TransactionMasterPage() {
   return (
@@ -41,11 +67,25 @@ export default function TransactionMasterPage() {
           </TabsList>
         </div>
 
-        <TabsContent value="void-transaction" className="mt-0 space-y-6"><VoidTransactionTab /></TabsContent>
-        <TabsContent value="retail-manual-consume" className="mt-0 space-y-6"><RetailManualConsumeTab /></TabsContent>
-        <TabsContent value="resync-transaction" className="mt-0 space-y-6"><ResyncTransactionTab /></TabsContent>
-        <TabsContent value="shopify-order" className="mt-0 space-y-6"><ShopifyOrderTab /></TabsContent>
-        <TabsContent value="consume-terminal" className="mt-0 space-y-6"><ConsumeTerminalTab /></TabsContent>
+        <TabsContent value="void-transaction" className="mt-0 space-y-6">
+            <VoidTransactionTab />
+        </TabsContent>
+        
+        <TabsContent value="retail-manual-consume" className="mt-0 space-y-6">
+            <RetailManualConsumeTab />
+        </TabsContent>
+        
+        <TabsContent value="resync-transaction" className="mt-0 space-y-6">
+            <ResyncTransactionTab />
+        </TabsContent>
+        
+        <TabsContent value="shopify-order" className="mt-0 space-y-6">
+            <ShopifyOrderTab />
+        </TabsContent>
+        
+        <TabsContent value="consume-terminal" className="mt-0 space-y-6">
+            <ConsumeTerminalTab />
+        </TabsContent>
       </Tabs>
     </div>
   )

@@ -128,7 +128,7 @@ export default function UpdateTerminalTab() {
       <Card>
         <CardContent>
           {/* REPLACED MANUAL INPUT WITH SEARCHFIELD */}
-          <div className="pt-6">
+          <div>
               <SearchField 
                 label="Search Terminal"
                 placeholder="Enter terminal name or UUID"

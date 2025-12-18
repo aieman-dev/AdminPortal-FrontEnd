@@ -496,7 +496,7 @@ export default function ManualConsumeTab() {
         <Card>
             <CardContent>
             {/* UPDATED LAYOUT (Matches Retail Tab) */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 pt-6 items-end">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-end">
                 
                 {/* ROW 1: Consume Type | Email | Mobile */}
                 <div className="space-y-2">

@@ -169,7 +169,7 @@ export default function BComparePackageTab() {
         <div className="space-y-6">
             <Card>
                 <CardContent>
-                    <div className="space-y-2 pt-6">
+                    <div className="space-y-2">
                         <Label htmlFor="package-search" className="text-sm font-medium">
                             Search Package
                         </Label>
@@ -238,7 +238,7 @@ export default function BComparePackageTab() {
                            <Button 
                                 onClick={handleSync} 
                                 disabled={isSyncing || packagesToSyncCount === 0} 
-                                className="h-11 px-6 bg-indigo-600 hover:bg-indigo-700 text-primary-foreground"
+                                className="h-11 px-6 text-primary-foreground"
                             >
                                 <Copy className="mr-2 h-4 w-4" />
                                 {isSyncing ? "Syncing..." : `Sync Now (${packagesToSyncCount})`}

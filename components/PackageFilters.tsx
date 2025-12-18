@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Search, RotateCcw, Play } from "lucide-react";
-import { DatePicker } from "@/components/ui/date-picker"; // Standardized
+import { DatePicker } from "@/components/ui/date-picker"; 
 import { canDraftPackage } from "@/lib/auth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -67,7 +67,8 @@ export default function PackageFilters({
           {/* Package Type Filter */}
           <div className="w-[140px]">
             <Select value={packageTypeFilter} onValueChange={setPackageTypeFilter}>
-                <SelectTrigger className="h-9 bg-muted/50 border-transparent hover:bg-muted/80">
+                {/* FIX: Added 'w-full' to ensure it fills the 140px container */}
+                <SelectTrigger className="w-full h-9 bg-muted/50 border-transparent hover:bg-muted/80">
                     <SelectValue placeholder="All Types" />
                 </SelectTrigger>
                 <SelectContent>

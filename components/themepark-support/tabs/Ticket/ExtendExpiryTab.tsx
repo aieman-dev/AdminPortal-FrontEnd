@@ -110,7 +110,7 @@ export default function ExtendExpiryTab() {
     <>
       <Card>
         <CardContent>
-          <div className="pt-6">
+          <div>
             <SearchField 
                 label="Invoice No. / Transaction No"
                 placeholder="Enter invoice or transaction number"

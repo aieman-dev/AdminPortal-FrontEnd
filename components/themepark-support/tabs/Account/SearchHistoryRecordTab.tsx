@@ -17,21 +17,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { cn } from "@/lib/utils"
 import { EmptyState } from "@/components/portal/empty-state"
 import { Skeleton } from "@/components/ui/skeleton";
+import { PaginationControls } from "@/components/ui/pagination-controls"; // Import
 
-// --- Helper Functions ---
-
+// ... Helper Functions (formatDate, parseAmount) remain the same ...
 const formatDate = (dateString: string) => {
   if (!dateString) return '';
   const date = new Date(dateString);
   if (isNaN(date.getTime())) return dateString;
-
   return new Intl.DateTimeFormat('en-GB', { 
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: true 
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: 'numeric', minute: 'numeric', hour12: true 
   }).format(date);
 };
 
@@ -41,8 +36,6 @@ function parseAmount(amount: string | number): number {
     const cleanStr = amount.replace(/[^0-9.-]+/g, "");
     return parseFloat(cleanStr) || 0;
 }
-
-// --- Interfaces ---
 
 interface GroupedInvoice {
     id: string; 
@@ -61,28 +54,29 @@ export default function SearchHistoryRecordTab() {
   const [isSearching, setIsSearching] = useState(false)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   
+  // Pagination States (One for each tab)
+  const [trxPage, setTrxPage] = useState(1);
+  const [ticketPage, setTicketPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
   const [sortConfig, setSortConfig] = useState<{ key: keyof GroupedInvoice | string, direction: 'asc' | 'desc' } | null>(null);
 
   const { toast } = useToast();
 
   const handleSearch = async () => {
-    if (!searchTerm) {
-        setRawHistoryData([]);
-        setTicketData([]);
-        toast({ title: "Search Required", description: "Please enter a search term." });
-        return;
-    }
+    if (!searchTerm) return;
     setIsSearching(true);
     setSortConfig(null);
     setExpandedRows(new Set());
+    // Reset pagination
+    setTrxPage(1);
+    setTicketPage(1);
     
     try {
         const response = await itPoswfService.searchHistory(searchType, searchTerm);
         if (response.success && response.data) { 
-            // FIX: Default to empty array [] if property is undefined to prevent crashes
             const transactions = response.data.transactionHistory || [];
             const tickets = response.data.ticketHistory || [];
-
             setRawHistoryData(transactions); 
             setTicketData(tickets);
 
@@ -99,13 +93,11 @@ export default function SearchHistoryRecordTab() {
     }
   }
 
+  // --- DATA PROCESSING ---
   const groupedTransactions = useMemo(() => {
       const groups: Record<string, GroupedInvoice> = {};
-
-      // FIX: Add safety check (rawHistoryData || []) to ensure forEach never runs on undefined
       (rawHistoryData || []).forEach(item => {
           const key = item.invoiceNo || `TRX-${item.trxID}`;
-          
           if (!groups[key]) {
               groups[key] = {
                   id: key, 
@@ -116,11 +108,9 @@ export default function SearchHistoryRecordTab() {
                   items: []
               };
           }
-          
           groups[key].totalAmount += parseAmount(item.amount);
           groups[key].items.push(item);
       });
-
       return Object.values(groups);
   }, [rawHistoryData]);
 
@@ -137,6 +127,17 @@ export default function SearchHistoryRecordTab() {
       }
       return sortableItems;
   }, [groupedTransactions, sortConfig]);
+
+  // --- CLIENT-SIDE PAGINATION ---
+  const paginatedTransactions = useMemo(() => {
+      const start = (trxPage - 1) * ITEMS_PER_PAGE;
+      return sortedTransactions.slice(start, start + ITEMS_PER_PAGE);
+  }, [sortedTransactions, trxPage]);
+
+  const paginatedTickets = useMemo(() => {
+      const start = (ticketPage - 1) * ITEMS_PER_PAGE;
+      return ticketData.slice(start, start + ITEMS_PER_PAGE);
+  }, [ticketData, ticketPage]);
 
   const requestSort = (key: keyof GroupedInvoice) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -165,7 +166,6 @@ export default function SearchHistoryRecordTab() {
   const ticketColumns: TableColumn<TicketHistory>[] = [
     { header: "Ticket No", accessor: "ticketNo", cell: (value) => <span className="font-medium">{value}</span> },
     { header: "Package Name", accessor: "packageName" },
-    { header: "Package ID", accessor: "packageID" },
     { header: "Qty", accessor: "qty" },
     { header: "Start Date", accessor: "startDate" },
     { header: "Expiry Date", accessor: "expiryDate" },
@@ -178,7 +178,7 @@ export default function SearchHistoryRecordTab() {
     <div className="space-y-6">
       <Card>
         <CardContent>
-          <div className="space-y-4 pt-6">
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="searchType" className="text-sm font-medium">Search By</Label>
               <Select value={searchType} onValueChange={(value: any) => setSearchType(value)}>
@@ -214,6 +214,7 @@ export default function SearchHistoryRecordTab() {
           </TabsTrigger>
         </TabsList>
 
+        {/* --- TRANSACTION TAB --- */}
         <TabsContent value="transaction" className="mt-0">
           <Card className="rounded-tl-none">
             <CardContent className="p-0">
@@ -239,29 +240,28 @@ export default function SearchHistoryRecordTab() {
                   </TableHeader>
                   <TableBody>
                     {isSearching ? (
-                        // SKELETON ROWS for Transactions
                         Array.from({ length: 5 }).map((_, idx) => (
                             <TableRow key={idx}>
                                 <TableCell><Skeleton className="h-4 w-4" /></TableCell>
                                 <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                                <TableCell className="text-right"><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                                <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
                                 <TableCell><Skeleton className="h-6 w-20 rounded-full mx-auto" /></TableCell>
                                 <TableCell><Skeleton className="h-4 w-32 mx-auto" /></TableCell>
                                 <TableCell><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
                             </TableRow>
                         ))
-                    ) : sortedTransactions.length === 0 ? (
+                    ) : paginatedTransactions.length === 0 ? (
                         <TableRow>
                             <TableCell colSpan={6} className="p-0">
                                 <EmptyState 
                                     icon={SearchX} 
                                     title="No Transactions Found" 
-                                    description={searchTerm ? "No records found for this search criteria." : "Enter a search term to find history."}
+                                    description={searchTerm ? "No records found." : "Enter a search term."}
                                 />
                             </TableCell>
                         </TableRow>
                     ) : (
-                        sortedTransactions.map((group) => {
+                        paginatedTransactions.map((group) => {
                             const isExpanded = expandedRows.has(group.id);
                             const uniqueTypes = Array.from(new Set(group.items.map(i => i.trxType)));
                             const groupType = uniqueTypes.length > 1 ? 'Mixed' : uniqueTypes[0];
@@ -269,21 +269,15 @@ export default function SearchHistoryRecordTab() {
                             return (
                                 <React.Fragment key={group.id}>
                                     <TableRow 
-                                        className={cn(
-                                            "transition-colors border-b",
-                                            isExpanded ? "bg-muted/30 border-b-0" : "opacity-90 hover:bg-muted/30 cursor-pointer"
-                                        )}
+                                        className={cn("transition-colors border-b", isExpanded ? "bg-muted/30 border-b-0" : "hover:bg-muted/30 cursor-pointer")}
                                         onClick={() => toggleRowExpand(group.id)}
                                     >
                                         <TableCell>
                                             {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                                         </TableCell>
-                                        
                                         <TableCell>
                                           <div className="flex items-center gap-2">
-                                            <span className="font-medium text-blue-600 dark:text-blue-400">
-                                              {group.invoiceNo}
-                                            </span>
+                                            <span className="font-medium text-blue-600 dark:text-blue-400">{group.invoiceNo}</span>
                                             {group.items.length > 0 && (
                                               <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-blue-100 px-1 text-[10px] font-bold text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
                                                 {group.items.length}
@@ -291,62 +285,35 @@ export default function SearchHistoryRecordTab() {
                                             )}
                                              </div>
                                         </TableCell>
-
                                         <TableCell className="text-right font-medium text-gray-900 dark:text-gray-100">
                                             RM {group.totalAmount.toFixed(2)}
                                         </TableCell>
-
-                                        <TableCell className="text-center">
-                                            <StatusBadge status={groupType || 'N/A'} />
-                                        </TableCell>
-
-                                        <TableCell className="text-center">
-                                            <span className="text-muted-foreground text-sm w-[180px]">
-                                                {formatDate(group.createdDate)}
-                                            </span>
-                                        </TableCell>
-
+                                        <TableCell className="text-center"><StatusBadge status={groupType || 'N/A'} /></TableCell>
+                                        <TableCell className="text-center"><span className="text-muted-foreground text-sm w-[180px]">{formatDate(group.createdDate)}</span></TableCell>
                                         <TableCell className="text-right pr-8">
-                                            <Button 
-                                                variant="ghost" 
-                                                size="sm" 
-                                                className="h-8 gap-1 text-muted-foreground hover:text-foreground"
-                                                onClick={(e) => {
-                                                    e.stopPropagation(); 
-                                                    toast({ title: "Edit Action", description: `Feature pending for ${group.invoiceNo}` });
-                                                }}
-                                            >
+                                            <Button variant="ghost" size="sm" className="h-8 gap-1 text-muted-foreground hover:text-foreground" onClick={(e) => e.stopPropagation()}>
                                                 <Pencil className="h-3.5 w-3.5" /> Edit
                                             </Button>
                                         </TableCell>
                                     </TableRow>
-
                                     {isExpanded && (
                                         <TableRow className="bg-muted/10 hover:bg-muted/10 border-t-0 shadow-inner">
                                             <TableCell colSpan={6} className="p-0">
                                                 <div className="py-2 pl-12 border-b border-border/50">
                                                     <div className="w-full">
                                                       <div className="flex items-center px-2 py-2 border-b border-border/30">
-                                                          <div className="w-[40px] text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">#</div>
-                                                          <div className="w-[80px] text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Trx ID</div>
-                                                          <div className="flex-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Attraction Name</div>
-                                                          <div className="w-[120px] text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wider pr-4">Amount</div>
+                                                          <div className="w-[40px] text-[10px] font-semibold text-muted-foreground uppercase">#</div>
+                                                          <div className="w-[80px] text-[10px] font-semibold text-muted-foreground uppercase">Trx ID</div>
+                                                          <div className="flex-1 text-[10px] font-semibold text-muted-foreground uppercase">Attraction Name</div>
+                                                          <div className="w-[120px] text-right text-[10px] font-semibold text-muted-foreground uppercase pr-4">Amount</div>
                                                       </div>
-                                                      
                                                       <div className="flex flex-col">
                                                         {group.items.map((item, index) => (
-                                                            <div 
-                                                                key={`${item.trxID}-${index}`} 
-                                                                className="flex items-center px-2 py-2 border-t border-border/30 first:border-0 hover:bg-white/40 dark:hover:bg-black/20 transition-colors"
-                                                            >
+                                                            <div key={`${item.trxID}-${index}`} className="flex items-center px-2 py-2 border-t border-border/30 first:border-0 hover:bg-white/40 dark:hover:bg-black/20 transition-colors">
                                                                 <div className="w-[40px] text-xs text-muted-foreground">{index + 1}</div>
                                                                 <div className="w-[80px] text-xs font-mono text-gray-600">{item.trxID}</div>
-                                                                <div className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200 truncate pr-4">
-                                                                    {item.attractionName}
-                                                                </div>
-                                                                <div className="w-[120px] text-sm text-right text-gray-900 dark:text-gray-100 font-medium pr-4">
-                                                                    RM {parseAmount(item.amount).toFixed(2)}
-                                                                </div>
+                                                                <div className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200 truncate pr-4">{item.attractionName}</div>
+                                                                <div className="w-[120px] text-sm text-right text-gray-900 dark:text-gray-100 font-medium pr-4">RM {parseAmount(item.amount).toFixed(2)}</div>
                                                             </div>
                                                         ))}
                                                       </div>
@@ -362,21 +329,44 @@ export default function SearchHistoryRecordTab() {
                   </TableBody>
                 </Table>
               </div>
+              
+              {/* Pagination Controls for Transactions */}
+              {!isSearching && (
+                  <div className="px-6 py-4">
+                      <PaginationControls 
+                          currentPage={trxPage}
+                          totalPages={Math.ceil(sortedTransactions.length / ITEMS_PER_PAGE)}
+                          totalRecords={sortedTransactions.length}
+                          pageSize={ITEMS_PER_PAGE}
+                          onPageChange={setTrxPage}
+                      />
+                  </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* --- TICKET TAB --- */}
         <TabsContent value="ticket" className="mt-0">
           <Card className="rounded-tl-none">
             <CardContent>
-              {/* Uses the updated DataTable which now supports EmptyState internally */}
               <DataTable
                 columns={ticketColumns}
-                data={ticketData}
+                data={paginatedTickets}
                 keyExtractor={(row, index) => (row.ticketNo || `tk-${index}`).toString()}
-                emptyMessage={searchTerm ? "No ticket records found for this search." : "Enter a search term to find tickets."}
+                emptyMessage={searchTerm ? "No ticket records found." : "Enter a search term."}
                 isLoading={isSearching}
               />
+              
+              {!isSearching && (
+                  <PaginationControls 
+                      currentPage={ticketPage}
+                      totalPages={Math.ceil(ticketData.length / ITEMS_PER_PAGE)}
+                      totalRecords={ticketData.length}
+                      pageSize={ITEMS_PER_PAGE}
+                      onPageChange={setTicketPage}
+                  />
+              )}
             </CardContent>
           </Card>
         </TabsContent>

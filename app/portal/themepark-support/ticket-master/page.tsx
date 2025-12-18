@@ -1,15 +1,34 @@
-// app/portal/themepark-support/ticket-master/page.tsx
 "use client"
 
 import { PageHeader } from "@/components/portal/page-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { X, Calendar, Key, Wallet } from "lucide-react"
+import { X, Calendar, Key, Wallet, Loader2 } from "lucide-react"
+import dynamic from "next/dynamic"
 
-// CORRECTED IMPORTS for Ticket Master tabs
-import DeactivateTicketTab from "@/components/themepark-support/tabs/Ticket/DeactivateTicketTab"
-import ExtendExpiryTab from "@/components/themepark-support/tabs/Ticket/ExtendExpiryTab"
-import UpdateQrPasswordTab from "@/components/themepark-support/tabs/Ticket/UpdateQrPasswordTab"
-import ManualConsumeTab from "@/components/themepark-support/tabs/Ticket/ManualConsumeTab"
+// --- LAZY LOADING CONFIGURATION ---
+const TabLoading = () => (
+  <div className="flex flex-col items-center justify-center py-24 text-muted-foreground border rounded-lg bg-muted/5 h-[400px]">
+    <Loader2 className="h-8 w-8 animate-spin mb-3 text-primary" />
+    <p>Loading module...</p>
+  </div>
+)
+
+const DeactivateTicketTab = dynamic(
+  () => import("@/components/themepark-support/tabs/Ticket/DeactivateTicketTab"), 
+  { loading: () => <TabLoading /> }
+)
+const ExtendExpiryTab = dynamic(
+  () => import("@/components/themepark-support/tabs/Ticket/ExtendExpiryTab"), 
+  { loading: () => <TabLoading /> }
+)
+const UpdateQrPasswordTab = dynamic(
+  () => import("@/components/themepark-support/tabs/Ticket/UpdateQrPasswordTab"), 
+  { loading: () => <TabLoading /> }
+)
+const ManualConsumeTab = dynamic(
+  () => import("@/components/themepark-support/tabs/Ticket/ManualConsumeTab"), 
+  { loading: () => <TabLoading /> }
+)
 
 export default function TicketMasterPage() {
   return (
@@ -37,10 +56,18 @@ export default function TicketMasterPage() {
           </TabsList>
         </div>
 
-        <TabsContent value="deactivate-ticket" className="mt-0 space-y-6"><DeactivateTicketTab /></TabsContent>
-        <TabsContent value="extend-expiry" className="mt-0 space-y-6"><ExtendExpiryTab /></TabsContent>
-        <TabsContent value="update-qr-password" className="mt-0 space-y-6"><UpdateQrPasswordTab /></TabsContent>
-        <TabsContent value="manual-consume" className="mt-0 space-y-6"><ManualConsumeTab /></TabsContent>
+        <TabsContent value="deactivate-ticket" className="mt-0 space-y-6">
+            <DeactivateTicketTab />
+        </TabsContent>
+        <TabsContent value="extend-expiry" className="mt-0 space-y-6">
+            <ExtendExpiryTab />
+        </TabsContent>
+        <TabsContent value="update-qr-password" className="mt-0 space-y-6">
+            <UpdateQrPasswordTab />
+        </TabsContent>
+        <TabsContent value="manual-consume" className="mt-0 space-y-6">
+            <ManualConsumeTab />
+        </TabsContent>
       </Tabs>
     </div>
   )

@@ -99,7 +99,7 @@ export default function ConsumeHistoryByTerminalTab() {
                     {/* RESPONSIVE LAYOUT: 
                         Desktop: [ Selector (Flex 1) ] [ Date (180px) ] [ Button ]
                     */}
-                    <div className="flex flex-col lg:flex-row gap-4 items-end pt-6">
+                    <div className="flex flex-col lg:flex-row gap-4 items-end">
                         
                         {/* 1. Unified Terminal Selector */}
                         <div className="w-full lg:flex-1 space-y-2">

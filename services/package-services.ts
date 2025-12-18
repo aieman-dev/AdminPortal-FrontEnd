@@ -384,13 +384,15 @@ bulkDeletePackages: async (ids: number[]) => {
     const localTransform = (pkg: any): Package => {
         return transformToFrontend(pkg as BackendPackageDTO, ageMap);
     };
+
+  const PAGE_SIZE = 30;
     
     // Payload matches the C# PackageFilterModel structure
     const payload = {
         Status: status,
         SearchQuery: searchQuery || null,
         PageNumber: page,
-        PageSize: 30, 
+        PageSize: PAGE_SIZE, 
         StartDate: startDate || null,
         EndDate: endDate || null,
         PackageType: packageType === "All" ? null : packageType,
@@ -407,11 +409,16 @@ bulkDeletePackages: async (ids: number[]) => {
 
     // Since PackageController.cs returns a List<PackageSummaryViewModel>, we assume no pagination metadata is returned yet.
     if (response.data && Array.isArray(response.data)) {
-        return {
-            packages: response.data.map(localTransform),
-            totalPages: 1, 
-            totalRecords: response.data.length,
-        };
+        const items = response.data;
+        const count = items.length;
+
+        const calculatedTotalPages = count === PAGE_SIZE ? page + 1 : page;
+
+        return {
+            packages: items.map(localTransform),
+            totalPages: calculatedTotalPages, 
+            totalRecords: -1,
+        };
     }
     
     return { packages: [], totalPages: 0, totalRecords: 0 };
@@ -461,7 +468,8 @@ bulkDeletePackages: async (ids: number[]) => {
   // --- ----------------------------ItPoswfPackage------------------------------------- ---
   
  getItPoswfPackages: async ( // <--- NEW FUNCTION
-    searchQuery: string = ""
+    searchQuery: string = "",
+    page: number = 1
   ): Promise<{ packages: ItPoswfPackage[], totalPages: number, totalRecords: number }> => {
      const transformToItPoswfPackage = (pkg: any): ItPoswfPackage => {
         return {
@@ -486,7 +494,7 @@ bulkDeletePackages: async (ids: number[]) => {
     const payload = {
         Status: statusFilter, // Required for the IT POSWF search to return results
         SearchQuery: searchQuery || null,
-        PageNumber: 1, 
+        PageNumber: page, 
         PageSize: 30, 
         StartDate: null,
         EndDate: null,

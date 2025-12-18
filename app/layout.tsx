@@ -28,7 +28,15 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
+          <Suspense 
+              fallback={
+                <div className="min-h-screen flex items-center justify-center">
+                  Loading... 
+                </div>
+              }
+            >
+              {children}
+            </Suspense>
           <Analytics />
         </ThemeProvider>
       </body>
