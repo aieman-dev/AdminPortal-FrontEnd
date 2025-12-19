@@ -1,10 +1,12 @@
+// components/PackageCard.tsx
 import React, { useState } from "react";
 import { Calendar, Globe, User, MoreHorizontal, Pencil, Copy, Trash2, Ticket, Layers } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton"; 
 import { cn } from "@/lib/utils"; 
+import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge";
 
 interface PackageCardProps {
   id: number;
@@ -29,6 +31,16 @@ interface PackageCardProps {
   onDelete?: () => void;
 }
 
+// DEFINE CUSTOM COLORS TO MATCH ORIGINAL CARD DESIGN
+const packageStatusMap: Record<string, string> = {
+    active: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-transparent",
+    pending: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-transparent",
+    rejected: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-transparent",
+    draft: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border-transparent",
+    expiring: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-transparent",
+    default: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-transparent"
+};
+
 export default function PackageCard({
   name,
   price,
@@ -49,28 +61,15 @@ export default function PackageCard({
   onDelete,
 }: PackageCardProps) {
 
-  // State to track image loading
   const [imageLoaded, setImageLoaded] = useState(false);
   
-  const getStatusStyle = (status: string) => {
-    const normalized = status.toLowerCase().replace(/\s/g, '');
-    switch (normalized) {
-      case "active": return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
-      case "pending": return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
-      case "rejected": return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
-      case "draft": return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300";
-      case "expiringsoon": return "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400";
-      default: return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
-    }
-  };
-
   const isPoint = packageType?.toLowerCase().includes('point') && !packageType?.toLowerCase().includes('reward');
   const priceUnit = isPoint ? "Pts" : "RM";
   const displayPrice = isPoint ? `${price} ${priceUnit}` : `${priceUnit} ${price}`;
 
   const getNationalityLabel = (code: string) => {
-    if (code === "L") return "Local"; // Shortened for thin card
-    if (code === "F") return "Intl";  // Shortened for thin card
+    if (code === "L") return "Local"; 
+    if (code === "F") return "Intl";  
     if (!code || code === "N/A") return "All"; 
     return code;
   };
@@ -87,23 +86,21 @@ export default function PackageCard({
       
       {/* 1. IMAGE HEADER */}
       <div className="relative h-32 w-full overflow-hidden shrink-0 bg-gray-100 dark:bg-gray-800">
-        {/* Skeleton Loader */}
         {!imageLoaded && (
             <Skeleton className="absolute inset-0 h-full w-full" />
         )}
         
-        {/* Actual Image */}
         <img 
           src={image} 
           alt={name} 
           className={cn(
               "w-full h-full object-cover transition-transform duration-700 group-hover:scale-110",
-              !imageLoaded ? "opacity-0" : "opacity-100" // Smooth fade-in
+              !imageLoaded ? "opacity-0" : "opacity-100"
           )}
           onLoad={() => setImageLoaded(true)}
           onError={(e) => {
               e.currentTarget.src = "/packages/DefaultPackageImage.png";
-              setImageLoaded(true); // Ensure skeleton disappears on error fallback
+              setImageLoaded(true);
           }}
         />
         
@@ -150,10 +147,9 @@ export default function PackageCard({
         )}
       </div>
 
-      {/* 2. BODY CONTENT (Compacted) */}
+      {/* 2. BODY CONTENT */}
       <div className="p-3 flex flex-col flex-1 gap-1">
         
-        {/* Title: 2 lines max, slightly smaller font */}
         <h3 
             className="font-bold text-gray-900 dark:text-white text-xs leading-snug line-clamp-2 min-h-[2rem]" 
             title={name}
@@ -161,12 +157,10 @@ export default function PackageCard({
             {name}
         </h3>
 
-        {/* Price */}
         <div className="text-blue-600 dark:text-blue-400 font-extrabold text-sm mb-1">
             {displayPrice}
         </div>
 
-        {/* Metadata Pills - Stacked or wrapped for narrow width */}
         <div className="flex flex-wrap gap-1.5">
            <TooltipProvider>
                 <Tooltip>
@@ -198,9 +192,13 @@ export default function PackageCard({
                 <span className="truncate">{dateDisplay}</span>
             </div>
 
-            <span className={`text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded tracking-wide shrink-0 whitespace-nowrap ${getStatusStyle(status)}`}>
-                {status === "ExpiringSoon" ? "Expiring" : status}
-            </span>
+            {/* REPLACED WITH SHARED COMPONENT */}
+            {/* Added w-auto to override the default fixed width from status-badge */}
+            <StatusBadge 
+                status={status === "ExpiringSoon" ? "Expiring" : status}
+                colorMap={packageStatusMap}
+                className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 w-auto h-auto rounded tracking-wide border-0"
+            />
         </div>
       </div>
     </div>

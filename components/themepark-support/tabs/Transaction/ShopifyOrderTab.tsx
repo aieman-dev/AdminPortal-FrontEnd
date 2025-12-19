@@ -3,15 +3,13 @@
 
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import { ShoppingBag, Search } from "lucide-react"
-// REMOVE: import { Input } from "@/components/ui/input"
+import { ShoppingBag, Search, SearchX, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
 import { ShopifyOrder } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
 import { useToast } from "@/hooks/use-toast"
-// ADD: Import Input Group Components
 import { InputGroup, InputGroupAddon, InputGroupText, InputGroupInput } from "@/components/ui/input-group"
 
 interface ShopifyTableData extends ShopifyOrder {
@@ -99,13 +97,13 @@ export default function ShopifyOrderTab() {
               </Label>
               
               {/* REPLACED: Input Group implementation */}
-              <InputGroup>
+              <InputGroup className="h-11">
                 <InputGroupAddon>
                     <InputGroupText>#</InputGroupText>
                 </InputGroupAddon>
                 <InputGroupInput 
                     id="shopify-order-input"
-                    type="text"
+                    className="h-11"
                     placeholder="29174" 
                     value={orderName}
                     onChange={(e) => setOrderName(e.target.value.replace(/#/g, ''))} 
@@ -116,8 +114,8 @@ export default function ShopifyOrderTab() {
 
             </div>
             <div className="flex items-end">
-              <Button onClick={handleSearch} disabled={isSearching || !orderName.trim()} className="h-9 px-8"> {/* Adjusted h-9 to match InputGroup default */}
-                <Search className="mr-2 h-4 w-4" />
+              <Button onClick={handleSearch} disabled={isSearching || !orderName.trim()} className="h-11 px-8"> {/* Adjusted h-9 to match InputGroup default */}
+                {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
                 {isSearching ? "Searching..." : "Search"}
               </Button>
             </div>
@@ -144,7 +142,10 @@ export default function ShopifyOrderTab() {
               columns={orderTrxColumns}
               data={dataForTable}
               keyExtractor={() => "shopify-trx-detail-row"} 
-              emptyMessage={isSearching ? "Searching..." : "No transaction found for this Order ID."}
+              isLoading={isSearching}
+              emptyIcon={SearchX}
+              emptyTitle="No Order Found"
+              emptyMessage={`No transaction found for order #${orderName}`}
             />
           </CardContent>
         </Card>

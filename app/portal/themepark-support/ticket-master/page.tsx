@@ -31,6 +31,7 @@ const ManualConsumeTab = dynamic(
 )
 
 export default function TicketMasterPage() {
+  const tabTransitionClass = "mt-0 space-y-6 outline-none animate-in fade-in slide-in-from-bottom-5 duration-500 fill-mode-forward";
   return (
     <div className="space-y-6">
       <PageHeader
@@ -56,16 +57,16 @@ export default function TicketMasterPage() {
           </TabsList>
         </div>
 
-        <TabsContent value="deactivate-ticket" className="mt-0 space-y-6">
+        <TabsContent value="deactivate-ticket" className={tabTransitionClass}>
             <DeactivateTicketTab />
         </TabsContent>
-        <TabsContent value="extend-expiry" className="mt-0 space-y-6">
+        <TabsContent value="extend-expiry" className={tabTransitionClass}>
             <ExtendExpiryTab />
         </TabsContent>
-        <TabsContent value="update-qr-password" className="mt-0 space-y-6">
+        <TabsContent value="update-qr-password"className={tabTransitionClass}>
             <UpdateQrPasswordTab />
         </TabsContent>
-        <TabsContent value="manual-consume" className="mt-0 space-y-6">
+        <TabsContent value="manual-consume"className={tabTransitionClass}>
             <ManualConsumeTab />
         </TabsContent>
       </Tabs>

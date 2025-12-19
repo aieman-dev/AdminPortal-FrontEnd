@@ -39,6 +39,8 @@ function TabLoadingState() {
 
 
 export default function TransactionMasterPage() {
+  const tabTransitionClass = "mt-0 space-y-6 outline-none animate-in fade-in slide-in-from-bottom-5 duration-500 fill-mode-forward";
+  
   return (
     <div className="space-y-6">
       <PageHeader
@@ -67,23 +69,23 @@ export default function TransactionMasterPage() {
           </TabsList>
         </div>
 
-        <TabsContent value="void-transaction" className="mt-0 space-y-6">
+        <TabsContent value="void-transaction" className={tabTransitionClass}>
             <VoidTransactionTab />
         </TabsContent>
         
-        <TabsContent value="retail-manual-consume" className="mt-0 space-y-6">
+        <TabsContent value="retail-manual-consume" className={tabTransitionClass}>
             <RetailManualConsumeTab />
         </TabsContent>
         
-        <TabsContent value="resync-transaction" className="mt-0 space-y-6">
+        <TabsContent value="resync-transaction" className={tabTransitionClass}>
             <ResyncTransactionTab />
         </TabsContent>
         
-        <TabsContent value="shopify-order" className="mt-0 space-y-6">
+        <TabsContent value="shopify-order" className={tabTransitionClass}>
             <ShopifyOrderTab />
         </TabsContent>
         
-        <TabsContent value="consume-terminal" className="mt-0 space-y-6">
+        <TabsContent value="consume-terminal" className={tabTransitionClass}>
             <ConsumeTerminalTab />
         </TabsContent>
       </Tabs>

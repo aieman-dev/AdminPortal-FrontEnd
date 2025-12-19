@@ -23,6 +23,7 @@ const SearchHistoryRecordTab = dynamic(
 )
 
 export default function AccountMasterPage() {
+   const tabTransitionClass = "mt-0 space-y-6 outline-none animate-in fade-in slide-in-from-bottom-5 duration-500 fill-mode-forward";
   return (
     <div className="space-y-6">
       <PageHeader
@@ -42,10 +43,10 @@ export default function AccountMasterPage() {
           </TabsList>
         </div>
 
-        <TabsContent value="account-management" className="mt-0 space-y-6">
+        <TabsContent value="account-management" className={tabTransitionClass}>
             <AccountManagementTab />
         </TabsContent>
-        <TabsContent value="search-history-record" className="mt-0 space-y-6">
+        <TabsContent value="search-history-record" className={tabTransitionClass}>
             <SearchHistoryRecordTab />
         </TabsContent>
       </Tabs>

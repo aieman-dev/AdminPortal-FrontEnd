@@ -35,6 +35,8 @@ function TabLoadingState() {
 }
 
 export default function AttractionMasterPage() {
+   const tabTransitionClass = "mt-0 space-y-6 outline-none animate-in fade-in slide-in-from-bottom-5 duration-500 fill-mode-forward";
+   
   return (
     <div className="space-y-6">
       <PageHeader
@@ -69,19 +71,19 @@ export default function AttractionMasterPage() {
           </TabsList>
         </div>
 
-        <TabsContent value="package-listing" className="mt-0 space-y-6">
+        <TabsContent value="package-listing"className={tabTransitionClass}>
             <PackageListingTab />
         </TabsContent>
         
-        <TabsContent value="update-terminal" className="mt-0 space-y-6">
+        <TabsContent value="update-terminal" className={tabTransitionClass}>
             <UpdateTerminalTab />
         </TabsContent>
         
-        <TabsContent value="consume-history-by-terminal" className="mt-0 space-y-6">
+        <TabsContent value="consume-history-by-terminal" className={tabTransitionClass}>
             <ConsumeHistoryByTerminalTab />
         </TabsContent>
         
-        <TabsContent value="bcompare-package" className="mt-0 space-y-6">
+        <TabsContent value="bcompare-package" className={tabTransitionClass}>
             <BComparePackageTab />
         </TabsContent>
       </Tabs>

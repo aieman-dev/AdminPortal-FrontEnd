@@ -1,3 +1,4 @@
+// components/themepark-support/tabs/Attraction/PackageListingTab.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -6,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker";
-import { Pencil } from "lucide-react"
+import { Pencil, PackageX } from "lucide-react" // IMPORT PackageX ICON
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { type TableColumn, DataTable } from "@/components/themepark-support/it-poswf/data-table"
@@ -14,7 +15,7 @@ import { ItPoswfPackage } from "@/type/themepark-support"
 import { packageService } from "@/services/package-services"
 import { useToast } from "@/hooks/use-toast"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
-import { PaginationControls } from "@/components/ui/pagination-controls" // Import Controls
+import { PaginationControls } from "@/components/ui/pagination-controls"
 
 export default function PackageListingTab() {
   const { toast } = useToast()
@@ -47,21 +48,18 @@ export default function PackageListingTab() {
   };
 
   const handlePackageSearch = async () => {
-    // Reset to page 1 for new searches
     fetchData(1);
   }
 
-  // Extracted fetch function to handle page changes
   const fetchData = async (page: number) => {
     setIsPackageSearching(true)
     
-    // Optimistic UI update for page change
     setCurrentPage(page);
 
     try {
         const { packages: livePackages, totalPages: apiTotalPages, totalRecords: apiTotalRecords } = await packageService.getItPoswfPackages(
             packageSearchTerm.trim(),
-            page // Pass the page number
+            page 
         );
         
         setPackages(livePackages);
@@ -80,7 +78,6 @@ export default function PackageListingTab() {
     }
   };
 
-  // Pagination Handler
   const handlePageChange = (newPage: number) => {
       fetchData(newPage);
   }
@@ -100,7 +97,7 @@ export default function PackageListingTab() {
             editingPackage.lastValidDate,
             packageRemark
         );
-        // Update local list to reflect changes
+        
         const updatedPackages = packages.map((p) =>
             p.id === editingPackage.id
                 ? { ...editingPackage, modifiedDate: new Date().toISOString() }
@@ -160,8 +157,17 @@ export default function PackageListingTab() {
             columns={packageColumns}
             data={packages}
             keyExtractor={(row) => row.id.toString()}
-            emptyMessage={isPackageSearching ? "Searching..." : "No packages found"}
             isLoading={isPackageSearching}
+            // CUSTOM EMPTY STATE CONFIGURATION
+            emptyTitle="No Packages Found"
+            emptyIcon={PackageX}
+            emptyMessage={
+                isPackageSearching 
+                ? "Searching..." 
+                : packageSearchTerm 
+                    ? `No packages found matching "${packageSearchTerm}"`
+                    : "Enter a package name to search."
+            }
           />
 
           <PaginationControls

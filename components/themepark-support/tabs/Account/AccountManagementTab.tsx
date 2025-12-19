@@ -1,15 +1,15 @@
 // components/themepark-support/tabs/Account/AccountManagementTab.tsx
 "use client"
 
-import { useState, useEffect, useCallback } from "react" 
+import { useState, useEffect, useCallback, useMemo } from "react" 
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { Skeleton } from "@/components/ui/skeleton";
-import { Pencil } from "lucide-react"
+import { Pencil, Users } from "lucide-react"
 import { itPoswfService } from "@/services/themepark-support" 
 import { Account } from "@/type/themepark-support" 
 import { useToast } from "@/hooks/use-toast"
@@ -47,7 +47,6 @@ export default function AccountManagementTab() {
     }
 
     setIsSearching(true)
-    setAccounts([]) 
 
     try {
       const response = await itPoswfService.searchAccounts(query)
@@ -103,6 +102,31 @@ export default function AccountManagementTab() {
     router.push(`/portal/themepark-support/account-master/${accountId}`) 
   }
 
+  // Define Columns for the DataTable
+  const accountColumns: TableColumn<Account>[] = useMemo(() => [
+    { header: "Acc ID", accessor: "accId", className: "font-medium" },
+    { header: "Email", accessor: "email" },
+    { header: "First Name", accessor: "firstName" },
+    { header: "Mobile No", accessor: "mobile" },
+    { header: "Created Date", accessor: "createdDate" },
+    { 
+      header: "Status", 
+      accessor: "accountStatus", 
+      cell: (value) => <StatusBadge status={value} /> 
+    },
+    {
+      header: "Action",
+      accessor: "id",
+      className: "text-right",
+      cell: (id) => (
+        <Button variant="ghost" size="sm" onClick={() => handleEdit(id)}>
+          <Pencil className="h-4 w-4 mr-2" />
+          Edit
+        </Button>
+      ),
+    },
+  ], []);
+
   return (
     <div className="space-y-6">
       <Card>
@@ -120,63 +144,16 @@ export default function AccountManagementTab() {
       </Card>
 
       <Card>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Acc ID</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>First Name</TableHead>
-                  <TableHead>Mobile No</TableHead>
-                  <TableHead>Created Date</TableHead>
-                  <TableHead>Account Status</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {/* 1. LOADING STATE */}
-                {isSearching ? (
-                   Array.from({ length: 5 }).map((_, idx) => (
-                      <TableRow key={idx}>
-                          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                          <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                          <TableCell className="text-right"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
-                      </TableRow>
-                   ))
-                ) : accounts.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                      No accounts found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  accounts.map((account) => (
-                    <TableRow key={account.id}>
-                      <TableCell className="font-medium">{account.accId}</TableCell>
-                      <TableCell>{account.email}</TableCell>
-                      <TableCell>{account.firstName}</TableCell>
-                      <TableCell>{account.mobile}</TableCell>
-                      <TableCell>{account.createdDate}</TableCell>
-                      <TableCell>
-                        <StatusBadge status={account.accountStatus} />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(account.id)}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+        <CardContent className="pt-6">
+          <DataTable
+            columns={accountColumns}
+            data={accounts}
+            keyExtractor={(account) => account.id}
+            isLoading={isSearching}
+            emptyIcon={Users}
+            emptyTitle="No Accounts Found"
+            emptyMessage={searchEmail ? `No results for "${searchEmail}"` : "Enter an email to search for accounts."}
+          />
         </CardContent>
       </Card>
     </div>

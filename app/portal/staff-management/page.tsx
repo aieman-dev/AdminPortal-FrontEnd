@@ -1,74 +1,72 @@
-// app/portal/page-3/page.tsx (Final Update)
-
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { PageHeader } from "@/components/portal/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
-import { UserPlus, Pencil, Plus } from "lucide-react"
+import { Pencil, UserPlus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { StaffAccountModal } from "@/components/staff-management/StaffAccountModal" 
 import { useRouter } from "next/navigation" 
+import { staffService, type StaffMember } from "@/services/staff-services"
+import { Skeleton } from "@/components/ui/skeleton"
 
-// --- MOCK STAFF DATA ---
-interface StaffAccount {
-    id: string
-    name: string
-    email: string
-    department: string
-    role: string
-    status: "Active" | "Inactive" | "Suspended"
-    createdDate: string
-}
-
-const mockStaff: StaffAccount[] = [
-    { id: "1", name: "Asy", email: "IT_Admin@email.my", department: "IT", role: "IT Admin", status: "Active", createdDate: "2024-01-01" },
-    { id: "2", name: "Aimeen", email: "MIS_Super@email.my", department: "MIS", role: "Super Admin", status: "Active", createdDate: "2024-05-10" },
-    { id: "3", name: "Bob Tan", email: "Finance@email.my", department: "Finance", role: "Package Approval", status: "Inactive", createdDate: "2024-07-22" },
-    { id: "4", name: "Alice Lee", email: "Tp@email.my", department: "Theme Park", role: "Package Creation", status: "Active", createdDate: "2024-11-01" },
-]
+const formatDate = (dateString: string) => {
+  if (!dateString) return "-";
+  return new Date(dateString).toLocaleDateString("en-GB", {
+    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+  });
+};
 
 export default function UsersStaffManagementPage() {
   const router = useRouter()
+  const { toast } = useToast()
+  
   const [searchQuery, setSearchQuery] = useState("")
-  const [accounts, setAccounts] = useState<StaffAccount[]>(mockStaff)
+  const [accounts, setAccounts] = useState<StaffMember[]>([]) 
   const [isSearching, setIsSearching] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const { toast } = useToast()
 
-  const handleSearch = async () => {
-    const query = searchQuery.trim().toLowerCase()
-    setIsSearching(true)
+  const fetchStaff = useCallback(async (query: string = "") => {
+    setIsSearching(true);
+    if (query) setAccounts([]); 
     
-    const filtered = mockStaff.filter(acc => 
-        acc.email.toLowerCase().includes(query) || 
-        acc.name.toLowerCase().includes(query) ||
-        acc.department.toLowerCase().includes(query)
-    )
-    
-    await new Promise(resolve => setTimeout(resolve, 500)) 
-    setAccounts(filtered)
-    setIsSearching(false)
-
-    if (filtered.length === 0) {
-      toast({
-        title: "Search Complete",
-        description: "No staff accounts found matching the criteria.",
-      })
+    try {
+      const data = await staffService.getStaffList(query);
+      setAccounts(data);
+      
+      if (query && data.length === 0) {
+        toast({ title: "Search Complete", description: "No staff found." });
+      }
+    } catch (error) {
+      console.error("Fetch error:", error);
+      toast({ 
+        title: "Error", 
+        description: "Failed to load staff list.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsSearching(false);
     }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchStaff();
+  }, [fetchStaff]);
+
+  const handleSearch = () => {
+    fetchStaff(searchQuery);
   }
 
   const handleOpenCreateModal = () => {
     setIsModalOpen(true);
   }
   
-  // CRITICAL CHANGE: Navigate to the dedicated edit page
-  const handleEdit = (user: StaffAccount) => {
-    router.push(`/portal/staff-management/${user.id}`); 
+  const handleEdit = (user: StaffMember) => {
+    router.push(`/portal/staff-management/${user.accID}`); 
   }
   
   const handleModalClose = () => {
@@ -76,17 +74,15 @@ export default function UsersStaffManagementPage() {
   }
   
   const handleCreationSuccess = () => {
-      toast({
-          title: "Account Created",
-          description: `New staff account successfully created.`,
-      })
+      fetchStaff(searchQuery); 
   }
 
   return (
     <div className="space-y-6">
+      
       <PageHeader 
           title="Staff User Management" 
-          description="Search for existing users and assign administrative roles."
+          description="Manage access and details for internal system staff accounts."
       >
         <Button onClick={handleOpenCreateModal}>
           <UserPlus className="h-4 w-4 mr-2" />
@@ -97,8 +93,8 @@ export default function UsersStaffManagementPage() {
       <Card>
         <CardContent>
           <SearchField
-            label="Name / Email / Department"
-            placeholder="Search by name, email, or department"
+            label="Search Staff"
+            placeholder="Search by name, email, or role..."
             value={searchQuery}
             onChange={setSearchQuery}
             onSearch={handleSearch}
@@ -116,35 +112,50 @@ export default function UsersStaffManagementPage() {
                   <TableHead>Staff ID</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Email (Login)</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="w-[140px] text-center">Role</TableHead> {/* Centered Header */}
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead>Created Date</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {accounts.length === 0 && !isSearching ? (
+                {isSearching ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                       <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                       <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                       <TableCell><Skeleton className="h-6 w-24 rounded-md mx-auto" /></TableCell>
+                       <TableCell><Skeleton className="h-6 w-20 rounded-full mx-auto" /></TableCell>
+                       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                       <TableCell className="text-right"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : accounts.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                      No staff accounts found.
+                      No staff records found.
                     </TableCell>
                   </TableRow>
-                  ) : isSearching ? (
-                  <TableRow>
-                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                            Searching staff accounts...
-                        </TableCell>
-                    </TableRow>
                 ) : (
                   accounts.map((account) => (
-                    <TableRow key={account.id}>
-                      <TableCell className="font-medium">{account.id}</TableCell>
-                      <TableCell>{account.name}</TableCell>
+                    <TableRow key={account.accID}>
+                      <TableCell className="font-medium">{account.accID}</TableCell>
+                      <TableCell>{account.fullName || "-"}</TableCell>
                       <TableCell>{account.email}</TableCell>
-                      <TableCell>{account.department}</TableCell>
-                      <TableCell>{account.role}</TableCell>
-                      <TableCell>
-                        <StatusBadge status={account.status} />
+                      
+                      {/* FIX: Applied fixed width and centering to the Role Badge */}
+                      <TableCell className="text-center">
+                        <span className="inline-flex items-center justify-center w-[100px] h-6 rounded-md bg-blue-50 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                          {account.roleName}
+                        </span>
+                      </TableCell>
+                      
+                      <TableCell className="text-center">
+                        <StatusBadge status={account.recordStatus} />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {formatDate(account.createdDate)}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="sm" onClick={() => handleEdit(account)}>
@@ -161,12 +172,11 @@ export default function UsersStaffManagementPage() {
         </CardContent>
       </Card>
       
-      {/* The Modal Component is now only used for creation */}
       <StaffAccountModal 
           isOpen={isModalOpen} 
           onOpenChange={handleModalClose}
           onSuccess={handleCreationSuccess}
-          initialData={null}
+          initialData={null} 
       />
     </div>
   )

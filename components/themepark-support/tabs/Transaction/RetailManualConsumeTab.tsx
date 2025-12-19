@@ -356,25 +356,28 @@ export default function RetailManualConsumeTab() {
             />
           </div>
 
-          <Card className="mt-6">
+          <Card className="mt-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <CardContent className="space-y-4 pt-6">
-              <div className="flex items-center gap-2">
-                  <ShoppingCart className="w-5 h-5 text-muted-foreground" />
-                  <div className="text-lg font-semibold">Available Retail Items ({consumeSearchResult.items.length})</div>
-              </div>
+            <div className="flex items-center gap-2">
+                <ShoppingCart className="w-5 h-5 text-muted-foreground" />
+                <div className="text-lg font-semibold">Available Retail Items ({consumeSearchResult.items.length})</div>
+            </div>
               
               {/* REPLACED MANUAL TABLE WITH SHARED DATA TABLE */}
               <DataTable
-                  columns={retailItemColumns}
-                  data={paginatedItems}
-                  keyExtractor={(row) => row.id}
-                  emptyMessage="No available retail items found"
-                  pagination={{
-                      currentPage: currentPage,
-                      totalPages: totalPages,
-                      onPageChange: setCurrentPage
-                  }}
-              />
+                columns={retailItemColumns}
+                data={paginatedItems}
+                keyExtractor={(row) => row.id}
+                isLoading={isConsumeSearching}
+                emptyIcon={SearchX}
+                emptyTitle="No Items Available"
+                emptyMessage="No available retail items found for this selection."
+                pagination={{
+                    currentPage: currentPage,
+                    totalPages: totalPages,
+                    onPageChange: setCurrentPage
+                }}
+            />
               
               <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t p-4 sticky bottom-0 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] rounded-b-lg">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">

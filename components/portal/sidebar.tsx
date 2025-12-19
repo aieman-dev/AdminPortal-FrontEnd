@@ -1,3 +1,4 @@
+// components/portal/sidebar.tsx
 "use client"
 
 import Link from "next/link"
@@ -5,58 +6,14 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Ticket, LogOut, ChevronDown, ServerCog, Users, Settings } from "lucide-react" 
+import { LogOut, ChevronDown } from "lucide-react" 
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 import { useState, useEffect } from "react" 
 import { canViewThemeParkSupport, canViewPackageManagement } from "@/lib/auth"
+import { SIDEBAR_NAVIGATION } from "@/config/navigation"
 
 const LOCAL_STORAGE_KEY_TO_CLEAR = 'accountMasterEmailSearch';
-
-const navigation = [
-  {
-    name: "Dashboard",
-    href: "/portal",
-    icon: LayoutDashboard,
-  },
-  {
-    name: "Package Management",
-    href: "/portal/packages",
-    icon: Ticket,
-  },
-  {
-    name: "Themepark Support",
-    icon: ServerCog,
-    children: [
-      {
-        name: "Transaction Master",
-        href: "/portal/themepark-support/transaction-master",
-      },
-      {
-        name: "Attraction Master",
-        href: "/portal/themepark-support/attraction-master",
-      },
-      {
-        name: "Ticket Master",
-        href: "/portal/themepark-support/ticket-master",
-      },
-      {
-        name: "Account Master",
-        href: "/portal/themepark-support/account-master",
-      },
-    ],
-  },
-  {
-    name: "Users",
-    href: "/portal/staff-management",
-    icon: Users,
-  },
-  {
-    name: "Settings",
-    href: "/portal/page-4",
-    icon: Settings,
-  },
-]
 
 interface SidebarProps {
   collapsed?: boolean
@@ -67,7 +24,6 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
   const { user, logout } = useAuth()
   const { resolvedTheme } = useTheme()
   
-  // FIX 1: Start with an empty array (closed by default)
   const [openDropdowns, setOpenDropdowns] = useState<string[]>([]) 
   const [mounted, setMounted] = useState(false)
 
@@ -75,23 +31,20 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
     setMounted(true)
   }, [])
   
-  // FIX 2: Automatically open the dropdown ONLY if the current URL belongs to it
   useEffect(() => {
-    // Check if the current path matches any child of the dropdowns
-    const activeItem = navigation.find(item => 
+    const activeItem = SIDEBAR_NAVIGATION.find(item => 
       item.children && item.children.some(child => pathname.startsWith(child.href))
     )
 
     if (activeItem) {
       setOpenDropdowns(prev => {
-        // Only add if not already open
         if (!prev.includes(activeItem.name)) {
           return [...prev, activeItem.name]
         }
         return prev
       })
     }
-  }, [pathname]) // Re-run whenever the URL changes
+  }, [pathname]) 
 
   const isDarkMode = mounted && resolvedTheme === "dark"
 
@@ -107,7 +60,8 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
     collapsed ? "justify-center px-0" : "justify-start px-3"
   )
 
-  const filteredNavigation = navigation.filter((item) => {
+  // Use the imported list for filtering
+  const filteredNavigation = SIDEBAR_NAVIGATION.filter((item) => {
     const department = user?.department;
 
     if (item.name === "Themepark Support") { 
@@ -118,9 +72,9 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
         return canViewPackageManagement(department);
     }
 
-    // Default: show everything else
     return true;
-  });
+  })
+  ;
 
   return (
     <div
@@ -155,7 +109,8 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 flex flex-col w-full px-4 mt-6 overflow-y-auto overflow-x-hidden">
         {filteredNavigation.map((item) => {
-          const isActive = pathname === item.href || (item.children && item.children.some(child => pathname === child.href));
+          const isActive = pathname === item.href;
+          const isChildActive = item.children?.some(child => pathname.startsWith(child.href));
           const isOpen = openDropdowns.includes(item.name);
 
           return (
@@ -163,11 +118,14 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
               {item.children ? (
                 <button
                   onClick={() => !collapsed && toggleDropdown(item.name)}
-                  className={itemBaseClass(!!isActive)}
+                  className={cn(
+                    itemBaseClass(!!isActive),
+                    isChildActive && !isActive && !collapsed ? "bg-primary/5 text-primary font-medium" : ""
+                  )}
                   title={collapsed ? item.name : undefined}
                 >
                   <div className="flex-shrink-0 flex items-center justify-center w-6 h-6">
-                     <item.icon className="w-5 h-5" />
+                     {item.icon && <item.icon className="w-5 h-5" />}
                   </div>
 
                   <div 
@@ -192,7 +150,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
                   title={collapsed ? item.name : undefined}
                 >
                   <div className="flex-shrink-0 flex items-center justify-center w-6 h-6">
-                     <item.icon className="w-5 h-5" />
+                     {item.icon && <item.icon className="w-5 h-5" />}
                   </div>
 
                   <div 
@@ -269,13 +227,13 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
             collapsed ? "justify-center px-0" : "justify-start px-3 gap-3"
           )} 
           onClick={() => {
-             if (typeof window !== 'undefined') {
-                 localStorage.removeItem(LOCAL_STORAGE_KEY_TO_CLEAR); // Clear stored email
-             }
-             logout();
-          }}
-          title={collapsed ? "Sign out" : undefined}
-        >
+             if (typeof window !== 'undefined') {
+                 localStorage.removeItem(LOCAL_STORAGE_KEY_TO_CLEAR); 
+             }
+             logout();
+          }}
+          title={collapsed ? "Sign out" : undefined}
+        >
           <LogOut className="h-4 w-4 flex-shrink-0" />
           <span className={cn(
             "overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap",
