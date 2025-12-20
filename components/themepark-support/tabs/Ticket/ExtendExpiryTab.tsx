@@ -3,15 +3,14 @@
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Calendar } from "lucide-react"
+import { Calendar, SearchX } from "lucide-react"
 import { type ExtendTicketData } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
 import { useToast } from "@/hooks/use-toast"
 import { DatePicker } from "@/components/ui/date-picker"
 import { TimePicker } from "@/components/ui/time-picker"
-// IMPORT SEARCH FIELD
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
+import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
 
 export default function ExtendExpiryTab() {
   const { toast } = useToast()
@@ -20,7 +19,7 @@ export default function ExtendExpiryTab() {
   const [extendSearchResult, setExtendSearchResult] = useState<ExtendTicketData[]>([])
   const [isExtendSearching, setIsExtendSearching] = useState(false)
   
-  // Store datetime objects directly now (simpler than ISO string juggling)
+  // Store datetime objects directly
   const [editedDates, setEditedDates] = useState<Record<string, Date>>({})
   const [isUpdatingTicketNo, setIsUpdatingTicketNo] = useState<string | null>(null);
 
@@ -106,6 +105,56 @@ export default function ExtendExpiryTab() {
     }
   }
 
+  // Define columns
+  const columns: TableColumn<ExtendTicketData>[] = [
+      { header: "Ticket No", accessor: "ticketNo", className: "font-medium pl-6" },
+      { header: "Ticket Name", accessor: "ticketName" },
+      { header: "Effective Date", accessor: "effectiveDate", cell: (val) => (val as string).split('T')[0] },
+      { 
+          header: "New Expiry Date", 
+          accessor: "ticketNo", 
+          className: "min-w-[320px]",
+          cell: (ticketNo, row) => {
+              const isTicketUpdating = isUpdatingTicketNo === ticketNo;
+              const dateObj = editedDates[ticketNo as string];
+              
+              return (
+                  <div className="flex items-center gap-3">
+                      {/* Date Picker */}
+                      <div className="w-[140px]">
+                          <DatePicker 
+                            date={dateObj} 
+                            setDate={(d) => handleDateTimeChange(ticketNo as string, d)} 
+                            disabled={isTicketUpdating}
+                          />
+                      </div>
+                      {/* Time Picker */}
+                      <div>
+                          <TimePicker 
+                            date={dateObj} 
+                            setDate={(d) => handleDateTimeChange(ticketNo as string, d)} 
+                            disabled={isTicketUpdating}
+                          />
+                      </div>
+                  </div>
+              )
+          }
+      },
+      {
+          header: "Action",
+          accessor: "ticketNo",
+          className: "text-right",
+          cell: (ticketNo) => {
+              const isTicketUpdating = isUpdatingTicketNo === ticketNo;
+              return (
+                  <Button size="sm" onClick={() => handleUpdate(ticketNo as string)} disabled={isTicketUpdating}>
+                    {isTicketUpdating ? "Updating..." : "Update"}
+                  </Button>
+              )
+          }
+      }
+  ];
+
   return (
     <>
       <Card>
@@ -123,68 +172,24 @@ export default function ExtendExpiryTab() {
         </CardContent>
       </Card>
 
-      {extendSearchResult.length > 0 && (
-        <Card>
-          <CardContent className="space-y-4 pt-6">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Calendar className="h-4 w-4" /> Ticket Information
-            </div>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ticket No</TableHead>
-                    <TableHead>Ticket Name</TableHead>
-                    <TableHead>Effective Date</TableHead>
-                    <TableHead className="min-w-[320px]">New Expiry Date</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {extendSearchResult.map((ticket) => {
-                    const isTicketUpdating = isUpdatingTicketNo === ticket.ticketNo;
-                    const dateObj = editedDates[ticket.ticketNo];
-
-                    return (
-                    <TableRow key={ticket.ticketNo}>
-                        <TableCell className="font-medium">{ticket.ticketNo}</TableCell>
-                        <TableCell>{ticket.ticketName}</TableCell>
-                        <TableCell>{ticket.effectiveDate.split('T')[0]}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                              {/* Date Picker */}
-                              <div className="w-[140px]">
-                                  <DatePicker 
-                                    date={dateObj} 
-                                    setDate={(d) => handleDateTimeChange(ticket.ticketNo, d)} 
-                                    disabled={isTicketUpdating}
-                                  />
-                              </div>
-                              
-                              {/* Time Picker */}
-                              <div>
-                                  <TimePicker 
-                                    date={dateObj} 
-                                    setDate={(d) => handleDateTimeChange(ticket.ticketNo, d)} 
-                                    disabled={isTicketUpdating}
-                                  />
-                              </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button size="sm" onClick={() => handleUpdate(ticket.ticketNo)} disabled={isTicketUpdating}>
-                            {isTicketUpdating ? "Updating..." : "Update"}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-2 text-lg font-semibold">
+            <Calendar className="h-5 w-5 text-muted-foreground" />
+            Ticket Information
+          </div>
+          
+          <DataTable
+            columns={columns}
+            data={extendSearchResult}
+            keyExtractor={(row) => row.ticketNo}
+            isLoading={isExtendSearching}
+            emptyIcon={SearchX}
+            emptyTitle="No Tickets Found"
+            emptyMessage={extendSearchQuery ? "No extendable tickets found for this invoice." : "Enter an invoice number to search."}
+          />
+        </CardContent>
+      </Card>
     </>
   )
 }

@@ -6,6 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton"; 
 import { cn } from "@/lib/utils"; 
+import { formatCurrency } from "@/lib/formatter";
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge";
 
 interface PackageCardProps {
@@ -65,7 +66,7 @@ export default function PackageCard({
   
   const isPoint = packageType?.toLowerCase().includes('point') && !packageType?.toLowerCase().includes('reward');
   const priceUnit = isPoint ? "Pts" : "RM";
-  const displayPrice = isPoint ? `${price} ${priceUnit}` : `${priceUnit} ${price}`;
+  //const displayPrice = isPoint ? `${price} ${priceUnit}` : `${priceUnit} ${price}`;
 
   const getNationalityLabel = (code: string) => {
     if (code === "L") return "Local"; 
@@ -158,7 +159,7 @@ export default function PackageCard({
         </h3>
 
         <div className="text-blue-600 dark:text-blue-400 font-extrabold text-sm mb-1">
-            {displayPrice}
+            formatCurrency(price, isPoint)
         </div>
 
         <div className="flex flex-wrap gap-1.5">

@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, Loader2, UserPlus, User } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { staffService, type SearchedUser } from "@/services/staff-services"
+import { STAFF_ROLES } from "@/lib/constants"
+import { staffService } from "@/services/staff-services"
+import { type SearchedUser } from "@/type/staff"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
@@ -18,15 +20,6 @@ interface StaffAccountModalProps {
   onSuccess: () => void
   initialData: null; 
 }
-
-// FIX: Updated roles to match the Backend requirements exactly
-// Display Label vs Actual Value sent to API
-const StaffRoles = [
-  { label: "IT Admin", value: "IT" },
-  { label: "MIS Superadmin", value: "MIS" },
-  { label: "Finance", value: "Finance" },
-  { label: "Theme Park / Operations", value: "TP" }
-]
 
 export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAccountModalProps) {
   const { toast } = useToast()
@@ -67,7 +60,7 @@ export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAcco
 
     setIsAssigning(true)
     try {
-      await staffService.assignRole(selectedUser.accID, selectedRole);
+      await staffService.assignRole(selectedUser.accId, selectedRole);
       
       toast({ 
         title: "Success", 
@@ -130,7 +123,7 @@ export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAcco
               <ScrollArea className="h-[200px]">
                 {searchResults.map((user) => (
                   <div 
-                    key={user.accID}
+                    key={user.accId}
                     onClick={() => setSelectedUser(user)}
                     className="flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer transition-colors border-b last:border-0"
                   >
@@ -141,7 +134,7 @@ export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAcco
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-sm truncate">{user.fullName || `${user.firstName} ${user.lastName}`}</div>
-                      <div className="text-xs text-muted-foreground truncate">{user.email} • {user.mobileNo}</div>
+                      <div className="text-xs text-foreground truncate">{user.email} • {user.mobileNo}</div>
                     </div>
                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
                         <UserPlus className="h-4 w-4" />
@@ -165,7 +158,7 @@ export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAcco
                     </div>
                     <div className="font-medium">{selectedUser.fullName}</div>
                     <div className="text-sm text-muted-foreground">{selectedUser.email}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">ID: {selectedUser.accID}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">ID: {selectedUser.accId}</div>
                  </div>
                  <Button variant="ghost" size="sm" onClick={() => setSelectedUser(null)} className="text-xs h-7">
                     Change
@@ -179,8 +172,7 @@ export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAcco
                     <SelectValue placeholder="Select access level" />
                   </SelectTrigger>
                   <SelectContent>
-                    {/* Updated to use Object mapping {value, label} */}
-                    {StaffRoles.map((role) => (
+                    {STAFF_ROLES.map((role) => (
                       <SelectItem key={role.value} value={role.value}>
                         {role.label}
                       </SelectItem>

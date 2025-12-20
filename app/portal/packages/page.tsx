@@ -9,7 +9,7 @@ import { packageService } from "@/services/package-services";
 import { Package } from "@/type/packages"; 
 import { useAuth } from "@/hooks/use-auth";
 import { canCreatePackage } from "@/lib/auth"; 
-import { BACKEND_API_BASE } from "@/lib/config";
+import { getProxiedImageUrl } from "@/lib/utils"; 
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button"; 
 import {
@@ -22,7 +22,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-// IMPORT STANDARDIZED PAGINATION
 import { PaginationControls } from "@/components/ui/pagination-controls";
 
 interface PackageListItem {
@@ -50,29 +49,8 @@ const formatShortDate = (dateString: string | undefined) => {
   });
 };
 
-const IMAGE_ASSET_API_PATH = "api/Package/image-asset?id=";
-
-function getProxiedImageUrl(url: string | null | undefined): string {
-  const DEFAULT_IMAGE = "/packages/DefaultPackageImage.png";
-  if (!url) return DEFAULT_IMAGE;
-  if (url.startsWith("blob:") || url.startsWith("/packages/")) return url;
-  
-  let targetUrl = url;
-  if (url.startsWith(BACKEND_API_BASE) || url.startsWith("http://")) {
-    targetUrl = url;
-  } else if (url.startsWith("/")) {
-    targetUrl = `${BACKEND_API_BASE}${url}`;
-  } else if (url.length > 0 && !url.includes('/')) {
-    targetUrl = `${BACKEND_API_BASE}/${IMAGE_ASSET_API_PATH}${url}`;
-  } else {
-      return DEFAULT_IMAGE;
-  }
-  
-  if (targetUrl.startsWith(BACKEND_API_BASE) || targetUrl.startsWith("http://")) {
-    return `/api/proxy-image?url=${encodeURIComponent(targetUrl)}`;
-  }
-  return DEFAULT_IMAGE; 
-}
+// FIX: Removed local getProxiedImageUrl function and IMAGE_ASSET_API_PATH constant
+// We now use the version imported from "@/lib/utils"
 
 export default function PackagesPage() {
   const { user } = useAuth();
@@ -125,15 +103,16 @@ export default function PackagesPage() {
         );
 
         const formatted: PackageListItem[] = rawData.map((pkg: Package) => {
-            const pType = (pkg.packageType || pkg.PackageType || 'Entry');
+            const pType = (pkg.packageType || 'Entry');
             const isPoint = pType.toLowerCase().includes('point') && !pType.toLowerCase().includes('reward');
+            
             const finalPrice = isPoint
                 ? (pkg.point ?? 0) 
-                : (pkg.price ?? pkg.totalPrice ?? 0); 
+                : (pkg.price ?? 0); 
             
             return ({
               id: pkg.id,
-              name: pkg.name || pkg.PackageName || "Untitled", 
+              name: pkg.name || "Untitled", 
               price: finalPrice.toString(), 
               category: pkg.ageCategory || "N/A",
               ageDescription: pkg.ageDescription,
@@ -143,7 +122,7 @@ export default function PackagesPage() {
               effectiveDate: pkg.effectiveDate,
               lastValidDate: pkg.lastValidDate,
               status: pkg.status || "Draft",
-              image: getProxiedImageUrl(pkg.imageUrl || pkg.imageID),
+              image: getProxiedImageUrl(pkg.imageUrl),
             });
         });
 
@@ -311,7 +290,6 @@ export default function PackagesPage() {
             </div>
           ) : packages.length > 0 ? (
             <>
-              {/* Pagination Info at Top (Optional, but kept from original) */}
               <div className="text-sm text-muted-foreground mt-4 mb-2">
                 Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, totalRecords || packages.length)} of {totalRecords || 'many'} packages
               </div>
@@ -341,7 +319,6 @@ export default function PackagesPage() {
                 ))}
               </div>
               
-               {/* --- STANDARDIZED PAGINATION --- */}
                <PaginationControls 
                   currentPage={currentPage}
                   totalPages={totalPages}
@@ -349,7 +326,6 @@ export default function PackagesPage() {
                   pageSize={ITEMS_PER_PAGE}
                   onPageChange={goToPage}
                />
-               {/* ------------------------------- */}
             </>
           ) : (
             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-dashed rounded-lg bg-muted/30 mt-12">

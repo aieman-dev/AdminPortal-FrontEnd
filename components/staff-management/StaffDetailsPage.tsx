@@ -1,19 +1,15 @@
-// components/staff-management/StaffDetailsPage.tsx
-
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, Key, User, Briefcase, RefreshCw, Loader2 } from "lucide-react"
+import { Key, User, Briefcase, RefreshCw, Loader2 } from "lucide-react"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from "@/components/ui/breadcrumb"
 
-// Mock interface derived from the StaffAccount used in page-3.tsx
 interface StaffAccount {
     id: string
     name: string
@@ -26,9 +22,7 @@ interface StaffAccount {
 
 const mockRoles = ["IT Admin", "MIS Superadmin", "Package Manager", "Package Creator", "View Only"]
 
-
 const mockFetchStaff = (id: string): Promise<StaffAccount | null> => {
-    // MOCK: returns a sample user for editing
     return new Promise((resolve) => setTimeout(() => {
         if (id === "S101") {
             resolve({ id: "S101", name: "Jane Smith", email: "jane.s@icity.com", department: "Package Operations", role: "Package Creator", status: "Active", createdDate: "2024-05-10" })
@@ -38,13 +32,11 @@ const mockFetchStaff = (id: string): Promise<StaffAccount | null> => {
     }, 500))
 }
 
-
 interface StaffDetailsPageProps {
     staffId: string
 }
 
 export function StaffDetailsPage({ staffId }: StaffDetailsPageProps) {
-    const router = useRouter()
     const { toast } = useToast()
     const [staffData, setStaffData] = useState<StaffAccount | null>(null)
     const [loading, setLoading] = useState(true)
@@ -53,7 +45,6 @@ export function StaffDetailsPage({ staffId }: StaffDetailsPageProps) {
     // Editable State
     const [newRole, setNewRole] = useState("")
     const [newStatus, setNewStatus] = useState("")
-    // const [newPassword, setNewPassword] = useState("") // Password reset is now a direct action
 
     useEffect(() => {
         const fetchDetails = async () => {
@@ -72,18 +63,9 @@ export function StaffDetailsPage({ staffId }: StaffDetailsPageProps) {
     const handleUpdate = async () => {
         if (!staffData) return;
         setIsUpdating(true)
-        
-        // Mock update logic
         await new Promise(resolve => setTimeout(resolve, 1500))
-        
-        // Update local state and reflect in UI
-        const updatedStaff = {
-            ...staffData,
-            role: newRole,
-            status: newStatus as StaffAccount['status']
-        }
+        const updatedStaff = { ...staffData, role: newRole, status: newStatus as StaffAccount['status'] }
         setStaffData(updatedStaff)
-        
         toast({ title: "Success", description: `Staff details for ${staffData.name} updated.` })
         setIsUpdating(false)
     }
@@ -91,11 +73,8 @@ export function StaffDetailsPage({ staffId }: StaffDetailsPageProps) {
     const handlePasswordReset = async () => {
         if (!staffData) return;
         setIsUpdating(true)
-        
-        // Mock password reset
         await new Promise(resolve => setTimeout(resolve, 1500))
-        
-        toast({ title: "Security", description: `Password for ${staffData.name} has been reset to temporary default (e.g., 123456).` })
+        toast({ title: "Security", description: `Password reset to temporary default (e.g., 123456).` })
         setIsUpdating(false)
     }
 
@@ -109,10 +88,24 @@ export function StaffDetailsPage({ staffId }: StaffDetailsPageProps) {
 
     return (
         <div className="space-y-6">
-            <Button variant="ghost" onClick={() => router.back()} className="gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Back to Staff List
-            </Button>
+            {/* UPDATED: Breadcrumb Navigation */}
+            <div className="flex items-center justify-between">
+                <Breadcrumb>
+                    <BreadcrumbList>
+                        <BreadcrumbItem>
+                            <BreadcrumbLink href="/portal">Dashboard</BreadcrumbLink>
+                        </BreadcrumbItem>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem>
+                            <BreadcrumbLink href="/portal/staff-management">Staff Management</BreadcrumbLink>
+                        </BreadcrumbItem>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem>
+                            <BreadcrumbPage>Staff Details ({staffId})</BreadcrumbPage>
+                        </BreadcrumbItem>
+                    </BreadcrumbList>
+                </Breadcrumb>
+            </div>
 
             {/* 1. General Information Card (Read-Only) */}
             <Card>
@@ -131,7 +124,7 @@ export function StaffDetailsPage({ staffId }: StaffDetailsPageProps) {
                             <div className="font-medium">{staffData.email}</div>
                         </div>
                         <div>
-                            <div className="text-sm text-muted-foreground">Department (Non-Editable)</div>
+                            <div className="text-sm text-muted-foreground">Department</div>
                             <div className="font-medium">{staffData.department}</div>
                         </div>
                         <div>
@@ -151,28 +144,19 @@ export function StaffDetailsPage({ staffId }: StaffDetailsPageProps) {
                     </h3>
                     
                     <div className="grid grid-cols-2 gap-6">
-                        {/* Role Select */}
                         <div className="space-y-2">
                             <Label htmlFor="role-select">New Role / Access Level</Label>
                             <Select onValueChange={setNewRole} value={newRole}>
-                              <SelectTrigger id="role-select">
-                                <SelectValue placeholder="Select new role" />
-                              </SelectTrigger>
+                              <SelectTrigger id="role-select"><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                 {mockRoles.map(role => (
-                                  <SelectItem key={role} value={role}>{role}</SelectItem>
-                                ))}
+                                 {mockRoles.map(role => (<SelectItem key={role} value={role}>{role}</SelectItem>))}
                               </SelectContent>
                             </Select>
                         </div>
-                        
-                        {/* Status Select */}
                         <div className="space-y-2">
                             <Label htmlFor="status-select">Account Status</Label>
                             <Select onValueChange={setNewStatus} value={newStatus}>
-                              <SelectTrigger id="status-select">
-                                <SelectValue placeholder="Select status" />
-                              </SelectTrigger>
+                              <SelectTrigger id="status-select"><SelectValue /></SelectTrigger>
                               <SelectContent>
                                  <SelectItem value="Active">Active</SelectItem>
                                  <SelectItem value="Inactive">Inactive</SelectItem>
@@ -180,7 +164,6 @@ export function StaffDetailsPage({ staffId }: StaffDetailsPageProps) {
                               </SelectContent>
                             </Select>
                         </div>
-                        
                         <div className="col-span-2 pt-4">
                             <Button onClick={handleUpdate} disabled={isUpdating} className="w-full">
                                 {isUpdating ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving Changes...</> : "Apply Role/Status Changes"}
@@ -190,7 +173,7 @@ export function StaffDetailsPage({ staffId }: StaffDetailsPageProps) {
                 </CardContent>
             </Card>
 
-            {/* 3. Password Reset Card (Dedicated Security Action) */}
+            {/* 3. Password Reset Card */}
             <Card>
                 <CardContent>
                     <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -201,23 +184,16 @@ export function StaffDetailsPage({ staffId }: StaffDetailsPageProps) {
                         <div className="flex items-center justify-between p-3 border rounded-lg bg-red-50/50 dark:bg-red-900/10">
                             <div className="space-y-1">
                                 <p className="font-medium">Reset Password</p>
-                                <p className="text-sm text-muted-foreground">Resets the staff member's password to a temporary default (e.g., 123456) and logs the action.</p>
+                                <p className="text-sm text-muted-foreground">Resets the staff member's password to a temporary default.</p>
                             </div>
-                            <Button 
-                                variant="destructive" 
-                                onClick={handlePasswordReset} 
-                                disabled={isUpdating}
-                                className="shrink-0"
-                            >
+                            <Button variant="destructive" onClick={handlePasswordReset} disabled={isUpdating} className="shrink-0">
                                 <RefreshCw className="h-4 w-4 mr-2" />
                                 {isUpdating ? "Resetting..." : "Reset Now"}
                             </Button>
                         </div>
-                        
                     </div>
                 </CardContent>
             </Card>
-            
         </div>
     )
 }

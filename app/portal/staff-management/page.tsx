@@ -4,22 +4,17 @@ import { useState, useEffect, useCallback } from "react"
 import { PageHeader } from "@/components/portal/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
-import { Pencil, UserPlus } from "lucide-react"
+import { Pencil, UserPlus, Users, SearchX } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { StaffAccountModal } from "@/components/staff-management/StaffAccountModal" 
 import { useRouter } from "next/navigation" 
-import { staffService, type StaffMember } from "@/services/staff-services"
-import { Skeleton } from "@/components/ui/skeleton"
+import { formatDate } from "@/lib/formatter";
+import { staffService } from "@/services/staff-services"
+import { type StaffMember } from "@/type/staff"
+import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
 
-const formatDate = (dateString: string) => {
-  if (!dateString) return "-";
-  return new Date(dateString).toLocaleDateString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
-  });
-};
 
 export default function UsersStaffManagementPage() {
   const router = useRouter()
@@ -66,7 +61,7 @@ export default function UsersStaffManagementPage() {
   }
   
   const handleEdit = (user: StaffMember) => {
-    router.push(`/portal/staff-management/${user.accID}`); 
+    router.push(`/portal/staff-management/${user.accId}`); 
   }
   
   const handleModalClose = () => {
@@ -77,9 +72,42 @@ export default function UsersStaffManagementPage() {
       fetchStaff(searchQuery); 
   }
 
+  const columns: TableColumn<StaffMember>[] = [
+      { header: "Staff ID", accessor: "accId", className: "font-medium pl-6" },
+      { header: "Name", accessor: "fullName", cell: (val) => val || "-" },
+      { header: "Email (Login)", accessor: "email" },
+      { 
+          header: "Role", 
+          accessor: "roleName", 
+          className: "text-center",
+          cell: (value) => (
+            <span className="inline-flex items-center justify-center w-[120px] h-6 rounded-md bg-blue-50 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10 dark:bg-blue-900/30 dark:text-blue-300 dark:ring-blue-700/30">
+              {value}
+            </span>
+          )
+      },
+      { 
+          header: "Status", 
+          accessor: "status", 
+          className: "text-center",
+          cell: (value) => <StatusBadge status={value} /> 
+      },
+      { header: "Created Date", accessor: "createdDate", cell: (val) => <span className="text-muted-foreground text-sm">{formatDate(val as string)}</span> },
+      {
+          header: "Action",
+          accessor: "accId",
+          className: "text-right",
+          cell: (_, row) => (
+            <Button variant="ghost" size="sm" onClick={() => handleEdit(row)}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+          )
+      }
+  ];
+
   return (
     <div className="space-y-6">
-      
       <PageHeader 
           title="Staff User Management" 
           description="Manage access and details for internal system staff accounts."
@@ -105,70 +133,15 @@ export default function UsersStaffManagementPage() {
 
       <Card>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Staff ID</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email (Login)</TableHead>
-                  <TableHead className="w-[140px] text-center">Role</TableHead> {/* Centered Header */}
-                  <TableHead className="text-center">Status</TableHead>
-                  <TableHead>Created Date</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isSearching ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                       <TableCell><Skeleton className="h-4 w-12" /></TableCell>
-                       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                       <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                       <TableCell><Skeleton className="h-6 w-24 rounded-md mx-auto" /></TableCell>
-                       <TableCell><Skeleton className="h-6 w-20 rounded-full mx-auto" /></TableCell>
-                       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                       <TableCell className="text-right"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
-                    </TableRow>
-                  ))
-                ) : accounts.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                      No staff records found.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  accounts.map((account) => (
-                    <TableRow key={account.accID}>
-                      <TableCell className="font-medium">{account.accID}</TableCell>
-                      <TableCell>{account.fullName || "-"}</TableCell>
-                      <TableCell>{account.email}</TableCell>
-                      
-                      {/* FIX: Applied fixed width and centering to the Role Badge */}
-                      <TableCell className="text-center">
-                        <span className="inline-flex items-center justify-center w-[100px] h-6 rounded-md bg-blue-50 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                          {account.roleName}
-                        </span>
-                      </TableCell>
-                      
-                      <TableCell className="text-center">
-                        <StatusBadge status={account.recordStatus} />
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {formatDate(account.createdDate)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(account)}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+            <DataTable
+                columns={columns}
+                data={accounts}
+                keyExtractor={(row) => String(row.accId)}
+                isLoading={isSearching}
+                emptyIcon={Users}
+                emptyTitle="No Staff Found"
+                emptyMessage="No staff members found. Try adjusting your search."
+            />
         </CardContent>
       </Card>
       

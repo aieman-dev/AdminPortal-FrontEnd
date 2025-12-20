@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card"
 import type { LucideIcon } from "lucide-react"
+import { formatCurrency } from "@/lib/formatter";
 
 interface BalanceCardProps {
   title: string
@@ -23,7 +24,7 @@ export function BalanceCard({
           <div className="text-sm font-medium">{title}</div>
           <Icon className="h-4 w-4 text-muted-foreground" />
         </div>
-        <div className={`text-2xl font-bold ${valueColor}`}>RM{amount.toFixed(2)}</div>
+        <div className={`text-2xl font-bold ${valueColor}`}>{formatCurrency(amount)}</div>
         <p className="text-xs text-muted-foreground">{description}</p>
       </CardContent>
     </Card>

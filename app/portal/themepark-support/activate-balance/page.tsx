@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badg
 import { BalanceCard } from "@/components/themepark-support/it-poswf/balance-card"
 import { itPoswfService } from "@/services/themepark-support"
 import { type BalanceDetail, type BalanceTransaction } from "@/type/themepark-support"
+import { formatCurrency } from "@/lib/formatter";
 import { useToast } from "@/hooks/use-toast"
 
 export default function ActivateBalancePage() {
@@ -56,7 +57,7 @@ export default function ActivateBalancePage() {
   const transactionColumns: TableColumn<BalanceTransaction>[] = [
     { header: "Invoice No", accessor: "invoiceNo", cell: (value) => <span className="font-medium">{value}</span> },
     { header: "Name", accessor: "name" },
-    { header: "Amount", accessor: "amount", cell: (value) => `RM ${Number(value).toFixed(2)}` },
+    { header: "Amount", accessor: "amount", cell: (value) => formatCurrency(value) },
     { header: "Trx Type", accessor: "trxType", cell: (value) => <StatusBadge status={value} /> },
     { header: "Created Date", accessor: "createdDate" },
   ]

@@ -5,11 +5,12 @@ import React, { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { Ticket, Loader2 } from "lucide-react" 
+import { Ticket, Loader2, SearchX } from "lucide-react" 
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 import { useToast } from "@/hooks/use-toast"
 import { itPoswfService } from "@/services/themepark-support"
+import { formatDateTime} from "@/lib/formatter";
 import { cn } from "@/lib/utils"
 import { 
   type DeactivatableTicket, 
@@ -17,16 +18,7 @@ import {
 } from "@/type/themepark-support"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
 
-const formatDateTime = (dateString: string | undefined): string => {
-    if (!dateString || dateString.startsWith('0001-01-01')) return '—';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString; 
-    return date.toLocaleString('en-GB', {
-      day: '2-digit', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', 
-      hour12: true,
-    }).replace(',', ''); 
-};
+
 
 export default function DeactivateTicketTab() {
   const { toast } = useToast()
@@ -250,6 +242,8 @@ export default function DeactivateTicketTab() {
                 data={ticketDetails}
                 keyExtractor={(row) => row.ticketNo}
                 renderSubComponent={renderDetailRow}
+                isLoading={isSearching}
+                emptyIcon={SearchX}
                 emptyTitle="No Ticket Headers Found"
                 emptyMessage="If you see this, we found consumption records but no parent ticket headers."
             />

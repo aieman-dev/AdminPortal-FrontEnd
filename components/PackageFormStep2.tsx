@@ -1,11 +1,12 @@
-// components/PackageFormStep2.tsx
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
 import { PackageFormData, PackageItem } from "../type/packages";
 import { Loader2, ShoppingCart, List, Trash2 } from "lucide-react"; 
-import { getAuthToken } from "@/lib/auth";
+import { packageService } from "@/services/package-services"; 
+import { formatCurrency } from "@/lib/formatter";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { getProxiedImageUrl } from "@/lib/utils"; 
 
 type Props = {
   form: PackageFormData;
@@ -14,14 +15,6 @@ type Props = {
   onBack: () => void;
 };
 
-const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1524338198850-8a2ff63aaceb?w=400&h=300&fit=crop";
-
-function getProxiedImageUrl(url: string | null | undefined): string {
-  if (!url) return DEFAULT_IMAGE;
-  if (url.startsWith("https") || url.startsWith("blob:")) return url;
-  if (url.startsWith("http://")) return `/api/proxy-image?url=${encodeURIComponent(url)}`;
-  return url;
-}
 
 const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) => {
   const [query, setQuery] = useState("");
@@ -34,34 +27,25 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
     const fetchItems = async () => {
       try {
         setLoading(true);
-        const authToken = getAuthToken();
-        const response = await fetch("/api/proxy-create-package/creationdata", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${authToken}`
+        const data = await packageService.getCreationData();
+        
+        const rawItems = data.attractions || [];
+        const uniqueMap = new Map();
+
+        rawItems.forEach((item: any) => {
+          const id = item.terminalID || item.id;
+          if (!uniqueMap.has(id)) {
+            uniqueMap.set(id, {
+              attractionId: id,
+              itemName: item.attractionName || item.name || "Unknown",
+              price: 0,
+              point: 0,
+              entryQty: 0,
+              image: getProxiedImageUrl(item.ImageURL || item.imageUrl || item.imageURL)
+            });
           }
         });
-
-        if (response.ok) {
-          const data = await response.json();
-          const rawItems = data.attractions || [];
-          const uniqueMap = new Map();
-          rawItems.forEach((item: any) => {
-            const id = item.terminalID || item.id;
-            if (!uniqueMap.has(id)) {
-              uniqueMap.set(id, {
-                attractionId: id,
-                itemName: item.attractionName || item.name || "Unknown",
-                price: 0,
-                point: 0,
-                entryQty: 0,
-                image: getProxiedImageUrl(item.ImageURL || item.imageUrl || item.imageURL)
-              });
-            }
-          });
           setItems(Array.from(uniqueMap.values()));
-        }
       } catch (error) {
         console.error("Error fetching items:", error);
       } finally {
@@ -203,7 +187,7 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
                     `}
                   >
                     <div className="shrink-0 relative">
-                      {/* 2. Added HoverCard for preview */}
+                      {/* HoverCard for preview */}
                       <HoverCard openDelay={200} closeDelay={100}>
                         <HoverCardTrigger asChild>
                           <div className="relative">
@@ -211,7 +195,9 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
                               src={item.image}
                               alt={item.itemName}
                               referrerPolicy="no-referrer"
-                              onError={(e) => (e.currentTarget.src = DEFAULT_IMAGE)}
+                              // Use imported utility logic fallback? No, utility handles default.
+                              // Just handle error case to be safe.
+                              onError={(e) => (e.currentTarget.src = "/packages/DefaultPackageImage.png")}
                               className="h-12 w-12 rounded-full object-cover border border-border bg-muted cursor-zoom-in"
                             />
                             {selected && (
@@ -227,14 +213,13 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
                           sideOffset={20}
                         >
                           <div className="relative rounded-lg overflow-hidden shadow-2xl border-2 border-white dark:border-gray-600">
-                            <img src={item.image} alt={item.itemName} className="w-full h-auto object-cover bg-black" onError={(e) => (e.currentTarget.src = DEFAULT_IMAGE)} />
+                            <img src={item.image} alt={item.itemName} className="w-full h-auto object-cover bg-black" onError={(e) => (e.currentTarget.src = "/packages/DefaultPackageImage.png")} />
                             <div className="absolute bottom-0 inset-x-0 bg-black/70 p-2 text-white text-xs font-medium truncate">
                                 {item.itemName}
                             </div>
                           </div>
                         </HoverCardContent>
                       </HoverCard>
-                      {/* -------------------------------- */}
                     </div>
 
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
@@ -244,7 +229,6 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0">
-                      {/* 3. Fixed Alignment for RM/Pts Label */}
                       <div className="flex flex-col w-20 sm:w-24 items-center justify-center gap-1">
                         <label className="text-[10px] uppercase font-bold text-muted-foreground text-center w-full">
                           {isPointMode ? "Points" : "RM"}
@@ -268,7 +252,6 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
                         />
                       </div>
 
-                      {/* 3. Fixed Alignment for Qty Label */}
                       <div className="flex flex-col w-14 sm:w-16 items-center justify-center gap-1">
                         <label className="text-[10px] uppercase font-bold text-muted-foreground text-center w-full">
                           Qty
@@ -327,7 +310,10 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
                     <span className="text-foreground font-medium truncate w-[60%] select-none">{item.itemName}</span>
                     <span className="text-muted-foreground text-xs flex flex-col items-end select-none">
                         <span>Qty: {item.entryQty}</span>
-                        <span className="font-semibold text-indigo-600">{isPointMode ? `${item.point} pts` : `RM ${item.price}`}</span>
+                        {/* Uses formatCurrency correctly here */}
+                        <span className="font-semibold text-indigo-600">
+                            {formatCurrency(isPointMode ? item.point : item.price, isPointMode)}
+                        </span>
                     </span>
                   </div>
               ))}
@@ -336,7 +322,8 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
           <div className="mt-4 pt-4 border-t border-border shrink-0">
               <div className="flex justify-between font-bold text-lg text-foreground mb-6">
                   <span>Total:</span>
-                  <span>{getCurrencyDisplay()} {form.totalPrice?.toLocaleString()}</span>
+                  {/* Uses formatCurrency correctly here */}
+                  <span>{formatCurrency(form.totalPrice, isPointMode)}</span>
               </div>
               <div className="flex gap-2">
                   <button onClick={onBack} className="flex-1 py-2 border border-border rounded-md text-foreground hover:bg-white dark:hover:bg-gray-800 transition">Back</button>

@@ -1,33 +1,34 @@
-// components/themepark-support/it-poswf/data-table.tsx
+"use client"
+
 import React, { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { EmptyState } from "@/components/portal/empty-state"
-import { SearchX, ChevronRight, ChevronDown } from "lucide-react" // Import Chevrons
+import { SearchX, ChevronRight, ChevronDown, ArrowUpDown } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { ReactNode } from "react"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils" 
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-  PaginationEllipsis
-} from "@/components/ui/pagination"
+import { PaginationControls } from "@/components/ui/pagination-controls"
 
 export interface TableColumn<T> {
   header: string
   accessor: keyof T | ((row: T) => ReactNode)
   cell?: (value: any, row: T) => ReactNode
   className?: string
+  sortable?: boolean 
 }
 
 interface PaginationProps {
     currentPage: number;
     totalPages: number;
     onPageChange: (page: number) => void;
+    totalRecords?: number; 
+    pageSize?: number;
+}
+
+interface SortConfig {
+    key: string;
+    direction: 'asc' | 'desc';
 }
 
 interface DataTableProps<T> {
@@ -39,7 +40,9 @@ interface DataTableProps<T> {
   emptyIcon?: LucideIcon;
   pagination?: PaginationProps;
   isLoading?: boolean;
-  renderSubComponent?: (row: T) => ReactNode; // NEW: Render function for expandable rows
+  renderSubComponent?: (row: T) => ReactNode;
+  onSort?: (key: string) => void;
+  sortConfig?: SortConfig | null;
 }
 
 export function DataTable<T>({ 
@@ -51,7 +54,9 @@ export function DataTable<T>({
   emptyIcon = SearchX,
   pagination,
   isLoading = false,
-  renderSubComponent
+  renderSubComponent,
+  onSort,
+  sortConfig
 }: DataTableProps<T>) {
 
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -63,45 +68,34 @@ export function DataTable<T>({
     setExpandedRows(newSet);
   };
 
-  if (!isLoading && data.length === 0) {
-    return (
-      <div className="border rounded-md bg-background">
-        <EmptyState 
-          icon={emptyIcon} 
-          title={emptyTitle} 
-          description={emptyMessage} 
-        />
-      </div>
-    )
-  }
-
-  const getPageNumbers = () => {
-    if (!pagination) return [];
-    const { currentPage, totalPages } = pagination;
-    const pages: (number | string)[] = [];
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      if (currentPage <= 3) {
-        pages.push(1, 2, 3, 4, '...', totalPages);
-      } else if (currentPage >= totalPages - 2) {
-        pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
-      } else {
-        pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
-      }
-    }
-    return pages;
-  };
-
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
-      <div className="overflow-x-auto rounded-md border">
+      <div className="overflow-x-auto rounded-md border bg-card">
         <Table>
           <TableHeader className="bg-muted/50">
             <TableRow>
               {renderSubComponent && <TableHead className="w-[50px]"></TableHead>}
               {columns.map((column, index) => (
-                <TableHead key={index} className={column.className}>{column.header}</TableHead>
+                <TableHead 
+                    key={index} 
+                    className={cn(
+                        column.className,
+                        column.sortable && "cursor-pointer hover:bg-muted/80 select-none"
+                    )}
+                    onClick={() => column.sortable && onSort && typeof column.accessor === 'string' && onSort(column.accessor as string)}
+                >
+                    <div className="flex items-center gap-1">
+                        {column.header}
+                        {column.sortable && (
+                            <ArrowUpDown className={cn(
+                                "h-3 w-3 transition-opacity",
+                                sortConfig?.key === (column.accessor as string)
+                                    ? "text-primary opacity-100" 
+                                    : "text-muted-foreground opacity-30"
+                            )} />
+                        )}
+                    </div>
+                </TableHead>
               ))}
             </TableRow>
           </TableHeader>
@@ -112,14 +106,14 @@ export function DataTable<T>({
                     {renderSubComponent && <TableCell><Skeleton className="h-4 w-4 rounded-full" /></TableCell>}
                     {columns.map((_, colIndex) => (
                       <TableCell key={`skeleton-cell-${colIndex}`}>
-                        <Skeleton className="h-5 w-full rounded-md opacity-50 animate-pulse" />
+                        <Skeleton className="h-5 rounded-md opacity-50 animate-pulse" style={{ width: `${Math.random() * 40 + 40}%` }} />
                       </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={columns.length + (renderSubComponent ? 1 : 0)} className="p-0">
+                <TableCell colSpan={columns.length + (renderSubComponent ? 1 : 0)} className="p-0 h-60">
                         <EmptyState 
                             icon={emptyIcon} 
                             title={emptyTitle} 
@@ -134,14 +128,21 @@ export function DataTable<T>({
 
                 return (
                   <React.Fragment key={rowKey}>
-                    <TableRow 
-                        className={cn(
-                            "transition-colors border-b hover:bg-muted/30 animate-in fade-in slide-in-from-top-1 duration-300",
-                            renderSubComponent ? "cursor-pointer" : "",
-                            isExpanded ? "bg-muted/20 border-b-0" : ""
-                        )}
-                        onClick={() => renderSubComponent && toggleRow(rowKey)}
-                    >
+                    <TableRow
+                        style={{ 
+                                animationDelay: `${index * 0.05}s`, 
+                                animationFillMode: 'forwards' 
+                            }}
+                            className={cn(
+                                "opacity-0 animate-in fade-in slide-in-from-bottom-2 duration-300", 
+                                "transition-all border-b hover:bg-muted/30",
+                                renderSubComponent ? "cursor-pointer" : "",
+                                isExpanded 
+                                    ? "bg-muted/30 border-b-0 border-l-4 border-l-primary" 
+                                    : "border-l-4 border-l-transparent"
+                            )}
+                            onClick={() => renderSubComponent && toggleRow(rowKey)}
+                        >
                       {renderSubComponent && (
                           <TableCell>
                               {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
@@ -149,8 +150,13 @@ export function DataTable<T>({
                       )}
 
                       {columns.map((column, colIndex) => {
-                        const value = typeof column.accessor === "function" ? column.accessor(row) : (row[column.accessor] as any)
-                        const cellContent = column.cell ? column.cell(value, row) : value
+                        // FIXED: Added safe type casting for row access
+                        const value = typeof column.accessor === "function" 
+                            ? column.accessor(row) 
+                            : row[column.accessor as keyof T];
+                            
+                        const cellContent = column.cell ? column.cell(value, row) : (value as ReactNode);
+                        
                         return <TableCell key={colIndex} className={column.className}>{cellContent}</TableCell>
                       })}
                     </TableRow>
@@ -172,39 +178,13 @@ export function DataTable<T>({
       </div>
 
       {!isLoading && pagination && pagination.totalPages > 1 && (
-        <Pagination>
-            <PaginationContent>
-                <PaginationItem>
-                    <PaginationPrevious 
-                        onClick={() => pagination.onPageChange(Math.max(1, pagination.currentPage - 1))}
-                        isActive={pagination.currentPage > 1}
-                        className={pagination.currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                    />
-                </PaginationItem>
-                {getPageNumbers().map((page, i) => (
-                    <PaginationItem key={i}>
-                        {page === '...' ? (
-                            <PaginationEllipsis />
-                        ) : (
-                            <PaginationLink
-                                isActive={pagination.currentPage === page}
-                                onClick={() => pagination.onPageChange(page as number)}
-                                className="cursor-pointer"
-                            >
-                                {page}
-                            </PaginationLink>
-                        )}
-                    </PaginationItem>
-                ))}
-                <PaginationItem>
-                    <PaginationNext 
-                        onClick={() => pagination.onPageChange(Math.min(pagination.totalPages, pagination.currentPage + 1))}
-                        isActive={pagination.currentPage < pagination.totalPages}
-                        className={pagination.currentPage === pagination.totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                    />
-                </PaginationItem>
-            </PaginationContent>
-        </Pagination>
+        <PaginationControls 
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            onPageChange={pagination.onPageChange}
+            totalRecords={pagination.totalRecords}
+            pageSize={pagination.pageSize || 10} 
+        />
       )}
     </div>
   )

@@ -1,32 +1,27 @@
-// components/themepark-support/tabs/Transaction/RetailManualConsumeTab.tsx
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Search, Wallet, TrendingUp, Minus, Plus, ShoppingCart, Loader2, ArrowLeft, CheckCircle2, SearchX, ChevronsUpDown, Check } from "lucide-react"
+import { Search, Wallet, TrendingUp, Minus, Plus, ShoppingCart, Loader2, ArrowLeft, CheckCircle2, SearchX } from "lucide-react"
 import { BalanceCard } from "@/components/themepark-support/it-poswf/balance-card"
-import { EmptyState } from "@/components/portal/empty-state"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   type RetailManualConsumeData,
   type RetailManualConsumeSearchPayload,
   type ConsumeExecutePayload,
   type ConsumeExecuteItem,
-  type RetailItem, // Imported for typing
+  type RetailItem,
 } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
 import { useToast } from "@/hooks/use-toast"
-import { cn } from "@/lib/utils"
-// Import Reusable Components
 import { TerminalSelector } from "@/components/themepark-support/it-poswf/terminal-selector"
-import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table" // Import enhanced DataTable
+import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
+import { formatCurrency } from "@/lib/formatter"
 
 type Step = 'selection' | 'confirmation';
 
@@ -47,7 +42,7 @@ export default function RetailManualConsumeTab() {
   const [consumeSearchResult, setConsumeSearchResult] = useState<RetailManualConsumeData | null>(null)
   const [quantities, setQuantities] = useState<Record<string, number>>({}) 
   
-  // Pagination State (Client-Side)
+  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
@@ -61,7 +56,7 @@ export default function RetailManualConsumeTab() {
   const isMobileDisabled = isReceipt; 
   const isInvoiceDisabled = isSuperApp;
 
-  // --- 2. Main Search ---
+  // --- Search Logic ---
   const handleConsumeSearch = async () => {
     let missingFields: string[] = [];
     if (!consumeType) missingFields.push("Consume Type");
@@ -79,7 +74,7 @@ export default function RetailManualConsumeTab() {
     setIsConsumeSearching(true);
     setConsumeSearchResult(null);
     setQuantities({}); 
-    setCurrentPage(1); // Reset pagination on new search
+    setCurrentPage(1); // Reset pagination
     setCurrentStep('selection');
 
     const searchPayload: RetailManualConsumeSearchPayload = {
@@ -119,7 +114,6 @@ export default function RetailManualConsumeTab() {
     }
   }
 
-  // --- 3. Quantity Handlers ---
   const updateQuantity = (itemId: string, val: number) => {
       setQuantities(prev => {
           const updated = Math.max(0, val);
@@ -140,7 +134,6 @@ export default function RetailManualConsumeTab() {
 
   const handleBackStep = () => setCurrentStep('selection');
 
-  // --- 5. Execute Logic ---
   const handleConsumeExecute = async () => {
     if (!consumeSearchResult) return;
     const selectedItems = consumeSearchResult.items.filter(item => (quantities[item.id] || 0) > 0);
@@ -203,7 +196,6 @@ export default function RetailManualConsumeTab() {
       return consumeSearchResult.items.reduce((total, item) => total + (item.unitPrice * (quantities[item.id] || 0)), 0);
   }, [consumeSearchResult, quantities]);
 
-  // PAGINATION LOGIC: Slice data for current page
   const paginatedItems = useMemo(() => {
       if (!consumeSearchResult) return [];
       const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -212,10 +204,9 @@ export default function RetailManualConsumeTab() {
 
   const totalPages = consumeSearchResult ? Math.ceil(consumeSearchResult.items.length / ITEMS_PER_PAGE) : 0;
 
-  // --- VIEW: SELECTION TABLE ---
-  // Replaced the custom Table with the shared DataTable for consistency and built-in pagination
+  // FIXED: Explicitly typed 'value' and 'row' to prevent implicit any error
   const retailItemColumns: TableColumn<RetailItem>[] = [
-    { header: "Item Details", accessor: "itemName", cell: (value, row) => (
+    { header: "Item Details", accessor: "itemName", cell: (value: any, row: RetailItem) => (
         <div className="flex flex-col">
             <span className="font-medium text-foreground">{value}</span>
             <div className="flex gap-2 text-xs text-muted-foreground mt-0.5">
@@ -224,11 +215,11 @@ export default function RetailManualConsumeTab() {
             </div>
         </div>
     )},
-    { header: "Category", accessor: "categoryCode", cell: (value) => (
+    { header: "Category", accessor: "categoryCode", cell: (value: any) => (
         <Badge variant="outline" className="text-[10px] h-5 w-24 justify-center truncate">{value}</Badge>
     )},
-    { header: "Unit Price", accessor: "unitPrice", cell: (value) => <span className="font-medium">RM {Number(value).toFixed(2)}</span>,  },
-    { header: "Quantity", accessor: "id", cell: (_, row) => {
+    { header: "Unit Price", accessor: "unitPrice", cell: (value: any) => <span className="font-medium">{formatCurrency(value)}</span> },
+    { header: "Quantity", accessor: "id", cell: (_: any, row: RetailItem) => {
         const qty = quantities[row.id] || 0;
         return (
             <div className="flex items-center justify-center gap-1">
@@ -247,7 +238,7 @@ export default function RetailManualConsumeTab() {
             </div>
         )
     }},
-    { header: "Line Total", accessor: "id", cell: (_, row) => {
+    { header: "Line Total", accessor: "id", cell: (_: any, row: RetailItem) => {
         const qty = quantities[row.id] || 0;
         return <span className={`font-bold ${qty > 0 ? "text-foreground" : "text-muted-foreground/30"}`}>RM {(row.unitPrice * qty).toFixed(2)}</span>
     }}
@@ -258,10 +249,7 @@ export default function RetailManualConsumeTab() {
       {currentStep === 'selection' && (
         <Card>
             <CardContent>
-            {/* UPDATED LAYOUT */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-end">
-                
-                {/* ROW 1 */}
                 <div className="space-y-2">
                     <Label htmlFor="consumeType">Consume Type</Label>
                     <Select value={consumeType} onValueChange={setConsumeType}>
@@ -274,42 +262,20 @@ export default function RetailManualConsumeTab() {
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="email">Email Address {isSuperApp && "*"}</Label>
-                    <Input 
-                        id="email" 
-                        value={email} 
-                        onChange={(e) => setEmail(e.target.value)} 
-                        disabled={isEmailDisabled} 
-                        placeholder="customer@email.com"
-                        />
+                    <Input id="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={isEmailDisabled} placeholder="customer@email.com"/>
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="mobileNo">Mobile No</Label>
-                   <Input 
-                        id="mobileNo" 
-                        value={mobileNo} 
-                        onChange={(e) => setMobileNo(e.target.value)} 
-                        disabled={isMobileDisabled} 
-                        />
+                   <Input id="mobileNo" value={mobileNo} onChange={(e) => setMobileNo(e.target.value)} disabled={isMobileDisabled} />
                 </div>
                 
-                {/* ROW 2 */}
                 <div className="space-y-2">
                     <Label htmlFor="invoiceNo">Invoice No {isReceipt && "*"}</Label>
-                    <Input 
-                        id="invoiceNo" 
-                        value={invoiceNo} 
-                        onChange={(e) => setInvoiceNo(e.target.value)} 
-                        disabled={isInvoiceDisabled} 
-                        />
+                    <Input id="invoiceNo" value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} disabled={isInvoiceDisabled} />
                 </div>
 
-                 {/* TERMINAL SELECTOR COMPONENT */}
                  <div className="space-y-2 col-span-1">
-                     <TerminalSelector 
-                        value={terminalId}
-                        onChange={setTerminalId}
-                        label="Terminal Search & Select *"
-                     />
+                     <TerminalSelector value={terminalId} onChange={setTerminalId} label="Terminal Search & Select *"/>
                 </div>
                 
                 <div className="space-y-2">
@@ -324,13 +290,11 @@ export default function RetailManualConsumeTab() {
                      </Select>
                 </div>
 
-                {/* ROW 3 */}
                 <div className="space-y-2">
                      <Label htmlFor="itemName">Item Name (Search)</Label>
                      <Input id="itemName" value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="e.g. Burger" />
                 </div>
 
-                {/* Spacer */}
                 <div></div>
                 
                 <div className="flex justify-end pt-2">
@@ -363,7 +327,6 @@ export default function RetailManualConsumeTab() {
                 <div className="text-lg font-semibold">Available Retail Items ({consumeSearchResult.items.length})</div>
             </div>
               
-              {/* REPLACED MANUAL TABLE WITH SHARED DATA TABLE */}
               <DataTable
                 columns={retailItemColumns}
                 data={paginatedItems}
@@ -375,7 +338,9 @@ export default function RetailManualConsumeTab() {
                 pagination={{
                     currentPage: currentPage,
                     totalPages: totalPages,
-                    onPageChange: setCurrentPage
+                    onPageChange: setCurrentPage,
+                    pageSize: ITEMS_PER_PAGE,
+                    totalRecords: consumeSearchResult.items.length 
                 }}
             />
               

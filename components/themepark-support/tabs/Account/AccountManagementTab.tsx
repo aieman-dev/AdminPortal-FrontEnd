@@ -104,7 +104,7 @@ export default function AccountManagementTab() {
 
   // Define Columns for the DataTable
   const accountColumns: TableColumn<Account>[] = useMemo(() => [
-    { header: "Acc ID", accessor: "accId", className: "font-medium" },
+    { header: "Acc ID", accessor: "accId", className: "font-medium pl-6" },
     { header: "Email", accessor: "email" },
     { header: "First Name", accessor: "firstName" },
     { header: "Mobile No", accessor: "mobile" },
@@ -144,7 +144,7 @@ export default function AccountManagementTab() {
       </Card>
 
       <Card>
-        <CardContent className="pt-6">
+        <CardContent>
           <DataTable
             columns={accountColumns}
             data={accounts}

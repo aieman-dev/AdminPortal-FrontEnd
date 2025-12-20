@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
-// Import your centralized badge
+import { formatCurrency } from "@/lib/formatter";
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
@@ -140,6 +140,7 @@ export default function BComparePackageTab() {
         { 
             header: "Select", 
             accessor: "id", 
+            className: "pl-6",
             cell: (value, row) => (
                 <div className="flex items-center justify-center">
                     <Checkbox 
@@ -152,16 +153,9 @@ export default function BComparePackageTab() {
         },
         { header: "Package ID", accessor: "packageId", cell: (value) => <span className="font-medium">{value}</span> },
         { header: "Package Name", accessor: "packageName" },
-        
-        // Use StatusBadge directly
         { header: "Package Type", accessor: "packageType", cell: (value) => <StatusBadge status={value} /> },
-        
-        { header: "Price", accessor: "price", cell: (value) => `RM ${(value ?? 0).toFixed(2)}` },
-        
-        // Use StatusBadge directly
+        { header: "Price", accessor: "price", cell: (value) => formatCurrency(value) },
         { header: "Status", accessor: "status", cell: (value) => <StatusBadge status={value} /> },
-        
-        // Use StatusBadge directly (Now supports 'Synced' and 'Error')
         { header: "Sync Status", accessor: "syncStatus", cell: (value) => <StatusBadge status={value} /> },
     ];
 
@@ -184,7 +178,7 @@ export default function BComparePackageTab() {
                             />
                             <div className="w-[200px]">
                                 <Select value={packageType} onValueChange={setPackageType}>
-                                    <SelectTrigger id="package-type" className="h-11">
+                                    <SelectTrigger id="package-type" className="!h-11">
                                         <SelectValue placeholder="All Types" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -205,7 +199,7 @@ export default function BComparePackageTab() {
             </Card>
             
             <Card>
-                <CardContent className="space-y-4 pt-6">
+                <CardContent className="space-y-4">
                     <div className="flex items-center gap-2">
                         <DivideCircle className="h-5 w-5 text-muted-foreground" />
                         <div className="text-lg font-semibold">Packages Pending Sync</div>

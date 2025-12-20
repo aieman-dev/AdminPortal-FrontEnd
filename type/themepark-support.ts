@@ -1,4 +1,6 @@
-// type/it-poswf.ts
+// type/themepark-support.ts
+
+// --- FRONTEND INTERFACES (Used by Components) ---
 
 export interface Transaction {
   invoiceNo: string
@@ -6,13 +8,6 @@ export interface Transaction {
   amount: number
   trxType: "Credit" | "Debit"
   createdDate: string
-}
-
-export interface BalanceData {
-  email: string
-  creditBalance: number
-  expiredBalance: number
-  transactions: Transaction[]
 }
 
 export interface PasswordData {
@@ -42,10 +37,8 @@ export interface TransactionHistory {
   invoiceNo: string
   email: string
   mobile: string
-  // FIX: Match live API field
   attractionName: string 
-  amount: string
-  // FIX: Match live API field
+  amount: number
   trxType: "Purchase" | "Refund" | "Consume"
   createdDate: string
 }
@@ -54,13 +47,11 @@ export interface TicketHistory {
   id?: string | number
   transactionId: string
   packageName: string
-  // FIX: Match live API field
   packageID: string 
   qty: number
   startDate: string
   expiryDate: string
   lastValidDate: string
-  // FIX: Accommodate API string type
   validDays: string | number
   status: "Active" | "Expired" | "Used" | "Cancelled"
   ticketNo: string
@@ -76,25 +67,24 @@ export interface ShopifyOrder {
   financialStatus : string;
 }
 
-//result searching of manual consume ticket
 export interface AvailableTicket {
   id: string
-  PackageName: string 
-  ItemName: string 
-  ConsumeTerminal: number 
-  TicketType: "Entry" | string 
-  ItemPoint: number 
-  PackageStatus: "Expired" | "Active" | "Inactive" | "Expired" 
-  BalanceQty: number
-  PackageID: number
-  PackageItemID: number
-  TrxItemID: number
-  SourceType: string
-  TicketItemID: number
+  packageName: string 
+  itemName: string 
+  consumeTerminal: number 
+  ticketType: "Entry" | string 
+  itemPoint: number 
+  packageStatus: "Expired" | "Active" | "Inactive" 
+  balanceQty: number
+  packageID: number
+  packageItemID: number
+  trxItemID: number
+  sourceType: string
+  ticketItemID: number
 }
 
 export interface RetailItem {
-  id: string // Mapped from itemID
+  id: string 
   itemID: number 
   tGroupID: number
   barcode: string
@@ -107,7 +97,7 @@ export interface RetailItem {
 
 export interface RetailManualConsumeData {
   creditBalance: number
-  items: RetailItem[] // Changed type
+  items: RetailItem[] 
   totalAmount: number
   totalRewardCredit: number
   accID?: number; 
@@ -125,18 +115,18 @@ export interface RetailManualConsumeSearchPayload {
 }
 
 export interface ConsumeTicketItem {
-    PackageName: string;
-    ItemName: string;
-    TicketType: string;
-    PackageID: number;
-    PackageItemID: number;
-    TicketItemID: number;
-    ConsumeQty: number;
+    packageName: string;
+    itemName: string;
+    ticketType: string;
+    packageID: number;
+    packageItemID: number;
+    ticketItemID: number;
+    consumeQty: number;
 }
 
 export interface TicketConsumeExecutePayload {
     terminalID: number;
-    myQrData: string | null; // Use myQr data from search result
+    myQrData: string | null; 
     custEmail: string;
     mobileNo: string;
     invoiceNo: string;
@@ -210,30 +200,17 @@ export interface TerminalSearchPayload {
 }
 
 export interface VoidTransaction {
+  id?: string;
   terminalID: string
   trxID: string
   invoiceNo: string
-  trxType: "Purchase" | "Refund" | "Exchange"
-  itemType: "Ticket" | "Credit" | "Reward"
+  trxType: "Purchase" | "Refund" | "Exchange" | string
+  itemType: "Ticket" | "Credit" | "Reward" | string
   balanceQty: number
   amount: number
   terminal: string
-  recordStatus: "Active" | "Voided" | "Pending"
+  recordStatus: "Active" | "Voided" | "Pending" | string
   createdDate: string
-}
-
-export interface Package {
-  id: string
-  packageId: string
-  packageName: string
-  packageType: "Annual" | "Monthly" | "Daily" | "VIP" | "Family"
-  price: number
-  lastValidDate: string
-  description: string
-  status: "Active" | "Inactive" | "Pending"
-  createdBy: string
-  lastModifiedBy: string
-  modifiedDate: string
 }
 
 export interface Account {
@@ -255,37 +232,36 @@ export interface ItPoswfPackage {
   price: number;
   lastValidDate: string;
   description: string;
-  status: string; // Mapped from recordStatus
+  status: string; 
   createdBy?: string;
   lastModifiedBy?: string;
   createdDate?: string;
   modifiedDate?: string;
 }
 
-// ADDED FOR DEACTIVATE TICKET TAB
 export interface DeactivatableTicket {
-  id: string; // Unique ID for key/local use (Mapped from ticketID)
-  ticketID: number; // Backend's primary ID
+  id: string; 
+  ticketID: number; 
   ticketNo: string;
   ticketName: string;
-  quantity: number; // Mapped from ticketQty
+  quantity: number; 
   purchaseDate: string; 
-  status: "Active" | "Deactivated" | "Expired" | string; // Mapped from recordStatus
+  status: "Active" | "Deactivated" | "Expired" | string; 
   invoiceNo: string;
 }
 
 export interface ConsumptionHistory {
-  id: string; // Unique ID for key/local use (Mapped from ticketConsumptionNo)
-  consumptionNo: string; // Mapped from ticketConsumptionNo
-  trxNo: string; // Mapped from trxNo (original invoice/trx)
+  id: string; 
+  consumptionNo: string; 
+  trxNo: string; 
   ticketNo: string;
   ticketItemNo: string; 
   ticketName: string;
   terminalID: number; 
   ticketQty: number; 
   consumeQty: number;
-  modifiedDate: string; // Mapped from consumptionModifiedDate
-  status: "Active" | "Deactivated" | string; // Mapped from consumptionRecordStatus
+  modifiedDate: string; 
+  status: "Active" | "Deactivated" | string; 
 }
 
 export interface TicketDeactivatePayload {
@@ -297,7 +273,7 @@ export interface ConsumptionDeactivatePayload {
 }
 
 export interface TerminalTransaction {
-  id: string; // Unique ID (use trxID)
+  id: string; 
   trxID: number;
   invoiceNo: string;
   trxType: "Purchase" | "Consume" | string;
@@ -310,13 +286,10 @@ export interface TerminalTransaction {
 export type TerminalPurchaseHistory = TerminalTransaction & { packageName?: string, customerEmail?: string, paymentStatus?: string }; 
 export type TerminalConsumeHistory = TerminalTransaction & { itemConsumed?: string, quantity?: number, consumeDate?: string, status?: string };
 
-
-
 export interface TerminalHistoryData {
     purchaseHistory: TerminalPurchaseHistory[];
     consumeHistory: TerminalConsumeHistory[];
 }
-
 
 export interface UnsyncedPackageDTO {
     packageID: number;
@@ -329,7 +302,6 @@ export interface UnsyncedPackageDTO {
     status: string;
 }
 
-// NEW: Front-end model used in BCompareTab (Selectable list)
 export interface SelectableItPoswfPackage {
     id: string; 
     packageId: string | number;
@@ -339,4 +311,53 @@ export interface SelectableItPoswfPackage {
     status: string;
     lastValidDate: string;
     syncStatus: "Pending" | "Synced" | "Error";
+}
+
+// --- BACKEND DTOs (Data Transfer Objects) ---
+// These are used internally by the Service to map Backend -> Frontend
+
+export interface BackendAccountDTO {
+    accID: number;
+    email: string;
+    firstName: string;
+    mobileNo: string;
+    createdDate: string;
+    recordStatus: string;
+    transactionHistory?: any[];
+}
+
+export interface BackendTerminalDTO {
+    terminalID: number;
+    terminal: string;
+    uuid: string;
+    terminalType: "POS" | "Kiosk" | "Mobile" | "Web";
+    status: "Active" | "Inactive" | "Maintenance";
+    modifiedDate: string;
+}
+
+export interface HistorySearchData {
+    transactionHistory: any[];
+    ticketHistory: any[];
+}
+
+export interface VoidRequestPayload {
+    TrxID: number;
+    InvoiceNo: string;
+    BalanceQty: number;
+    trxType: "Purchase" | "Refund" | "Exchange" | string;
+    itemType: "Ticket" | "Credit" | "Reward" | string;
+    Action: "Void";
+}
+
+export interface TicketUpdateItem {
+    ticketNo: string;
+    ticketName: string;
+    effectiveDate: string;
+    expiryDate: string;
+    lastValidDate: string;
+}
+
+export interface TicketUpdatePayload {
+    TrxNo: string; 
+    ticketsToUpdate: TicketUpdateItem[];
 }

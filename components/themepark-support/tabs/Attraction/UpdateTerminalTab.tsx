@@ -1,3 +1,4 @@
+// components/themepark-support/tabs/Attraction/UpdateTerminalTab.tsx
 "use client"
 
 import { useState } from "react"
@@ -6,31 +7,17 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Pencil, Clock } from "lucide-react"
+import { Pencil, Clock, SearchX } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { type Terminal } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
 import { useToast } from "@/hooks/use-toast"
-import { Skeleton } from "@/components/ui/skeleton";
+import { formatDate } from "@/lib/formatter";
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
+import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table" // Import DataTable
 
-const formatDate = (dateString: string) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return dateString;
-
-  return new Intl.DateTimeFormat('en-GB', { 
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: true 
-  }).format(date);
-};
 
 export default function UpdateTerminalTab() {
   const { toast } = useToast()
@@ -122,12 +109,41 @@ export default function UpdateTerminalTab() {
         setIsUpdating(false);
     }
   }
+
+  // --- COLUMN DEFINITIONS ---
+  const terminalColumns: TableColumn<Terminal>[] = [
+      { header: "Terminal Name", accessor: "terminalName", className: "font-medium pl-6" },
+      { header: "UUID", accessor: "uuid", cell: (val) => <span className="font-mono text-sm text-gray-600">{val}</span> },
+      { header: "Type", accessor: "terminalType" },
+      { header: "Status", accessor: "status", className: "text-center", cell: (val) => <StatusBadge status={val} /> },
+      { 
+          header: "Modified Date", 
+          accessor: "modifiedDate", 
+          className: "text-center",
+          cell: (val) => (
+            <Badge variant="outline" className="font-normal text-xs text-gray-600 bg-gray-100 border-gray-200 gap-1.5 py-1 px-2.5 justify-center mx-auto">
+                <Clock className="w-3.5 h-3.5 opacity-70" />
+                {formatDate(val as string)}
+            </Badge>
+          ) 
+      },
+      {
+          header: "Action",
+          accessor: "id",
+          className: "text-right",
+          cell: (_, row) => (
+            <Button variant="ghost" size="sm" onClick={() => handleEdit(row)}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+          )
+      }
+  ];
     
   return (
     <>
       <Card>
         <CardContent>
-          {/* REPLACED MANUAL INPUT WITH SEARCHFIELD */}
           <div>
               <SearchField 
                 label="Search Terminal"
@@ -141,67 +157,17 @@ export default function UpdateTerminalTab() {
         </CardContent>
       </Card>
 
-      {/* Rest of the component (Table, Dialog) remains unchanged */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Terminal Name</TableHead>
-                  <TableHead>UUID</TableHead>
-                  <TableHead>Terminal Type</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  <TableHead className="text-center">Modified Date</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {/* 1. LOADING STATE */}
-                {isTerminalSearching ? (
-                   Array.from({ length: 5 }).map((_, idx) => (
-                      <TableRow key={idx}>
-                          <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                          <TableCell><Skeleton className="h-6 w-20 rounded-full mx-auto" /></TableCell>
-                          <TableCell><Skeleton className="h-6 w-24 rounded-full mx-auto" /></TableCell>
-                          <TableCell><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
-                      </TableRow>
-                   ))
-                ) : terminals.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                      No terminals found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  terminals.map((terminal) => (
-                    <TableRow key={terminal.id}>
-                      <TableCell className="font-medium">{terminal.terminalName}</TableCell>
-                      <TableCell className="font-mono text-sm text-gray-600">{terminal.uuid}</TableCell>
-                      <TableCell>{terminal.terminalType}</TableCell>
-                      <TableCell className="text-center">
-                        <StatusBadge status={terminal.status} />
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline" className="font-normal text-xs text-gray-600 bg-gray-100 border-gray-200 gap-1.5 py-1 px-2.5 w-[170px] justify-center mx-auto">
-                            <Clock className="w-3.5 h-3.5 opacity-70" />
-                            {formatDate(terminal.modifiedDate)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(terminal)}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+        <CardContent>
+          <DataTable 
+            columns={terminalColumns}
+            data={terminals}
+            keyExtractor={(row) => row.id}
+            isLoading={isTerminalSearching}
+            emptyIcon={SearchX}
+            emptyTitle="No Terminals Found"
+            emptyMessage={terminalSearchTerm ? `No results found for "${terminalSearchTerm}"` : "Enter a search term to find terminals."}
+          />
         </CardContent>
       </Card>
       

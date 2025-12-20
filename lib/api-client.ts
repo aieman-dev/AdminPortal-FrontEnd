@@ -11,12 +11,12 @@ export interface ApiResponse<T = any> {
 class ApiClient {
   private baseUrl: string
 
-  constructor(baseUrl = "/api") {
+  constructor(baseUrl = "/api/proxy") {
     this.baseUrl = baseUrl
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
-    const token = getAuthToken(); // This might be null for now
+    const token = getAuthToken(); 
     const headers = new Headers(options.headers);
 
     // 1. Handle Content-Type (Skip for FormData so browser sets boundary)
@@ -29,13 +29,14 @@ class ApiClient {
       headers.set("Authorization", `Bearer ${token}`);
     }
 
+    const cleanEndpoint = endpoint.startsWith("/") ? endpoint.slice(1) : endpoint;
+
     try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      const response = await fetch(`${this.baseUrl}${cleanEndpoint}`, {
         ...options,
         headers,
       });
 
-      // 3. Safe JSON parsing
       let data;
       try {
         data = await response.json();

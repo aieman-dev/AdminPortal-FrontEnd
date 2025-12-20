@@ -38,12 +38,17 @@ export function StatusBadge({ status, variant, colorMap, className }: StatusBadg
   const colors = colorMap || defaultColorMap
   const statusLower = safeStatus.toLowerCase().trim()
   const colorClass = colors[statusLower] || "bg-gray-100 text-gray-600 border-gray-200"
+  const shouldPulse = ["pending", "processing", "syncing"].includes(statusLower);
 
   return (
     <Badge 
       variant={variant || "outline"} 
       // Added 'w-24' (fixed width) and 'justify-center' (center text)
-      className={cn("border w-24 justify-center whitespace-nowrap", colorClass, className)}
+      className={cn(
+        "border w-24 justify-center whitespace-nowrap", 
+        colorClass, 
+        className,
+        shouldPulse && "animate-pulse")}
     >
       {safeStatus}
     </Badge>

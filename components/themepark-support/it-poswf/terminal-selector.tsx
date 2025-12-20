@@ -27,6 +27,7 @@ interface TerminalSelectorProps {
   label?: string
   placeholder?: string
   disabled?: boolean
+  className?: string
 }
 
 export function TerminalSelector({
@@ -34,7 +35,8 @@ export function TerminalSelector({
   onChange,
   label = "Terminal Search & Select",
   placeholder = "Search terminal name or ID...",
-  disabled = false
+  disabled = false,
+  className
 }: TerminalSelectorProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -86,7 +88,6 @@ export function TerminalSelector({
     || (value ? `Terminal ID: ${value}` : "Select terminal...")
 
   return (
-    // FIX: Changed from 'space-y-2' to 'flex flex-col gap-3' for better vertical spacing
     <div className="flex flex-col gap-3">
       {label && <Label className="mb-0">{label}</Label>}
       
@@ -96,7 +97,7 @@ export function TerminalSelector({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between font-normal"
+            className={cn("w-full justify-between font-normal", className)}
             disabled={disabled}
           >
             <span className="truncate">{displayLabel}</span>

@@ -1,15 +1,12 @@
-// components/themepark-support/tabs/Transaction/ResyncTransactionTab.tsx
 "use client"
 
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Search, CheckCircle2, RefreshCw, AlertCircle } from "lucide-react"
+import { CheckCircle2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { itPoswfService } from "@/services/themepark-support"
+import { SearchField } from "@/components/themepark-support/it-poswf/search-field" // <--- Import Standard Component
 
 export default function ResyncTransactionTab() {
   const { toast } = useToast()
@@ -40,17 +37,15 @@ export default function ResyncTransactionTab() {
             
             setTimeout(() => setShowResyncSuccess(false), 5000);
         } else {
-            // Handle specific "Already Resynced" case
             const errorMsg = response.error || "";
             if (errorMsg.includes("No eligible transaction items found")) {
                 toast({ 
                     title: "Notice", 
                     description: `Transaction ${transactionId} is already synced.`,
-                    variant: "default", // Use default (usually white/black) or implement a 'warning' variant if available
-                    className: "border-l-4 border-yellow-500" // Simple style tweak to indicate warning
+                    variant: "default",
+                    className: "border-l-4 border-yellow-500"
                 });
             } else {
-                // Genuine Error
                 throw new Error(errorMsg || "Resync failed.");
             }
         }
@@ -70,38 +65,19 @@ export default function ResyncTransactionTab() {
     <>
       <Card>
         <CardContent>
-          <div className="space-y-2">
-            <Label htmlFor="transaction-id" className="text-sm font-medium">
-              Transaction ID
-            </Label>
-            <div className="flex gap-2">
-              <Input
-                id="transaction-id"
-                placeholder="Enter transaction ID (e.g. 1378)"
-                value={transactionId}
-                onChange={(e) => setTransactionId(e.target.value)}
-                className="h-11"
-              />
-              <Button onClick={handleExecute} disabled={isExecuting} className="h-11 px-8">
-                {isExecuting ? (
-                    <>
-                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                        Syncing...
-                    </>
-                ) : (
-                    <>
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Resync
-                    </>
-                )}
-              </Button>
-            </div>
-          </div>
+          <SearchField 
+            label="Transaction ID"
+            placeholder="Enter transaction ID (e.g. 1378)"
+            value={transactionId}
+            onChange={setTransactionId}
+            onSearch={handleExecute}
+            isSearching={isExecuting}
+          />
         </CardContent>
       </Card>
 
       {showResyncSuccess && (
-        <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
+        <Alert className="border-green-500 bg-green-50 dark:bg-green-950 mt-6">
           <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
           <AlertDescription className="text-green-600 dark:text-green-400 font-medium">
             {successMessage}

@@ -8,6 +8,7 @@ import { Header } from "@/components/portal/header"
 import { ProtectedRoute } from "@/components/portal/protected-route"
 import { cn } from "@/lib/utils"
 import { Toaster } from "@/components/ui/toaster"
+import { CommandMenu } from "@/components/portal/command-menu"
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -39,6 +40,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         {/* Main content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+            <CommandMenu />
           <main className="flex-1 overflow-y-auto bg-background">
             <div className="container mx-auto p-6">{children}</div>
           </main>

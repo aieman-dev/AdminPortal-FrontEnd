@@ -3,6 +3,7 @@
 import { PageHeader } from "@/components/portal/page-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { XCircle, Wallet, CheckCircle2, ShoppingBag, Settings, Loader2 } from "lucide-react"
+import { useAutoSearch } from "@/hooks/use-auto-search"
 import dynamic from "next/dynamic"
 
 // --- LAZY LOADING COMPONENTS ---

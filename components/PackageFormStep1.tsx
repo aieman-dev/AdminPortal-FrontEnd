@@ -3,15 +3,15 @@ import React, { useEffect, useState, useRef } from "react";
 import { Search, X, ChevronDown, Check, ImageIcon, Loader2, Eye, AlertCircle } from "lucide-react";
 import { PackageFormData } from "../type/packages";
 import { packageService } from "@/services/package-services"
+import { NATIONALITY_OPTIONS } from "@/lib/constants"; 
+import { getProxiedImageUrl, cn } from "@/lib/utils";
 import { getAuthToken } from "@/lib/auth";
 import { BACKEND_API_BASE } from "@/lib/config";
 import { useToast } from "@/hooks/use-toast";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
 import { DatePicker } from "@/components/ui/date-picker";
-// 1. IMPORT SHADCN SELECT
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 
 type Props = {
   form: PackageFormData;
@@ -33,29 +33,6 @@ const convertDateForSubmission = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-const DEFAULT_IMAGE = "/packages/DefaultPackageImage.png";
-const IMAGE_ASSET_API_PATH = "api/Package/image-asset?id=";
-
-function getProxiedImageUrl(url: string | null | undefined): string {
-  if (!url) return DEFAULT_IMAGE;
-  if (url.startsWith("https") || url.startsWith("blob:") || url.startsWith("/packages/")) return url;
-  
-  let targetUrl = url;
-  if (url.startsWith(BACKEND_API_BASE) || url.startsWith("http://")) {
-    targetUrl = url;
-  } else if (url.startsWith("/")) {
-    targetUrl = `${BACKEND_API_BASE}${url}`;
-  } else if (url.length > 0 && !url.includes('/')) {
-    targetUrl = `${BACKEND_API_BASE}/${IMAGE_ASSET_API_PATH}${url}`;
-  } else {
-      return DEFAULT_IMAGE;
-  }
-  
-  if (targetUrl.startsWith(BACKEND_API_BASE) || targetUrl.startsWith("http://")) {
-    return `/api/proxy-image?url=${encodeURIComponent(targetUrl)}`;
-  }
-  return DEFAULT_IMAGE;
-}
 
 const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
   const { toast } = useToast();
@@ -70,34 +47,33 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [showErrors, setShowErrors] = useState(false);
 
+  // Fetch Age Categories using service
   useEffect(() => {
     const fetchCreationData = async () => {
       setLoadingAges(true);
       try {
-        const authToken = getAuthToken();
-        const res = await fetch("/api/proxy-create-package/creationdata", {
-          method: "GET",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authToken}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const categories = data.ageCategories || [];
-          setAgeOptions(categories.map((c: any) => ({ 
-              value: c.displayText, 
-              label: `${c.displayText}${c.description ? ` (${c.description})` : ""}`
-          })));
-        }
-      } catch (err) { console.error("Failed to load age categories", err); } 
-      finally { setLoadingAges(false); }
+        const data = await packageService.getCreationData();
+        const categories = data.ageCategories || [];
+        setAgeOptions(categories.map((c: any) => ({ 
+            value: c.ageCode || c.displayText, // Use ageCode if available, else displayText 
+            label: `${c.displayText}${c.description ? ` (${c.description})` : ""}`
+        })));
+      } catch (err) { 
+        console.error("Failed to load age categories", err); 
+        toast({ title: "Error", description: "Failed to load form data", variant: "destructive" });
+      } finally { 
+        setLoadingAges(false); 
+      }
     };
     fetchCreationData();
-  }, []);
+  }, [toast]);
 
+  // Fetch Images using Service
   useEffect(() => {
     const fetchImages = async () => {
       setLoadingImages(true);
       try {
-        const { images } = await packageService.searchImages(1, 1000);
+        const { images } = await packageService.searchImages(1, 100); // Fetch top 100
         const mappedImages = images.map((img: any) => ({
              id: String(img.imageID), 
              name: img.fileName || "Untitled Image",
@@ -113,8 +89,12 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
     fetchImages();
   }, []);
 
+  //  Handle Image Selection & Preview
   useEffect(() => {
-    if (typeof form.imageID === "string" && form.imageID) {
+    if (form.imageID instanceof File) {
+        setImagePreviewUrl(URL.createObjectURL(form.imageID));
+        setImageSearchQuery(form.imageID.name);
+    } else if (typeof form.imageID === "string" && form.imageID) {
       const selectedImg = imageOptions.find(i => i.id === form.imageID);
       if (selectedImg) {
         setImagePreviewUrl(selectedImg.url);
@@ -124,8 +104,9 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
       }
     } else {
       setImagePreviewUrl(null);
+      setImageSearchQuery("");
     }
-  }, [form.imageID, imageOptions]); 
+  }, [form.imageID, imageOptions]);
 
   // Click Outside for Image Dropdown
   useEffect(() => {
@@ -227,9 +208,9 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
                 <SelectValue placeholder="Select Nationality" />
             </SelectTrigger>
             <SelectContent>
-                <SelectItem value="L">Malaysian</SelectItem>
-                <SelectItem value="F">International</SelectItem>
-                <SelectItem value="All">All</SelectItem>
+                {NATIONALITY_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
             </SelectContent>
           </Select>
           {showErrors && !form.nationality && <p className="text-[10px] text-red-500 flex items-center gap-1"><AlertCircle size={10}/> Required</p>}

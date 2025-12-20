@@ -8,31 +8,20 @@ import { DataTable, type TableColumn } from "@/components/themepark-support/it-p
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { useToast } from "@/hooks/use-toast"
 import { itPoswfService } from "@/services/themepark-support"
-import { 
-    type TerminalTransaction, 
-} from "@/type/themepark-support"
+import { type TerminalTransaction} from "@/type/themepark-support"
+import { formatDateTime } from "@/lib/formatter";
 import { TerminalSelector } from "@/components/themepark-support/it-poswf/terminal-selector"
 import { DatePicker } from "@/components/ui/date-picker"
 
-function formatHistoryDate(dateString: string): string {
-    if (!dateString) return "—";
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-    return date.toLocaleString('en-GB', {
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', second: '2-digit',
-        hour12: false
-    }).replace(',', '');
-}
+
 
 export default function ConsumeHistoryByTerminalTab() {
     const { toast } = useToast();
     
     // -- SIMPLIFIED STATE --
     const [selectedTerminalId, setSelectedTerminalId] = useState<string>("")
-    // Default to today's date
     const [searchDate, setSearchDate] = useState<string>(new Date().toISOString().split('T')[0]);
-    
+    const [hasSearched, setHasSearched] = useState(false)
     const [consumeHistory, setConsumeHistory] = useState<TerminalTransaction[]>([])
     const [isHistorySearching, setIsHistorySearching] = useState(false)
 
@@ -58,6 +47,7 @@ export default function ConsumeHistoryByTerminalTab() {
         }
 
         setIsHistorySearching(true);
+        setHasSearched(true);
         setConsumeHistory([]);
 
         try {
@@ -83,11 +73,11 @@ export default function ConsumeHistoryByTerminalTab() {
     }
 
     const commonColumns: TableColumn<TerminalTransaction>[] = [
-        { header: "Trx ID", accessor: "trxID", cell: (value) => <span className="font-medium">{value}</span> },
+        { header: "Transaction ID", accessor: "trxID", className: "pl-6", cell: (value) => <span className="font-medium">{value}</span> },
         { header: "Invoice No", accessor: "invoiceNo" },
-        { header: "Trx Type", accessor: "trxType", cell: (value) => <StatusBadge status={value} /> },
+        { header: "Transaction Type", accessor: "trxType", cell: (value) => <StatusBadge status={value} /> },
         { header: "Amount", accessor: "amount", cell: (value) => `RM ${(value ?? 0).toFixed(2)}` },
-        { header: "Created Date", accessor: "createdDate", cell: (value) => formatHistoryDate(value) },
+        { header: "Created Date", accessor: "createdDate", cell: (value) => formatDateTime(value) },
         { header: "Status", accessor: "recordStatus", cell: (value) => <StatusBadge status={value} /> },
         { header: "Created By", accessor: "createdBy" },
     ];
@@ -108,6 +98,7 @@ export default function ConsumeHistoryByTerminalTab() {
                                 onChange={setSelectedTerminalId}
                                 label="Terminal Search / ID"
                                 placeholder="Enter ID (e.g. 383) or Name"
+                                className="h-11"
                             />
                         </div>
 
@@ -119,7 +110,7 @@ export default function ConsumeHistoryByTerminalTab() {
                             <DatePicker
                                 date={searchDate ? new Date(searchDate) : undefined}
                                 setDate={handleDateSelect}
-                                className="h-9"
+                                className="h-11"
                             />
                         </div>
 
@@ -127,7 +118,7 @@ export default function ConsumeHistoryByTerminalTab() {
                         <div className="w-full lg:w-auto space-y-2">
                             <Button onClick={handleHistorySearch} 
                                     disabled={!selectedTerminalId || isHistorySearching} 
-                                    className="h-9 px-8 w-full lg:w-auto">
+                                    className="h-11 px-8 w-full lg:w-auto">
                                 <Search className="mr-2 h-4 w-4" />
                                 {isHistorySearching ? "Searching..." : "Search"}
                             </Button>
@@ -136,20 +127,22 @@ export default function ConsumeHistoryByTerminalTab() {
                 </CardContent>
             </Card>
 
-            <Card>
-                <CardContent className="space-y-4 pt-6">
-                    <div className="flex items-center gap-2 text-lg font-semibold">
-                        <History className="h-5 w-5 text-muted-foreground" />
-                        Consume History ({consumeHistory.length})
-                    </div>
-                    <DataTable
-                        columns={commonColumns}
-                        data={consumeHistory}
-                        keyExtractor={(row) => row.id}
-                        emptyMessage={isHistorySearching ? "Loading Consume History..." : "No consumption records found for this terminal."}
-                    />
-                </CardContent>
-            </Card>
+            {hasSearched && (
+                <Card className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <CardContent className="space-y-4 ">
+                        <div className="flex items-center gap-2 text-lg font-semibold">
+                            <History className="h-5 w-5 text-muted-foreground" />
+                            Consume History ({consumeHistory.length})
+                        </div>
+                        <DataTable
+                            columns={commonColumns}
+                            data={consumeHistory}
+                            keyExtractor={(row) => row.id}
+                            emptyMessage={isHistorySearching ? "Loading Consume History..." : "No consumption records found for this terminal."}
+                        />
+                    </CardContent>
+                </Card>
+            )}
         </div>
     )
 }

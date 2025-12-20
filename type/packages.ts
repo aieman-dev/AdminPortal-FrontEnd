@@ -1,56 +1,53 @@
-/**
- * ----------------------------------------------
- * 📦 Package Types
- * ----------------------------------------------
- * Defines all TypeScript interfaces used for the
- * Package feature in the i-City SuperApp system.
- */
+// type/packages.ts
 
-/* -----------------------------------------------------------
-    MAIN PACKAGE INTERFACE
-   Used when displaying package details or list of packages.
-   ----------------------------------------------------------- */
-//type/packages.ts
+// --- FRONTEND INTERFACES (Clean, camelCase, used by Components) ---
+
 export interface Package {
   id: number;
-  name?: string;
-  price?: number;
-  imageUrl?: string;
-  validDays?: number;
-  submittedBy?: string;
-  remark?: string;       // TP Remark
-  remark2?: string;      // Finance Remark
-  items?: PackageItem[];
-  totalEntryQty?: number;
-  point?: number;
-  packageType?: string;  // Note: lowercase 'p' in JSON
+  name: string;
+  price: number;
+  point: number;
+  packageType: string;
   
-  // Legacy Fields (Maintained for backward compatibility/Forms)
-  PackageName?: string;
-  PackageType?: string;          
-  totalPrice?:  number;          
-  ageCategory?: string;
+  // Status & Metadata
+  status: string;
+  imageUrl: string;
+  nationality: string;
+  ageCategory: string;
   ageDescription?: string;
-  nationality?: string;       
-  effectiveDate?: string;      
-  lastValidDate?: string;        
-  durationDays?: number;   
-  status?: string;    
-  createdBy?: string;      
-  createdDate?: string;    
-  reviewedBy?: string;    
-  reviewedDate?: string;  
-  tpremark?: string;      
-  financeremark?: string; 
-  packageitems?: PackageItem[];
-  imageID?: string;
   dayPass?: string;
+  durationDays: number;
+  
+  // Dates
+  effectiveDate: string;
+  lastValidDate: string;
+  createdDate: string;
+  reviewedDate?: string;
+  
+  // People
+  submittedBy: string;
+  reviewedBy?: string;
+  
+  // Remarks
+  remark: string;       // Submitter/TP Remark
+  remark2?: string;     // Finance/Approver Remark
+  
+  // Items
+  items: PackageItem[];
 }
 
-/* -----------------------------------------------------------
-    PACKAGE FORM DATA
-   Used when submitting or editing a package form (Page 1).
-   ----------------------------------------------------------- */
+export interface PackageItem {
+  attractionId?: number; 
+  itemName: string;       
+  price: number;         
+  point: number;
+  entryQty: number;
+  nationality?: string;
+  category?: string;
+  itemType?: string;     
+  image?: string;          
+}
+
 export interface PackageFormData {
   packageName: string;            
   packageType: string;     
@@ -62,7 +59,7 @@ export interface PackageFormData {
   tpremark?: string;       
   imageID: File | string | null; 
   imageUrl?: string;
-  packageitems: PackageItem[];    // Page 2 — user-selected items
+  packageitems: PackageItem[];
   totalPrice?: number;
 }
 
@@ -72,53 +69,118 @@ export interface ImageItem {
     imgUrl: string;
 }
 
-/* -----------------------------------------------------------
-    PACKAGE ITEM
-   Represents a user-selected attraction inside a package.
-   ----------------------------------------------------------- */
-export interface PackageItem {
-  // Common Fields
-  itemName: string;       
-  price?: number;         
-  entryQty?: number;       
-
-  // New API Fields
-  point?: number;
-  nationality?: string;
-  category?: string;
-
-  // Legacy Fields
-  attractionId?: number;   
-  itemType?: string;     
-  image?: string;          
-}
-
-/* -----------------------------------------------------------
-    AGE CATEGORY
-   Used for dropdown filters or input forms.
-   ----------------------------------------------------------- */
 export interface AgeCategory {
   ageCode: string;        
-  categoryName: string;   
   displayText: string;    
+  description?: string;
 }
 
-/* -----------------------------------------------------------
-    AVAILABLE ATTRACTIONS
-   Represents attractions displayed for selection (Page 2).
-   ----------------------------------------------------------- */
-export interface Attraction {
-  id: number;             
-  name: string;           
-  image: string;          
-  description?: string;   
-}
-
-/* -----------------------------------------------------------
-    PACKAGE DUPLICATE RESPONSE (NEW)
-   Expected structure from POST /api/package/duplicate
-   ----------------------------------------------------------- */
 export interface PackageDuplicateResponse {
   message: string;
   newPackageId: number;
+}
+
+// --- BACKEND DTOs (Raw JSON from API) ---
+
+export interface BackendPackageDTO {
+    id: number;
+    packageID?: number; // Sometimes backend sends this
+    
+    // Core Info
+    name?: string;           
+    PackageName?: string;    // Legacy/Alternate
+    packageName?: string;    // Legacy/Alternate
+    
+    packageType?: string;
+    PackageType?: string;
+    
+    price?: number;
+    totalPrice?: number;
+    point?: number;
+    
+    // Metadata
+    category?: string;       // Age Code
+    ageCategory?: string;
+    nationality?: string;
+    
+    // Images
+    imageUrl?: string; 
+    imageID?: string;
+    
+    // Status & Dates
+    status?: string;
+    recordStatus?: string;
+    createdDate?: string;
+    dateCreated?: string;
+    effectiveDate?: string;
+    lastValidDate?: string;
+    validDays?: number;
+    durationDays?: number;
+    dayPass?: string;
+    
+    // Remarks & People
+    remark?: string;         // TP Remark
+    tpremark?: string;
+    remark2?: string;        // Finance Remark
+    financeremark?: string;
+    
+    submittedBy?: string;
+    createdBy?: string;
+    createdUserEmail?: string;
+    approvedBy?: string;
+    reviewedDate?: string;
+    
+    // Items
+    items?: BackendPackageItemDTO[];
+    packageitems?: BackendPackageItemDTO[];
+}
+
+export interface BackendPackageItemDTO {
+    attractionId?: number;
+    itemName?: string;
+    price?: number;
+    point?: number;
+    entryQty?: number;
+    itemType?: string;
+    nationality?: string;
+    category?: string;
+}
+
+// --- PAYLOADS (For Sending Data) ---
+
+export interface CreatePackagePayload {
+    name: string;
+    packageType: string;
+    price: number;
+    point: number;
+    nationality: string | null;
+    ageCategory: string;
+    dayPass: string | undefined;
+    effectiveDate: string | null;
+    lastValidDate: string | null;
+    remark: string;
+    imageID: string;
+    items: {
+        attractionId: number | undefined;
+        itemName: string;
+        itemType: string;
+        entryQty: number;
+        value: number;
+    }[];
+}
+
+export interface PackageFilterPayload {
+    Status: string;
+    SearchQuery: string | null;
+    PageNumber: number;
+    PageSize: number;
+    StartDate: string | null;
+    EndDate: string | null;
+    PackageType: string | null;
+}
+
+export interface UpdateStatusPayload {
+    Id: number;
+    Status: string;
+    Remark2?: string;
 }

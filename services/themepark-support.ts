@@ -1,10 +1,11 @@
-// services/it-poswf-service.ts
+// services/themepark-support.ts
 
 import { 
     apiClient, 
     ApiResponse 
 } from "@/lib/api-client";
 import { 
+    // Domain Models
     Account,
     TransactionHistory, 
     ShopifyOrder,
@@ -14,117 +15,123 @@ import {
     Terminal,
     TerminalTransaction,
     TerminalPurchaseHistory,
-    TerminalHistoryData,
     TerminalConsumeHistory,
-    TerminalSearchPayload,
+    TerminalHistoryData,
     PasswordData,
-    RetailManualConsumeSearchPayload,
     RetailManualConsumeData,
-    ManualConsumeSearchPayload, 
-    ConsumeExecutePayload, 
-    ConsumeTicketItem,
-    TicketConsumeExecutePayload,
     ManualConsumeData,
-    ConsumeExecuteItem, 
     BalanceDetail,
     DeactivatableTicket,
     ConsumptionHistory,
+    AvailableTicket,
+
+    // Payloads
+    TerminalSearchPayload,
+    RetailManualConsumeSearchPayload,
+    ManualConsumeSearchPayload, 
+    ConsumeExecutePayload, 
+    TicketConsumeExecutePayload,
     TicketDeactivatePayload,
-    ConsumptionDeactivatePayload
+    ConsumptionDeactivatePayload,
+    
+    // DTOs & Payloads (Imported from Type file)
+    BackendAccountDTO,
+    BackendTerminalDTO,
+    HistorySearchData,
+    VoidRequestPayload,
+    TicketUpdatePayload,
+    ConsumeTicketItem
 } from "../type/themepark-support"; 
 
 const ENDPOINTS = {
-    //Transaction Master
-    VOID_SEARCH: "/proxy-void/search",
-    VOID_EXECUTE: "/proxy-void/execute",
-    RESYNC_TRANSACTION: "/proxy-resync-transaction",
-    SEARCH_SHOPIFY_ORDER: "/proxy-search-shopify-order",
-    TRANSACTION_BY_TERMINAL: "/proxy-consume-history-by-terminal",
-    MANUAL_CONSUME_RETAIL_SEARCH: "/proxy-manual-consume/retail/search",
-    MANUAL_CONSUME_RETAIL_EXECUTE: "/proxy-manual-consume/retail/execute",
+    // Transaction Master
+    VOID_SEARCH: "support/void/find",
+    VOID_EXECUTE: "support/void/execute",
+    RESYNC_TRANSACTION: "support/consume/transactions/resync-legacy-ticket",
+    SEARCH_SHOPIFY_ORDER: "support/vouchers/shopify-search",
+    TRANSACTION_BY_TERMINAL: "support/transaction/by-terminal",
+    MANUAL_CONSUME_RETAIL_SEARCH: "support/retail/search",
+    MANUAL_CONSUME_RETAIL_EXECUTE: "support/retail/consume",
     
-    //Attraction Master
-    TERMINAL_SEARCH: "/proxy-terminal/search", 
-    TERMINAL_UPDATE: "/proxy-terminal/update",
+    // Attraction Master
+    TERMINAL_SEARCH: "support/consume/terminals", 
+    TERMINAL_UPDATE: "support/consume/terminals/update-uuid",
 
-    //Ticket Master
-    DEACTIVATE_TICKET_SEARCH: "/proxy-deactivate/ticket/search",
-    DEACTIVATE_TICKET_EXECUTE: "/proxy-deactivate/ticket/execute",
-    DEACTIVATE_CONSUMPTION_SEARCH: "/proxy-deactivate/consumption-ticket/search",
-    DEACTIVATE_CONSUMPTION_EXECUTE: "/proxy-deactivate/consumption-ticket/execute",
-    EXTEND_EXPIRY: "/proxy-extend-expiry/update",
-    EXTEND_EXPIRY_SEARCH: "/proxy-extend-expiry/search",
-    QR_PASSWORD_SEARCH: "/proxy-qr-password/search", 
-    QR_PASSWORD_RESET: "/proxy-qr-password/reset",
-    MANUAL_CONSUME_TICKET_SEARCH: "/proxy-manual-consume/ticket/search", 
-    MANUAL_CONSUME_TICKET_EXECUTE: "/proxy-manual-consume/ticket/execute", 
+    // Ticket Master
+    DEACTIVATE_TICKET_SEARCH: "support/tickets/search",
+    DEACTIVATE_TICKET_EXECUTE: "support/tickets/deactivate",
+    DEACTIVATE_CONSUMPTION_SEARCH: "support/tickets/consumption/search",
+    DEACTIVATE_CONSUMPTION_EXECUTE: "support/tickets/consumption/deactivate",
+    EXTEND_EXPIRY: "support/ticketdate/update",
+    EXTEND_EXPIRY_SEARCH: "support/ticketdate/find",
+    QR_PASSWORD_SEARCH: "support/securitynumber/get", 
+    QR_PASSWORD_RESET: "support/securitynumber/reset",
+    MANUAL_CONSUME_TICKET_SEARCH: "support/consume/search", 
+    MANUAL_CONSUME_TICKET_EXECUTE: "support/consume/confirm", 
     
-    //Account Master
-    SEARCH_ACCOUNTS: "/proxy-account/search",
-    GET_ACCOUNT_DETAILS: "/proxy-account/details",
-    UPDATE_ACCOUNT_STATUS: "/proxy-account/update-status",
-    RESET_ACCOUNT_PASSWORD: "/proxy-account/reset-password",
-    EXCHANGE_TRANSACTIONS: "/proxy-account/exchange-transactions",
-    UPDATE_ACCOUNT_EMAIL: "/proxy-account/update-email",
-    ACTIVATE_BALANCE: "/proxy-account/activate-balance",
-    BALANCE_DETAILS: "/proxy-account/balance-details",
-    SEARCH_HISTORY: "/proxy-search-history",
+    // Account Master
+    SEARCH_ACCOUNTS: "support/account/search",
+    GET_ACCOUNT_DETAILS: "support/account/details",
+    UPDATE_ACCOUNT_STATUS: "support/account/update-status",
+    RESET_ACCOUNT_PASSWORD: "support/account/reset-password",
+    EXCHANGE_TRANSACTIONS: "support/account/exchange-transactions",
+    UPDATE_ACCOUNT_EMAIL: "support/account/update-email",
+    ACTIVATE_BALANCE: "it/activatebalance/activate",
+    BALANCE_DETAILS: "support/activatebalance/details",
+    SEARCH_HISTORY: "support/history/search",
 };
 
-// Interface for the data returned *directly* at the root of a 200 OK response
-interface HistorySearchData {
-    transactionHistory: TransactionHistory[]; 
-    ticketHistory: TicketHistory[];       
-}
+// --- HELPERS ---
 
-// Interface for the exact Void Request Payload
-interface VoidRequestPayload {
-    TrxID: number;
-    InvoiceNo: string;
-    BalanceQty: number;
-    trxType: "Purchase" | "Refund" | "Exchange";
-    itemType: "Ticket" | "Credit" | "Reward";
-    Action: "Void";
-}
-
-interface ExtendTrxFindResponse {
-    trxID: number;
-    invoiceNo: string;
-    trxType: string;
-    amount: number;
-    createdDate: string;
-    recordStatus: string;
-}
-
-// Interface for the exact API Payload for a single ticket update
-interface TicketUpdateItem {
-    ticketNo: string;
-    ticketName: string;
-    effectiveDate: string;
-    expiryDate: string;
-    lastValidDate: string;
-}
-
-interface TicketUpdatePayload {
-    TrxNo: string; // The search term (Invoice No. / Transaction No)
-    ticketsToUpdate: TicketUpdateItem[];
-}
-
-const mapToDeactivatableTicket = (raw: any): DeactivatableTicket => {
-    return {
-        id: String(raw.ticketID), 
-        ticketID: raw.ticketID,
-        ticketNo: raw.ticketNo,
-        ticketName: raw.ticketName,
-        quantity: raw.ticketQty,
-        purchaseDate: raw.purchaseDate,
-        status: raw.usageStatus,
-        invoiceNo: raw.invoiceNo,
-    };
+const parseAmount = (val: string | number): number => {
+    if (typeof val === 'number') return val;
+    if (!val) return 0;
+    const clean = val.toString().replace(/[^0-9.-]+/g, "");
+    return parseFloat(clean) || 0;
 };
 
+// --- MAPPERS (Backend DTO -> Frontend Model) ---
 
-// Helper to map consumption search result
+const mapToTransactionHistory = (raw: any): TransactionHistory => ({
+    trxID: raw.trxID,
+    transactionId: raw.transactionId,
+    invoiceNo: raw.invoiceNo,
+    email: raw.email,
+    mobile: raw.mobile,
+    attractionName: raw.attractionName,
+    amount: parseAmount(raw.amount),
+    trxType: raw.trxType,
+    createdDate: raw.createdDate
+});
+
+// Map PascalCase Backend to camelCase Frontend
+const mapToAvailableTicket = (raw: any): AvailableTicket => ({
+    id: String(raw.TicketItemID), 
+    packageName: raw.PackageName, 
+    itemName: raw.ItemName, 
+    consumeTerminal: raw.ConsumeTerminal, 
+    ticketType: raw.TicketType, 
+    itemPoint: raw.ItemPoint, 
+    packageStatus: raw.PackageStatus, 
+    balanceQty: raw.BalanceQty,
+    packageID: raw.PackageID,
+    packageItemID: raw.PackageItemID,
+    trxItemID: raw.TrxItemID,
+    sourceType: raw.SourceType,
+    ticketItemID: raw.TicketItemID,
+});
+
+const mapToDeactivatableTicket = (raw: any): DeactivatableTicket => ({
+    id: String(raw.ticketID), 
+    ticketID: raw.ticketID,
+    ticketNo: raw.ticketNo,
+    ticketName: raw.ticketName,
+    quantity: raw.ticketQty,
+    purchaseDate: raw.purchaseDate,
+    status: raw.usageStatus,
+    invoiceNo: raw.invoiceNo,
+});
+
 const mapToConsumptionHistory = (raw: any): ConsumptionHistory => ({
     id: raw.ticketConsumptionNo, 
     consumptionNo: raw.ticketConsumptionNo,
@@ -139,455 +146,333 @@ const mapToConsumptionHistory = (raw: any): ConsumptionHistory => ({
     status: raw.consumptionRecordStatus,
 });
 
+const mapToAccount = (raw: BackendAccountDTO): Account => ({
+    id: String(raw.accID),
+    accId: String(raw.accID),
+    email: raw.email || "N/A",
+    firstName: raw.firstName || "N/A",
+    mobile: raw.mobileNo || "N/A",
+    createdDate: raw.createdDate || "N/A",
+    accountStatus: (raw.recordStatus as "Active" | "Inactive" | "Suspended") || "N/A",
+    transactions: raw.transactionHistory || [],
+});
+
+const mapToTerminal = (raw: BackendTerminalDTO): Terminal => ({
+    id: String(raw.terminalID),
+    terminalName: raw.terminal || "N/A",
+    uuid: raw.uuid || "",
+    terminalType: raw.terminalType || "POS",
+    status: raw.status || "Active",
+    modifiedDate: raw.modifiedDate || "N/A"
+});
+
+// --- SERVICE IMPLEMENTATION ---
 
 export const itPoswfService = {
+    
     searchHistory: async (searchType: string, searchTerm: string): Promise<ApiResponse<HistorySearchData>> => {
+        const payload = { searchType, value: searchTerm };
+        const response = await apiClient.post<any>(ENDPOINTS.SEARCH_HISTORY, payload);
         
-        const payload = {
-            searchType: searchType,
-            value: searchTerm, 
-        };
-        
-        const response = await apiClient.post<HistorySearchData>(ENDPOINTS.SEARCH_HISTORY, payload);
-        
-        // FIX: Intercept the API failure case
         if (!response.success) {
-            const noResultsMessage = "No account or transaction found for the given value.";
-            
-            // If the failure message matches the "no results" string, convert it to a success.
+            const noResultsMessage = "No account or transaction found";
             if (response.error && response.error.includes(noResultsMessage)) {
-                // Convert the API failure into a success state with empty data arrays.
-                return {
-                    success: true,
-                    data: {
-                        transactionHistory: [],
-                        ticketHistory: [],
-                    }
-                };
+                return { success: true, data: { transactionHistory: [], ticketHistory: [] } };
             }
-            
-            // If it's a real server error (401, 500, etc.), return the failure.
-            return {
-                success: false,
-                error: response.error || "Network or HTTP failure detected."
-            };
+            return { success: false, error: response.error || "Network error detected." };
         }
         
-        // If response.success is true, we proceed as normal.
         if (!response.data) {
-            return {
-                success: true, 
-                error: "No data records found in backend response."
-            };
+            return { success: true, data: { transactionHistory: [], ticketHistory: [] } };
         }
 
-        return {
-            success: true,
-            data: response.data, 
+        const rawTrx = response.data.transactionHistory || [];
+        const rawTickets = response.data.ticketHistory || [];
+
+        return { 
+            success: true, 
+            data: {
+                transactionHistory: rawTrx.map(mapToTransactionHistory),
+                ticketHistory: rawTickets 
+            } 
         };
     },
 
-    // ADDED NEW SERVICE FUNCTION
     searchShopifyOrder: async (orderName: string): Promise<ApiResponse<ShopifyOrder>> => {
-        const formattedOrderName = orderName.trim().startsWith("#") 
-            ? orderName.trim() 
-            : `#${orderName.trim()}`;
-
-        const payload = {
-            orderName: formattedOrderName,
-        };
+        const formattedOrderName = orderName.trim().startsWith("#") ? orderName.trim() : `#${orderName.trim()}`;
+        const payload = { orderId: formattedOrderName }; 
 
         const response = await apiClient.post<ShopifyOrder>(ENDPOINTS.SEARCH_SHOPIFY_ORDER, payload);
 
         if (!response.success) {
-            // Handle explicit "Not Found" case, which should translate to an empty result
-            const notFoundMessage = "No transaction found for the given order ID";
+            const notFoundMessage = "No transaction found";
             if (response.error && response.error.includes(notFoundMessage)) {
-                // Return success with undefined data for a "no results" found scenario
                 return { success: true, data: undefined, message: notFoundMessage };
             }
-            
-            // General error
-            return {
-                success: false,
-                error: response.error || "Failed to search Shopify order."
-            };
+            return { success: false, error: response.error || "Failed to search Shopify order." };
         }
-        
-        // Successful API call (data may be present or undefined if backend returns 200 OK with no body)
-        return response;
-    },
-
-    // ADDED VOID EXECUTE FUNCTION
-    executeVoidTransaction: async (payload: VoidRequestPayload): Promise<ApiResponse<{ messaged: string }>> => {
-        const response = await apiClient.post<{ messaged: string }>(ENDPOINTS.VOID_EXECUTE, payload);
-
-        if (!response.success) {
-            // General error handling from the proxy
-            return {
-                success: false,
-                error: response.error || "Failed to execute void transaction."
-            };
-        }
-        
         return response;
     },
 
     searchVoidTransactions: async (invoiceNo: string): Promise<ApiResponse<VoidTransaction[]>> => {
-        // Payload required by backend: {"InvoiceNo": "..."}
-        const payload = {
-            InvoiceNo: invoiceNo,
-        };
+        const payload = { InvoiceNo: invoiceNo };
+        const response = await apiClient.post<any>(ENDPOINTS.VOID_SEARCH, payload);
 
-        // Note: The proxy will convert the single returned object/null into an array,
-        // so we expect VoidTransaction[] here.
-        const response = await apiClient.post<VoidTransaction[]>(ENDPOINTS.VOID_SEARCH, payload);
+        if (!response.success) return { success: false, error: response.error || "Failed to search voidable transactions." };
 
-        if (!response.success) {
-            return {
-                success: false,
-                error: response.error || "Failed to search voidable transactions."
-            };
+        let result: any[] = [];
+        const data = response.data;
+        if (Array.isArray(data)) {
+            result = (data.length > 0 && Array.isArray(data[0])) ? data.flat() : data;
+        } else if (data && typeof data === 'object') {
+            result = [data];
         }
+
+        const mappedData: VoidTransaction[] = result.map((item, index) => ({
+            ...item,
+            id: `${item.trxID}-${index}`,
+            balanceQty: item.balanceQty,
+            amount: item.amount,
+            trxType: item.trxType,
+            itemType: item.itemType,
+            terminal: item.terminalID || item.terminal,
+            recordStatus: item.recordStatus
+        }));
         
+        return { success: true, data: mappedData };
+    },
+
+    executeVoidTransaction: async (payload: VoidRequestPayload): Promise<ApiResponse<{ messaged: string }>> => {
+        const response = await apiClient.post<{ messaged: string }>(ENDPOINTS.VOID_EXECUTE, payload);
+        if (!response.success) return { success: false, error: response.error || "Failed to execute void transaction." };
         return response;
     },
 
-    // 5Resync Transaction
     resyncTransaction: async (trxId: string): Promise<ApiResponse<{ message: string }>> => {
-        const payload = { trxId };
-        const response = await apiClient.post<{ message: string }>(ENDPOINTS.RESYNC_TRANSACTION, payload);
-
-        if (!response.success) {
-            return { success: false, error: response.error || "Failed to resync transaction." };
-        }
+        const endpoint = `${ENDPOINTS.RESYNC_TRANSACTION}?TrxId=${trxId}`;
+        const response = await apiClient.get<{ message: string }>(endpoint);
+        if (!response.success) return { success: false, error: response.error || "Failed to resync transaction." };
         return response;
     },
 
-    // Search Transaction History by Terminal ID
     searchTerminalHistory: async (terminalId: string, searchDate?: string | Date): Promise<ApiResponse<TerminalHistoryData>> => {
         const dateObj = searchDate ? new Date(searchDate) : new Date();
-        
-        // Format: YYYY-MM-DDTHH:mm:ss (e.g. 2025-12-08T00:00:00)
         const year = dateObj.getFullYear();
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
         const day = String(dateObj.getDate()).padStart(2, '0');
         const formattedDate = `${year}-${month}-${day}T00:00:00`;
 
-        const payload = {
-            terminalID: terminalId,
-            searchDate: formattedDate,
-        };
-
-        // Call the new proxy
+        const payload = { terminalID: terminalId, searchDate: formattedDate };
         const response = await apiClient.post<TerminalTransaction[]>(ENDPOINTS.TRANSACTION_BY_TERMINAL, payload);
 
-        if (!response.success || !response.data) {
-            return {
-                success: false,
-                error: response.error || "Failed to search terminal history."
-            };
-        }
+        if (!response.success || !response.data) return { success: false, error: response.error || "Failed to search terminal history." };
 
-        // --- Client-side splitting and mapping ---
-        const purchaseHistory: TerminalTransaction[] = [];
-        const consumeHistory: TerminalTransaction[] = [];
+        const purchaseHistory: TerminalPurchaseHistory[] = [];
+        const consumeHistory: TerminalConsumeHistory[] = [];
 
         response.data.forEach(trx => {
-            // Apply unique ID and filter by trxType
-            const mappedTrx = {
-                ...trx,
-                id: String(trx.trxID), // Use trxID as the unique ID for React key
-            }
-            
+            const mappedTrx = { ...trx, id: String(trx.trxID) };
             if (mappedTrx.trxType.toLowerCase() === 'purchase') {
-                // Cast to TerminalPurchaseHistory which is TerminalTransaction & some optional fields
                 purchaseHistory.push(mappedTrx as TerminalPurchaseHistory);
             } else if (mappedTrx.trxType.toLowerCase() === 'consume') {
-                // Cast to TerminalConsumeHistory which is TerminalTransaction & some optional fields
                 consumeHistory.push(mappedTrx as TerminalConsumeHistory);
             }
         });
         
-        return {
-            success: true,
-            data: {
-                purchaseHistory: purchaseHistory,
-                consumeHistory: consumeHistory,
-            },
-        };
+        return { success: true, data: { purchaseHistory, consumeHistory } };
     },
 
-    // NEW: Search Manual Consume Data (RETAIL) ---
     searchManualConsumeRetail: async (payload: RetailManualConsumeSearchPayload): Promise<ApiResponse<RetailManualConsumeData>> => {
-        const response = await apiClient.post<RetailManualConsumeData>(ENDPOINTS.MANUAL_CONSUME_RETAIL_SEARCH, payload);
+        const response = await apiClient.post<any>(ENDPOINTS.MANUAL_CONSUME_RETAIL_SEARCH, payload);
+        if (!response.success) return { success: false, error: response.error || "Failed to search manual retail consume data." };
 
-        if (!response.success) {
-            return {
-                success: false,
-                error: response.error || "Failed to search manual retail consume data."
-            };
-        }
-        return response;
+        const data = response.data;
+        const finalData: RetailManualConsumeData = {
+            accID: data.accID, 
+            rQrId: data.rQrId, 
+            creditBalance: data.creditBalance || 0,
+            items: (data.items || []).map((item: any) => ({
+                id: String(item.itemID), 
+                ...item,
+            })),
+            totalAmount: 0, 
+            totalRewardCredit: 0,
+        };
+        return { success: true, data: finalData };
     },
 
-    // Execute Manual Consume (RETAIL) ---
     executeManualConsumeRetail: async (payload: ConsumeExecutePayload): Promise<ApiResponse<{ invoiceNo: string }>> => {
         const response = await apiClient.post<{ invoiceNo: string }>(ENDPOINTS.MANUAL_CONSUME_RETAIL_EXECUTE, payload);
+        if (!response.success) return { success: false, error: response.error || "Failed to execute manual retail consume." };
+        return { success: true, data: response.data }; 
+    },
+
+    searchManualConsume: async (payload: ManualConsumeSearchPayload): Promise<ApiResponse<ManualConsumeData>> => {
+        const response = await apiClient.post<any>(ENDPOINTS.MANUAL_CONSUME_TICKET_SEARCH, payload);
 
         if (!response.success) {
-            return {
-                success: false,
-                error: response.error || "Failed to execute manual retail consume."
-            };
+            if (response.error && response.error.includes("No data found")) {
+                return {
+                    success: true,
+                    data: {
+                        creditBalance: 0,
+                        tickets: [],
+                        accID: undefined,
+                        rQRID: undefined,
+                        myQr: undefined,
+                        totalAmount: 0,
+                        totalRewardCredit: 0,
+                    }
+                };
+            }
+            return { success: false, error: response.error || "Failed to search manual consume data." };
+        }
+
+        const data = response.data;
+        const finalData: ManualConsumeData = {
+            creditBalance: data.creditBalance || 0,
+            tickets: (data.tickets || []).map(mapToAvailableTicket),
+            accID: data.accID, 
+            rQRID: data.rrQrId, 
+            myQr: data.myQr, 
+            totalAmount: 0, 
+            totalRewardCredit: 0,
+        };
+        return { success: true, data: finalData };
+    },
+
+    //Map Frontend camelCase payload BACK to PascalCase for backend
+    executeManualConsume: async (payload: TicketConsumeExecutePayload): Promise<ApiResponse<{ message: string }>> => {
+        const backendPayload = {
+            ...payload,
+            consumeList: payload.consumeList.map(item => ({
+                PackageName: item.packageName,
+                ItemName: item.itemName,
+                TicketType: item.ticketType,
+                PackageID: item.packageID,
+                PackageItemID: item.packageItemID,
+                TicketItemID: item.ticketItemID,
+                ConsumeQty: item.consumeQty
+            }))
+        };
+
+        const response = await apiClient.post<{ message: string }>(ENDPOINTS.MANUAL_CONSUME_TICKET_EXECUTE, backendPayload);
+
+        if (!response.success) {
+            const isConflict = response.error && (response.error.includes("already consumed") || response.error.includes("invalid status"));
+            if (isConflict) return { success: false, error: "Ticket/Package is already consumed or has an invalid status." };
+            return { success: false, error: response.error || "Failed to execute manual ticket consume." };
         }
         return { success: true, data: response.data }; 
     },
 
-    // ADDED TICKET EXPIRY FIND FUNCTION
     findExtendableTickets: async (searchQuery: string): Promise<ApiResponse<ExtendTicketData[]>> => {
-        const payload = {
-            TrxNo: searchQuery,
-        };
+        const payload = { invoiceNo: searchQuery };
+        const response = await apiClient.post<any>(ENDPOINTS.EXTEND_EXPIRY_SEARCH, payload);
+        if (!response.success) return { success: false, error: response.error || "Failed to find extendable tickets." };
 
-        // Assuming the backend returns an array of the transaction objects shown
-        const response = await apiClient.post<ExtendTicketData[]>(ENDPOINTS.EXTEND_EXPIRY_SEARCH, payload);
+        let result = [];
+        if (Array.isArray(response.data)) result = response.data;
+        else if (response.data) result = [response.data];
 
-        if (!response.success) {
-            return {
-                success: false,
-                error: response.error || "Failed to find extendable tickets."
-            };
-        }
-        
-        return response;
+        return { success: true, data: result };
     },
 
-    // TICKET EXPIRY UPDATE FUNCTION
     updateTicketExpiry: async (payload: TicketUpdatePayload): Promise<ApiResponse<{ message: string; ticketsToUpdate: number }>> => {
         const response = await apiClient.post<{ message: string; ticketsToUpdate: number }>(ENDPOINTS.EXTEND_EXPIRY, payload);
-
-        if (!response.success) {
-            return {
-                success: false,
-                error: response.error || "Failed to update ticket expiry dates."
-            };
-        }
-        
+        if (!response.success) return { success: false, error: response.error || "Failed to update ticket expiry dates." };
         return response;
     },
 
-    // --- UPDATED: Search Terminals (Replaces mock logic) ---
     searchTerminals: async (searchTerm: string): Promise<ApiResponse<Terminal[]>> => {
-        const payload: TerminalSearchPayload = {
-            SearchQuery: searchTerm.trim() || null,
-        };
+        const payload: TerminalSearchPayload = { SearchQuery: searchTerm.trim() || null };
+        const response = await apiClient.post<any>(ENDPOINTS.TERMINAL_SEARCH, payload);
+        if (!response.success) return { success: false, error: response.error || "Failed to search terminals." };
 
-        // NOTE: This assumes the proxy file at /api/it-poswf/terminal/search handles the request.
-        const response = await apiClient.post<Terminal[]>(ENDPOINTS.TERMINAL_SEARCH, payload);
+        const rawData = Array.isArray(response.data) ? response.data : [];
+        const terminals: Terminal[] = rawData.map(mapToTerminal);
+        return { success: true, data: terminals };
+    },
 
-        if (!response.success) {
-            return {
-                success: false,
-                error: response.error || "Failed to search terminals."
-            };
-        }
-        return response;
+    fetchAllTerminals: async (): Promise<ApiResponse<Terminal[]>> => {
+        const payload: TerminalSearchPayload = { SearchQuery: "" };
+        const response = await apiClient.post<any>(ENDPOINTS.TERMINAL_SEARCH, payload);
+        if (!response.success) return { success: false, error: "Failed to fetch terminal list." };
+
+        const terminals: Terminal[] = (Array.isArray(response.data) ? response.data : []).map(mapToTerminal);
+        return { success: true, data: terminals };
     },
 
     updateTerminalUUID: async (terminalId: string, newUUID: string): Promise<ApiResponse<{ message: string }>> => {
-        // Payload based on image_0d3d1b.jpg
-        const payload = { 
-            TerminalID: Number(terminalId), // Ensure ID is sent as a number
-            NewUUID: newUUID.trim() 
-        };
-        
+        const payload = { TerminalID: Number(terminalId), NewUUID: newUUID.trim() };
         const response = await apiClient.post<{ message: string }>(ENDPOINTS.TERMINAL_UPDATE, payload);
-
-        if (!response.success) {
-            return { success: false, error: response.error || "Failed to update terminal UUID." };
-        }
+        if (!response.success) return { success: false, error: response.error || "Failed to update terminal UUID." };
         return response;
     },
 
-    // --- NEW: Search QR Password ---
     searchQrPassword: async (invoiceNo: string): Promise<ApiResponse<PasswordData>> => {
-        const payload = {
-            invoiceNo: invoiceNo,
+        const payload = { invoiceNo: invoiceNo };
+        const response = await apiClient.post<any>(ENDPOINTS.QR_PASSWORD_SEARCH, payload);
+        if (!response.success) return { success: false, error: response.error || "Failed to find QR Password." };
+
+        const mappedData: PasswordData = {
+            invoiceNo: response.data.invoiceNo,
+            currentPassword: response.data.securityNumber 
         };
-
-        // Calls /api/support/securitynumber/get via proxy
-        const response = await apiClient.post<PasswordData>(ENDPOINTS.QR_PASSWORD_SEARCH, payload);
-
-        if (!response.success) {
-            return {
-                success: false,
-                error: response.error || "Failed to find QR Password."
-            };
-        }
-        
-        return response;
+        return { success: true, data: mappedData };
     },
     
-    // --- NEW: Reset QR Password ---
     resetQrPassword: async (invoiceNo: string): Promise<ApiResponse<PasswordData>> => {
-        // Assuming reset operation needs the invoice number and returns the new password.
-        const payload = {
-            invoiceNo: invoiceNo,
+        const payload = { invoiceNo: invoiceNo };
+        const response = await apiClient.post<any>(ENDPOINTS.QR_PASSWORD_RESET, payload);
+        if (!response.success) return { success: false, error: response.error || "Failed to reset QR Password." };
+
+        const newPass = response.data.data?.newSecurityNumber || response.data.newSecurityNumber;
+        const mappedData: PasswordData = {
+            invoiceNo: response.data.data?.invoiceNo || invoiceNo,
+            currentPassword: newPass 
         };
-
-        // Calls the reset endpoint via proxy
-        const response = await apiClient.post<PasswordData>(ENDPOINTS.QR_PASSWORD_RESET, payload);
-
-        if (!response.success) {
-            return {
-                success: false,
-                error: response.error || "Failed to reset QR Password."
-            };
-        }
-        
-        return response;
-    },
-    // --- Search Manual Consume Ticket ---
-    searchManualConsume: async (payload: ManualConsumeSearchPayload): Promise<ApiResponse<ManualConsumeData>> => {
-        // This function will rely on proxy to map the response to ManualConsumeData
-        const response = await apiClient.post<ManualConsumeData>(ENDPOINTS.MANUAL_CONSUME_TICKET_SEARCH, payload);
-
-        if (!response.success) {
-            return {
-                success: false,
-                error: response.error || "Failed to search manual consume data."
-            };
-        }
-        return response;
+        return { success: true, data: mappedData };
     },
 
-    executeManualConsume: async (payload: TicketConsumeExecutePayload): Promise<ApiResponse<{ message: string }>> => {
-        // This function sends the specific ticket consumption payload to the Ticket proxy
-        const response = await apiClient.post<{ message: string }>(ENDPOINTS.MANUAL_CONSUME_TICKET_EXECUTE, payload);
-
-        if (!response.success) {
-             // Handle the specific error status from the proxy (409 Conflict)
-            const isConflict = response.error && response.error.includes("already consumed or has an invalid status");
-            if (isConflict) {
-                 return { success: false, error: "Ticket/Package is already consumed or has an invalid status." };
-            }
-            
-            return {
-                success: false,
-                error: response.error || "Failed to execute manual ticket consume."
-            };
-        }
-        
-        return { success: true, data: response.data }; 
-    },
-
-    //Fetches a list of terminals for dropdowns (Manual Consume Terminal ID Select).
-    //This uses a non-filtered search query (or a very broad one).
-    fetchAllTerminals: async (): Promise<ApiResponse<Terminal[]>> => {
-        // The backend endpoint POST /api/support/consume/terminals accepts a simple payload.
-        const payload: TerminalSearchPayload = {
-            // Using a broad query (or null) to get the standard list of terminals.
-            SearchQuery: "", 
-        };
-        
-        // This hits the same proxy as searchTerminals, which handles mapping the response.
-        const response = await apiClient.post<Terminal[]>(ENDPOINTS.TERMINAL_SEARCH, payload);
-
-        if (!response.success) {
-            return {
-                success: false,
-                error: response.error || "Failed to fetch terminal list for dropdown.",
-            };
-        }
-        return response;
-    },
-
-    // NEW FUNCTION FOR ACCOUNT MANAGEMENT SEARCH
     searchAccounts: async (email: string): Promise<ApiResponse<Account[]>> => {
-        const payload = {
-            email: email,
-        };
-        // The proxy will handle normalizing the response to an array, if necessary.
-        const response = await apiClient.post<Account[]>(ENDPOINTS.SEARCH_ACCOUNTS, payload);
+        const payload = { email: email };
+        const response = await apiClient.post<any>(ENDPOINTS.SEARCH_ACCOUNTS, payload);
+        if (!response.success) return { success: false, error: response.error || "Failed to search accounts." };
 
-        if (!response.success) {
-            return {
-                success: false,
-                error: response.error || "Failed to search accounts."
-            };
-        }
-        
-        return response;
+        const rawResult = Array.isArray(response.data) ? response.data : (response.data && response.data.accID ? [response.data] : []);
+        const accounts: Account[] = rawResult.map(mapToAccount);
+        return { success: true, data: accounts };
     },
 
     getAccountDetails: async (accId: string): Promise<ApiResponse<Account>> => {
-        const payload = {
-            accID: Number(accId), // Backend expects accID as a number
-        };
-        
-        const response = await apiClient.post<any>(ENDPOINTS.GET_ACCOUNT_DETAILS, payload);
-
-        if (!response.success || !response.data) {
-            return {
-                success: false,
-                error: response.error || "Failed to retrieve account details."
-            };
-        }
-        
-        // Map backend fields to frontend Account type (since proxy returns raw data)
-        const rawData = response.data;
-        const mappedAccount: Account = {
-            id: rawData.accID ? String(rawData.accID) : "N/A", // Use accID as unique ID
-            accId: rawData.accID ? String(rawData.accID) : "N/A",
-            email: rawData.email || "N/A",
-            firstName: rawData.firstName || "N/A",
-            mobile: rawData.mobileNo || "N/A", // Backend uses mobileNo
-            createdDate: rawData.createdDate || "N/A",
-            accountStatus: rawData.recordStatus || "N/A", // Backend uses recordStatus
-            transactions: rawData.transactionHistory || [], // Backend uses transactionHistory
-        };
-
-        return {
-            success: true,
-            data: mappedAccount,
-        };
+        const payload = { accID: Number(accId) };
+        const response = await apiClient.post<BackendAccountDTO>(ENDPOINTS.GET_ACCOUNT_DETAILS, payload);
+        if (!response.success || !response.data) return { success: false, error: response.error || "Failed to retrieve account details." };
+        return { success: true, data: mapToAccount(response.data) };
     },
 
-    //Resets the account password and returns the new password
     resetAccountPassword: async (accId: string): Promise<ApiResponse<{ message: string }>> => {
         const payload = { AccID: Number(accId) };
         const response = await apiClient.post<{ message: string }>(ENDPOINTS.RESET_ACCOUNT_PASSWORD, payload);
-        
-        if (!response.success) {
-            return { success: false, error: response.error || "Failed to reset password." };
-        }
+        if (!response.success) return { success: false, error: response.error || "Failed to reset password." };
         return response;
     },
 
-    //Updates the account status (Active/Inactive).
     updateAccountStatus: async (accId: string, status: "Active" | "Inactive"): Promise<ApiResponse<void>> => {
         const payload = { AccID: Number(accId), NewStatus: status };
         const response = await apiClient.post<void>(ENDPOINTS.UPDATE_ACCOUNT_STATUS, payload);
-        
-        if (!response.success) {
-            return { success: false, error: response.error || `Failed to set status to ${status}.` };
-        }
+        if (!response.success) return { success: false, error: response.error || `Failed to set status to ${status}.` };
         return { success: true };
     },
 
-    //changes the accounts primary email
     updateAccountEmail: async (accId: string, newEmail: string): Promise<ApiResponse<void>> => {
         const payload = { AccId: Number(accId), NewEmail: newEmail };
         const response = await apiClient.post<void>(ENDPOINTS.UPDATE_ACCOUNT_EMAIL, payload);
-
-        if (!response.success) {
-            return { success: false, error: response.error || "Failed to update email." };
-        }
+        if (!response.success) return { success: false, error: response.error || "Failed to update email." };
         return { success: true };
     },
 
-    //exchanges transaction ownership to a new email/account
     exchangeTransactions: async (currentAccId: string, newEmail: string, newAccId?: string): Promise<ApiResponse<void>> => {
         const payload = {
             AccId: Number(currentAccId),
@@ -598,111 +483,59 @@ export const itPoswfService = {
             }
         };
         const response = await apiClient.post<void>(ENDPOINTS.EXCHANGE_TRANSACTIONS, payload);
-
-        if (!response.success) {
-            return { success: false, error: response.error || "Failed to exchange transaction." };
-        }
+        if (!response.success) return { success: false, error: response.error || "Failed to exchange transaction." };
         return { success: true };
     },
 
-    //activates expired balance for a user
     activateExpiredBalance: async (accountId: string, email: string): Promise<ApiResponse<void>> => {
-        const payload = {
-            accountID: Number(accountId),
-            Email: email
-        };
+        const payload = { accountID: Number(accountId), Email: email };
         const response = await apiClient.post<void>(ENDPOINTS.ACTIVATE_BALANCE, payload);
-
-        if (!response.success) {
-            return { success: false, error: response.error || "Failed to activate balance." };
-        }
+        if (!response.success) return { success: false, error: response.error || "Failed to activate balance." };
         return { success: true };
     },
 
     getAccountBalanceDetails: async (email: string): Promise<ApiResponse<BalanceDetail>> => {
-        const payload = {
-            email: email,
-        };
-        
+        const payload = { email: email };
         const response = await apiClient.post<BalanceDetail>(ENDPOINTS.BALANCE_DETAILS, payload);
-
-        if (!response.success) {
-            return {
-                success: false,
-                error: response.error || "Failed to retrieve balance details."
-            };
-        }
-        
+        if (!response.success) return { success: false, error: response.error || "Failed to retrieve balance details." };
         return response;
     },
 
     searchDeactivatableTickets: async (searchQuery: string): Promise<ApiResponse<DeactivatableTicket[]>> => {
-        // FIX: Check for dash to identify Invoice Numbers (e.g. WSW01-...)
-        // This ensures Ticket Numbers (e.g. T251030FSJN) are treated as tickets regardless of length.
         const isInvoice = searchQuery.includes('-'); 
-        
         const payload = {
             invoiceNo: isInvoice ? searchQuery.trim() : null,
             ticketNo: !isInvoice ? searchQuery.trim() : null,
         };
-
         const response = await apiClient.post<any[]>(ENDPOINTS.DEACTIVATE_TICKET_SEARCH, payload);
-
-        if (!response.success || !response.data) {
-            return { success: false, error: response.error || "Failed to search tickets." };
-        }
-
-        return {
-            success: true,
-            data: response.data.map(mapToDeactivatableTicket),
-        };
+        if (!response.success || !response.data) return { success: false, error: response.error || "Failed to search tickets." };
+        return { success: true, data: response.data.map(mapToDeactivatableTicket) };
     },
 
-    // 2. Search Consumption History
     searchConsumptionHistory: async (invoiceNo: string, ticketNo: string = ""): Promise<ApiResponse<ConsumptionHistory[]>> => {
         const payload = {
-            ticketNo: ticketNo.trim(),
-            invoiceNo: invoiceNo.trim(),
+            ticketNo: ticketNo.trim() || null,
+            invoiceNo: invoiceNo.trim() || null,
         };
-        
         const response = await apiClient.post<any[]>(ENDPOINTS.DEACTIVATE_CONSUMPTION_SEARCH, payload);
-
-        if (!response.success || !response.data) {
-            return { success: false, error: response.error || "Failed to search consumption history." };
-        }
-
-        return {
-            success: true,
-            data: response.data.map(mapToConsumptionHistory),
-        };
+        if (!response.success || !response.data) return { success: false, error: response.error || "Failed to search consumption history." };
+        return { success: true, data: response.data.map(mapToConsumptionHistory) };
     },
 
-    // 3. Deactivate Ticket
     deactivateTicket: async (ticketId: number | string): Promise<ApiResponse<void>> => {
         const payload: TicketDeactivatePayload = { ticketId: String(ticketId) };
         const response = await apiClient.post<{ message: string }>(ENDPOINTS.DEACTIVATE_TICKET_EXECUTE, payload);
-
-        if (!response.success) {
-            return { success: false, error: response.error || "Failed to deactivate ticket." };
-        }
+        if (!response.success) return { success: false, error: response.error || "Failed to deactivate ticket." };
         return { success: true };
     },
 
-    // 4. Deactivate Consumption
     deactivateConsumption: async (consumptionNo: string): Promise<ApiResponse<void>> => {
         const payload: ConsumptionDeactivatePayload = { consumptionNo };
         const response = await apiClient.post<{ message: string }>(ENDPOINTS.DEACTIVATE_CONSUMPTION_EXECUTE, payload);
-
-        if (!response.success) {
-            return { success: false, error: response.error || "Failed to deactivate consumption." };
-        }
+        if (!response.success) return { success: false, error: response.error || "Failed to deactivate consumption." };
         
         const isAlreadyDeactivated = response.data?.message?.toLowerCase().includes('already deactivated');
-
-        if (response.success || isAlreadyDeactivated) {
-             return { success: true, message: response.data?.message };
-        }
-        
+        if (response.success || isAlreadyDeactivated) return { success: true, message: response.data?.message };
         return { success: true }; 
     }
 };

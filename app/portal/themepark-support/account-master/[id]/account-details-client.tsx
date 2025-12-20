@@ -6,7 +6,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,10 +19,11 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { BalanceCard } from "@/components/themepark-support/it-poswf/balance-card"
-import { ArrowLeft, CheckCircle2, Wallet, Clock } from "lucide-react"
-import type { Account, BalanceDetail } from "@/type/themepark-support"
+import { CheckCircle2, Wallet, Clock, SearchX, FileText } from "lucide-react"
+import type { Account, BalanceDetail, BalanceTransaction } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
 import { useToast } from "@/hooks/use-toast"
+import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -249,7 +249,25 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
 
   const currentBalance = balanceDetail?.currentBalance ?? 0.0;
   const expiredBalance = balanceDetail?.expiredBalance ?? 0.0;
-  const balanceHistory = balanceDetail?.history ?? [];
+  const balanceHistory: BalanceTransaction[] = balanceDetail?.history ?? [];
+
+  // Column definitions for the DataTable
+  const transactionColumns: TableColumn<any>[] = [
+      { header: "Invoice No", accessor: "invoiceNo", className: "font-medium" },
+      { header: "Name", accessor: "name" },
+      { header: "Amount", accessor: "amount", cell: (val) => `RM ${Number(val).toFixed(2)}` },
+      { header: "Type", accessor: "trxType", cell: (val) => <StatusBadge status={val} /> },
+      { header: "Created Date", accessor: "createdDate" }
+  ];
+
+  // Columns for the Balance History small table
+  const balanceHistoryColumns: TableColumn<BalanceTransaction>[] = [
+      { header: "Invoice No", accessor: "invoiceNo", className: "font-medium" },
+      { header: "Name", accessor: "name" },
+      { header: "Amount", accessor: "amount", cell: (val) => `RM ${Number(val).toFixed(2)}` },
+      { header: "Type", accessor: "trxType", cell: (val) => <StatusBadge status={val} className="h-5 text-[10px]" /> },
+      { header: "Date", accessor: "createdDate", className: "text-xs text-muted-foreground" }
+  ];
 
   return (
     <div className="space-y-6">
@@ -315,42 +333,19 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
       </Card>
 
       <Card>
-        <CardContent>
-          <h3 className="text-lg font-semibold mb-4">Transaction Details</h3>
-          <div className="overflow-x-auto max-h-96 overflow-y-auto scrollbar-hide">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Invoice No</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Transaction Type</TableHead>
-                  <TableHead>Created Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {account.transactions.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                      No transactions found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  account.transactions.map((transaction, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{transaction.invoiceNo}</TableCell>
-                      <TableCell>{transaction.name}</TableCell>
-                      <TableCell>RM {transaction.amount.toFixed(2)}</TableCell>
-                      <TableCell>
-                        <StatusBadge status={transaction.trxType} />
-                      </TableCell>
-                      <TableCell>{transaction.createdDate}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-2 mb-4">
+             <FileText className="h-5 w-5 text-muted-foreground" />
+             <h3 className="text-lg font-semibold">Transaction Details</h3>
           </div>
+          <DataTable 
+            columns={transactionColumns}
+            data={account.transactions}
+            keyExtractor={(row, idx) => `${row.invoiceNo}-${idx}`}
+            emptyIcon={SearchX}
+            emptyTitle="No Transactions"
+            emptyMessage="This account has no transaction history."
+          />
         </CardContent>
       </Card>
 
@@ -358,7 +353,6 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
         <CardContent>
           <h3 className="text-lg font-semibold mb-4">Account Actions</h3>
           <div className="space-y-4">
-            {/* Reordered Actions: Reset Password, Change Email, Exchange Trx, Activate Balance, Active, Inactive */}
             <div className="grid grid-cols-2 gap-3">
               <Button variant="outline" onClick={() => handleAction("reset-password")} disabled={isProcessing}>
                 Reset Password
@@ -477,39 +471,14 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
 
                 <div className="space-y-3">
                   <div className="text-sm font-medium">Transaction History</div>
-                  <div className="overflow-x-auto border rounded-lg max-h-64 overflow-y-auto scrollbar-hide">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Invoice No</TableHead>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Amount</TableHead>
-                          <TableHead>Trx Type</TableHead>
-                          <TableHead>Created Date</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {balanceHistory.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                              No transactions found
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          balanceHistory.map((transaction, index) => (
-                            <TableRow key={index}>
-                              <TableCell className="font-medium">{transaction.invoiceNo}</TableCell>
-                              <TableCell>{transaction.name}</TableCell>
-                              <TableCell>RM {transaction.amount.toFixed(2)}</TableCell>
-                              <TableCell>
-                                <StatusBadge status={transaction.trxType} />
-                              </TableCell>
-                              <TableCell>{transaction.createdDate}</TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
+                  {/* Using DataTable even for this nested mini-table for consistency */}
+                  <div className="border rounded-lg max-h-64 overflow-y-auto">
+                      <DataTable 
+                        columns={balanceHistoryColumns}
+                        data={balanceHistory}
+                        keyExtractor={(row, idx) => `${row.invoiceNo}-${idx}`}
+                        emptyMessage="No balance history."
+                      />
                   </div>
                 </div>
 

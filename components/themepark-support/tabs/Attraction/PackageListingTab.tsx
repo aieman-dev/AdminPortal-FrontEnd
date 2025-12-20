@@ -1,21 +1,20 @@
-// components/themepark-support/tabs/Attraction/PackageListingTab.tsx
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { DatePicker } from "@/components/ui/date-picker";
-import { Pencil, PackageX } from "lucide-react" // IMPORT PackageX ICON
+import { Pencil, PackageX } from "lucide-react" 
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { type TableColumn, DataTable } from "@/components/themepark-support/it-poswf/data-table"
 import { ItPoswfPackage } from "@/type/themepark-support"
 import { packageService } from "@/services/package-services"
+import { formatCurrency, formatDateTime } from "@/lib/formatter";
 import { useToast } from "@/hooks/use-toast"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
-import { PaginationControls } from "@/components/ui/pagination-controls"
 
 export default function PackageListingTab() {
   const { toast } = useToast()
@@ -28,7 +27,7 @@ export default function PackageListingTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
-  const ITEMS_PER_PAGE = 10;
+  const PAGE_SIZE = 30; // Matches service call
 
   // Edit State
   const [editingPackage, setEditingPackage] = useState<ItPoswfPackage | null>(null)
@@ -36,16 +35,6 @@ export default function PackageListingTab() {
   const [isPackageUpdating, setIsPackageUpdating] = useState(false)
   const [packageRemark, setPackageRemark] = useState("")
 
-  const formatDateTime = (dateString: string | undefined): string => {
-    if (!dateString || dateString.startsWith('0001-01-01')) return 'N/A';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString; 
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = date.toLocaleString('en-GB', { month: 'short' });
-    const year = date.getFullYear();
-    const time = date.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
-    return `${day}-${month}-${year} ${time}`;
-  };
 
   const handlePackageSearch = async () => {
     fetchData(1);
@@ -53,7 +42,6 @@ export default function PackageListingTab() {
 
   const fetchData = async (page: number) => {
     setIsPackageSearching(true)
-    
     setCurrentPage(page);
 
     try {
@@ -115,18 +103,19 @@ export default function PackageListingTab() {
     }
   }
 
+  // FIXED: Explicitly typed 'value' and 'row'
   const packageColumns: TableColumn<ItPoswfPackage>[] = [
-    { header: "Package ID", accessor: "packageId", cell: (value) => <span className="font-medium">{value}</span> },
+    { header: "Package ID", accessor: "packageId", className: "pl-6", cell: (value: any) => <span className="font-medium">{value}</span> },
     { header: "Package Name", accessor: "packageName" },
-    { header: "Type", accessor: "packageType", cell: (value) => <StatusBadge status={value} /> },
-    { header: "Price", accessor: "price", cell: (value) => `RM ${(value ?? 0).toFixed(2)}` },
-    { header: "Last Valid Date", accessor: "lastValidDate", cell: (value) => formatDateTime(value as string) },
-    { header: "Description", accessor: "description", cell: (value) => <div className="max-w-xs truncate" title={value as string}>{value}</div> },
-    { header: "Status", accessor: "status", cell: (value) => <StatusBadge status={value as string} /> },
+    { header: "Type", accessor: "packageType", cell: (value: any) => <StatusBadge status={value} /> },
+    { header: "Price", accessor: "price", cell: (value: any) => formatCurrency(value) },
+    { header: "Last Valid Date", accessor: "lastValidDate", cell: (value: any) => formatDateTime(value as string) },
+    { header: "Description", accessor: "description", cell: (value: any) => <div className="max-w-xs truncate" title={value as string}>{value}</div> },
+    { header: "Status", accessor: "status", cell: (value: any) => <StatusBadge status={value as string} /> },
     {
       header: "Action",
       accessor: "id",
-      cell: (_, row) => (
+      cell: (_: any, row: ItPoswfPackage) => (
         <Button variant="ghost" size="sm" onClick={() => handlePackageEdit(row)}>
           <Pencil className="h-4 w-4 mr-2" /> Edit
         </Button>
@@ -152,13 +141,12 @@ export default function PackageListingTab() {
       </Card>
 
       <Card>
-        <CardContent className="space-y-4 pt-6">
+        <CardContent className="space-y-4 ">
           <DataTable
             columns={packageColumns}
             data={packages}
             keyExtractor={(row) => row.id.toString()}
             isLoading={isPackageSearching}
-            // CUSTOM EMPTY STATE CONFIGURATION
             emptyTitle="No Packages Found"
             emptyIcon={PackageX}
             emptyMessage={
@@ -168,19 +156,17 @@ export default function PackageListingTab() {
                     ? `No packages found matching "${packageSearchTerm}"`
                     : "Enter a package name to search."
             }
-          />
-
-          <PaginationControls
-             currentPage={currentPage}
-             totalPages={totalPages}
-             totalRecords={totalRecords}
-             pageSize={ITEMS_PER_PAGE}
-             onPageChange={handlePageChange}
+            pagination={{
+                currentPage: currentPage,
+                totalPages: totalPages,
+                onPageChange: handlePageChange,
+                totalRecords: totalRecords,
+                pageSize: PAGE_SIZE
+            }}
           />
         </CardContent>
       </Card>
       
-      {/* Dialog Code (Unchanged) */}
       <Dialog open={isPackageDialogOpen} onOpenChange={setIsPackageDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>

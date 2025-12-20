@@ -1,43 +1,30 @@
 // components/themepark-support/tabs/Ticket/ManualConsumeTab.tsx
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge" 
 import { Separator } from "@/components/ui/separator"
-import { Search, Wallet, TrendingUp, AlertTriangle, Ticket, ArrowLeft, CheckCircle2, Loader2, Minus, Plus, SearchX, ChevronsUpDown, Check } from "lucide-react"
+import { Search, Wallet, TrendingUp, AlertTriangle, Ticket, ArrowLeft, CheckCircle2, Loader2, Minus, Plus, SearchX } from "lucide-react"
 import { BalanceCard } from "@/components/themepark-support/it-poswf/balance-card"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { TerminalSelector } from "@/components/themepark-support/it-poswf/terminal-selector"
-import { EmptyState } from "@/components/portal/empty-state"
 import {
   type ManualConsumeData,
   type ManualConsumeSearchPayload,
   type ConsumeTicketItem,
   type TicketConsumeExecutePayload,
-  type Terminal,
+  type AvailableTicket
 } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
+import { PaginationControls } from "@/components/ui/pagination-controls"
 
 type Step = 'selection' | 'confirmation';
 
@@ -53,7 +40,7 @@ export default function ManualConsumeTab() {
   const [ticketType, setTicketType] = useState<string>("")
   const [ticketStatus, setTicketStatus] = useState<string>("")
   
-  // -- Terminal Search State (Combobox) --
+  // -- Terminal Search State --
   const [terminalId, setTerminalId] = useState<string>("")
   
   // -- Data & Cart State --
@@ -63,14 +50,14 @@ export default function ManualConsumeTab() {
   // -- Loading States --
   const [isConsumeSearching, setIsConsumeSearching] = useState(false)
   const [isExecuting, setIsExecuting] = useState(false)
-  
+
+  // -- Pagination State --
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
+
   // Validation Helpers
   const isSuperApp = consumeType === "superapp";
   const isReceipt = consumeType === "receipt";
-  const isEmailDisabled = isReceipt;
-  const isMobileDisabled = isReceipt;
-  const isInvoiceDisabled = isSuperApp;
- 
 
   // --- 1. Main Search Logic ---
   const handleConsumeSearch = async () => {
@@ -86,7 +73,7 @@ export default function ManualConsumeTab() {
         toast({
             title: "Input Required",
             description: `Missing: ${missingFields.join(", ")}`,
-            variant: "default", // Changed from destructive to default (yellow/warning feel)
+            variant: "default",
         });
         return;
     }
@@ -94,6 +81,7 @@ export default function ManualConsumeTab() {
     setIsConsumeSearching(true);
     setConsumeSearchResult(null);
     setQuantities({}); 
+    setCurrentPage(1);
     setCurrentStep('selection');
 
     const searchPayload: ManualConsumeSearchPayload = {
@@ -116,7 +104,6 @@ export default function ManualConsumeTab() {
 
             if (!hasTickets) {
                 setConsumeSearchResult(response.data);
-                // No toast needed here, EmptyState will render
                 return; 
             }
 
@@ -130,7 +117,7 @@ export default function ManualConsumeTab() {
             }
             
             setConsumeSearchResult(response.data);
-            toast({ title: "Search Complete", description: "Manual consume details retrieved." });
+            toast({ title: "Search Complete", description: `Found ${response.data.tickets.length} tickets.` });
 
         } else {
             setConsumeSearchResult(null);
@@ -179,7 +166,7 @@ export default function ManualConsumeTab() {
         const selectedTickets = consumeSearchResult.tickets.filter(t => (quantities[t.id] || 0) > 0);
         if (selectedTickets.length === 0) return;
         
-        const totalPoints = selectedTickets.reduce((sum, item) => sum + (item.ItemPoint * quantities[item.id]), 0);
+        const totalPoints = selectedTickets.reduce((sum, item) => sum + (item.itemPoint * quantities[item.id]), 0);
 
         if (consumeSearchResult.creditBalance < totalPoints) {
             toast({ 
@@ -190,14 +177,15 @@ export default function ManualConsumeTab() {
             return;
         }
 
+        // FIX: Map to camelCase properties to match ConsumeTicketItem interface
         const consumeList: ConsumeTicketItem[] = selectedTickets.map(item => ({
-            PackageName: item.PackageName,
-            ItemName: item.ItemName,
-            TicketType: item.TicketType,
-            PackageID: item.PackageID,
-            PackageItemID: item.PackageItemID,
-            TicketItemID: Number(item.id), 
-            ConsumeQty: quantities[item.id], 
+            packageName: item.packageName,
+            itemName: item.itemName,
+            ticketType: item.ticketType,
+            packageID: item.packageID,
+            packageItemID: item.packageItemID,
+            ticketItemID: item.ticketItemID, 
+            consumeQty: quantities[item.id], 
         }));
 
         const numericTerminalId = Number(terminalId.split('-').pop() || terminalId) || 0; 
@@ -210,7 +198,7 @@ export default function ManualConsumeTab() {
             invoiceNo: invoiceNo.trim() || "", 
             creditBalance: consumeSearchResult.creditBalance,
             totalAmount: totalPoints,
-            itemNamesForEmail: selectedTickets.map(i => i.ItemName).join(', '),
+            itemNamesForEmail: selectedTickets.map(i => i.itemName).join(', '),
             consumeList: consumeList,
         };
         
@@ -245,29 +233,117 @@ export default function ManualConsumeTab() {
         }
     }
 
-  const activeTicketsCount = consumeSearchResult?.tickets.filter(t => t.PackageStatus.toLowerCase() === 'active').length ?? 0;
+  const activeTicketsCount = consumeSearchResult?.tickets.filter(t => t.packageStatus.toLowerCase() === 'active').length ?? 0;
   
   const totalPoints = useMemo(() => {
       if (!consumeSearchResult) return 0;
       return consumeSearchResult.tickets.reduce((sum, t) => {
-          return sum + (t.ItemPoint * (quantities[t.id] || 0));
+          return sum + (t.itemPoint * (quantities[t.id] || 0));
       }, 0);
   }, [consumeSearchResult, quantities]);
 
+  // --- Pagination Logic ---
+  const paginatedTickets = useMemo(() => {
+      if (!consumeSearchResult) return [];
+      const start = (currentPage - 1) * ITEMS_PER_PAGE;
+      return consumeSearchResult.tickets.slice(start, start + ITEMS_PER_PAGE);
+  }, [consumeSearchResult, currentPage]);
+
+  const totalPages = consumeSearchResult ? Math.ceil(consumeSearchResult.tickets.length / ITEMS_PER_PAGE) : 0;
+
+  // --- DATA TABLE COLUMNS (Replaces manual table rows) ---
+  const ticketColumns: TableColumn<AvailableTicket>[] = [
+    { 
+        header: "Item Details", 
+        accessor: "id", 
+        className: "w-[40%] pl-6",
+        cell: (_, row) => (
+            <div className="flex flex-col gap-1">
+                <span className={cn("font-medium text-sm transition-colors", (quantities[row.id] || 0) > 0 ? "text-indigo-700 dark:text-indigo-300" : "text-foreground")}>
+                    {row.packageName}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                    {row.itemName}
+                </span>
+                <div className="flex items-center gap-2 mt-1.5">
+                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-mono bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800">
+                        #{row.ticketItemID}
+                    </Badge>
+                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80 font-mono">
+                        <span>PID:{row.packageID}</span>
+                        <span className="w-px h-3 bg-border"></span>
+                        <span>PIID:{row.packageItemID}</span>
+                    </div>
+                </div>
+            </div>
+        )
+    },
+    { 
+        header: "Type", 
+        accessor: "ticketType", 
+        className: "text-center",
+        cell: (val) => <StatusBadge status={val} className="w-auto px-2" />
+    },
+    { header: "Terminal", accessor: "consumeTerminal", className: "text-center text-xs font-mono text-muted-foreground" },
+    { header: "Points", accessor: "itemPoint", className: "text-right font-medium", cell: (val) => val.toLocaleString() },
+    { 
+        header: "Quantity", 
+        accessor: "id", 
+        className: "text-center",
+        cell: (_, row) => {
+            const qty = quantities[row.id] || 0;
+            const isActive = row.packageStatus.toLowerCase() === 'active';
+            const maxQty = row.balanceQty;
+
+            return (
+                <div className="flex items-center justify-center gap-1">
+                    <Button variant="outline" size="icon" className="h-7 w-7 rounded-l-md border-r-0"
+                        onClick={() => updateQuantity(row.id, qty - 1, maxQty)}
+                        disabled={!isActive || qty === 0}
+                    >
+                        <Minus className="h-3 w-3" />
+                    </Button>
+                    <Input 
+                        type="number" 
+                        className="h-7 w-12 text-center rounded-none border-x-0 focus-visible:ring-0 px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        value={qty.toString()}
+                        onChange={(e) => updateQuantity(row.id, parseInt(e.target.value) || 0, maxQty)}
+                        disabled={!isActive}
+                    />
+                    <Button variant="outline" size="icon" className="h-7 w-7 rounded-r-md border-l-0"
+                        onClick={() => updateQuantity(row.id, qty + 1, maxQty)}
+                        disabled={!isActive || qty >= maxQty}
+                    >
+                        <Plus className="h-3 w-3" />
+                    </Button>
+                </div>
+            )
+        }
+    },
+    { 
+        header: "Line Total", 
+        accessor: "id", 
+        className: "text-right pr-6 font-bold",
+        cell: (_, row) => {
+            const qty = quantities[row.id] || 0;
+            return <span className={qty > 0 ? "text-foreground" : "text-muted-foreground/30"}>
+                {(row.itemPoint * qty).toLocaleString()}
+            </span>
+        }
+    }
+  ];
 
   // --- VIEW: SELECTION TABLE ---
   const renderSelectionView = () => {
-    const hasItems = consumeSearchResult?.tickets && consumeSearchResult.tickets.length > 0;
-
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
         <div className="grid gap-4 md:grid-cols-2">
             <BalanceCard
-            title="Credit Balance"
-            amount={consumeSearchResult?.creditBalance || 0}
-            description="Available balance"
-            icon={Wallet}
-            valueColor="text-green-600"
+                title="Credit Balance"
+                amount={consumeSearchResult?.creditBalance || 0}
+                description="Available balance"
+                icon={Wallet}
+                valueColor="text-green-600"
             />
             <Card>
                 <CardContent className="space-y-2 p-6">
@@ -294,104 +370,27 @@ export default function ManualConsumeTab() {
                     </span>
                 </div>
 
-                {!hasItems ? (
-                     <div className="py-12">
-                        <EmptyState 
-                            icon={SearchX}
-                            title="No Tickets Found"
-                            description="We couldn't find any tickets matching your search criteria."
+                <div className="p-0">
+                    <DataTable
+                        columns={ticketColumns}
+                        data={paginatedTickets}
+                        keyExtractor={(row) => row.id}
+                        emptyIcon={SearchX}
+                        emptyTitle="No Tickets Found"
+                        emptyMessage="We couldn't find any tickets matching your search criteria."
+                    />
+                </div>
+                
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div className="px-6 pb-4">
+                        <PaginationControls 
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            totalRecords={consumeSearchResult?.tickets.length}
+                            pageSize={ITEMS_PER_PAGE}
+                            onPageChange={setCurrentPage}
                         />
-                     </div>
-                ) : (
-                    <div className="overflow-x-auto max-h-[400px]">
-                        <Table>
-                            <TableHeader className="bg-background sticky top-0 z-10 shadow-sm">
-                                <TableRow>
-                                    <TableHead className="w-[45%] pl-6">Item Details</TableHead>
-                                    <TableHead className="w-[10%] text-center">Type</TableHead>
-                                    <TableHead className="w-[15%] text-center">Terminal</TableHead>
-                                    <TableHead className="w-[10%] text-right">Points</TableHead>
-                                    <TableHead className="w-[10%] text-center">Quantity</TableHead>
-                                    <TableHead className="w-[10%] text-right pr-6">Line Total</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {consumeSearchResult?.tickets.map((ticket) => {
-                                    const qty = quantities[ticket.id] || 0;
-                                    const isActive = ticket.PackageStatus.toLowerCase() === 'active';
-                                    const maxQty = ticket.BalanceQty;
-                                    const isSelected = qty > 0;
-
-                                    return (
-                                        <TableRow key={ticket.id} className={isSelected ? "bg-muted/30" : ""}>
-                                            <TableCell className="pl-6">
-                                                <div className="flex flex-col gap-1">
-                                                    <span className={cn("font-medium text-sm transition-colors", isSelected ? "text-indigo-700 dark:text-indigo-300" : "text-foreground")}>
-                                                        {ticket.PackageName}
-                                                    </span>
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {ticket.ItemName}
-                                                    </span>
-                                                    <div className="flex items-center gap-2 mt-1.5">
-                                                        <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-mono bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800">
-                                                            #{ticket.TicketItemID}
-                                                        </Badge>
-                                                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80 font-mono">
-                                                            <span>PID:{ticket.PackageID}</span>
-                                                            <span className="w-px h-3 bg-border"></span>
-                                                            <span>PIID:{ticket.PackageItemID}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                <StatusBadge status={ticket.TicketType} className="w-auto px-2" />
-                                            </TableCell>
-                                            <TableCell className="text-center text-xs font-mono text-muted-foreground">
-                                                {ticket.ConsumeTerminal}
-                                            </TableCell>
-                                            <TableCell className="text-right font-medium">
-                                                {ticket.ItemPoint.toLocaleString()}
-                                            </TableCell>
-                                            
-                                            {/* IMPROVED QUANTITY SELECTOR */}
-                                            <TableCell>
-                                                <div className="flex items-center justify-center gap-1">
-                                                    <Button 
-                                                        variant="outline" size="icon" className="h-7 w-7 rounded-l-md border-r-0"
-                                                        onClick={() => updateQuantity(ticket.id, qty - 1, maxQty)}
-                                                        disabled={!isActive || qty === 0}
-                                                    >
-                                                        <Minus className="h-3 w-3" />
-                                                    </Button>
-                                                    <Input 
-                                                        type="number" 
-                                                        // FIX: Added classes to hide spinners
-                                                        className="h-7 w-12 text-center rounded-none border-x-0 focus-visible:ring-0 px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                        value={qty.toString()}
-                                                        onChange={(e) => updateQuantity(ticket.id, parseInt(e.target.value) || 0, maxQty)}
-                                                        disabled={!isActive}
-                                                    />
-                                                    <Button 
-                                                        variant="outline" size="icon" className="h-7 w-7 rounded-r-md border-l-0"
-                                                        onClick={() => updateQuantity(ticket.id, qty + 1, maxQty)}
-                                                        disabled={!isActive || qty >= maxQty}
-                                                    >
-                                                        <Plus className="h-3 w-3" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-
-                                            <TableCell className="text-right pr-6">
-                                                <span className={`font-bold ${qty > 0 ? "text-foreground" : "text-muted-foreground/30"}`}>
-                                                    {(ticket.ItemPoint * qty).toLocaleString()}
-                                                </span>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
                     </div>
                 )}
             
@@ -457,14 +456,14 @@ export default function ManualConsumeTab() {
                                 return (
                                     <div key={ticket.id} className="flex justify-between items-start text-sm border-b border-dashed pb-3 last:border-0 last:pb-0">
                                         <div className="space-y-1">
-                                            <div className="font-semibold text-foreground">{ticket.PackageName}</div>
+                                            <div className="font-semibold text-foreground">{ticket.packageName}</div>
                                             <div className="text-muted-foreground text-xs">
-                                                {ticket.ItemName} <span className="mx-1">•</span> ID: {ticket.TicketItemID}
+                                                {ticket.itemName} <span className="mx-1">•</span> ID: {ticket.ticketItemID}
                                             </div>
                                         </div>
                                         <div className="text-right">
                                             <div className="font-mono text-muted-foreground">x {qty}</div>
-                                            <div className="font-bold text-foreground">{(ticket.ItemPoint * qty).toLocaleString()} Pts</div>
+                                            <div className="font-bold text-foreground">{(ticket.itemPoint * qty).toLocaleString()} Pts</div>
                                         </div>
                                     </div>
                                 );
@@ -478,7 +477,7 @@ export default function ManualConsumeTab() {
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-between bg-muted/10 p-6">
-                    <Button variant="outline" onClick={() => setCurrentStep('selection')} disabled={isExecuting}>
+                    <Button variant="outline" onClick={handleBackStep} disabled={isExecuting}>
                         <ArrowLeft className="h-4 w-4 mr-2" /> Back
                     </Button>
                     <Button onClick={handleConsumeExecute} disabled={isExecuting} className="min-w-[140px]">
@@ -495,14 +494,15 @@ export default function ManualConsumeTab() {
       {currentStep === 'selection' && (
         <Card>
             <CardContent>
-            {/* UPDATED LAYOUT (Matches Retail Tab) */}
+            {/* UPDATED LAYOUT */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-end">
                 
                 {/* ROW 1: Consume Type | Email | Mobile */}
                 <div className="space-y-2">
                     <Label htmlFor="consumeType">Consume Type</Label>
                     <Select value={consumeType} onValueChange={setConsumeType}>
-                        <SelectTrigger id="consumeType"><SelectValue /></SelectTrigger>
+                        {/* Standardized h-11 */}
+                        <SelectTrigger id="consumeType" className="h-11"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="superapp">By Superapp</SelectItem>
                             <SelectItem value="receipt">By Receipt</SelectItem>
@@ -516,6 +516,7 @@ export default function ManualConsumeTab() {
                         value={email} onChange={(e) => setEmail(e.target.value)} 
                         disabled={isReceipt} 
                         placeholder="customer@email.com"
+                        className="h-11"
                     />
                 </div>
                 <div className="space-y-2">
@@ -524,6 +525,7 @@ export default function ManualConsumeTab() {
                         id="mobileNo"
                         value={mobileNo} onChange={(e) => setMobileNo(e.target.value)} 
                         disabled={isReceipt}
+                        className="h-11"
                     />
                 </div>
 
@@ -534,20 +536,22 @@ export default function ManualConsumeTab() {
                         id="invoiceNo"
                         value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} 
                         disabled={isSuperApp}
+                        className="h-11"
                     />
                 </div>
                 
-                 {/*TERMINAL Selector */}
+                 {/* Standardized Terminal Selector */}
                  <TerminalSelector 
                     value={terminalId}
                     onChange={setTerminalId}
                     label="Terminal Search & Select *"
+                    className="h-11" 
                  />
                 
                 <div className="space-y-2">
                     <Label htmlFor="ticketType">Ticket Type</Label>
                     <Select value={ticketType} onValueChange={setTicketType}>
-                        <SelectTrigger id="ticketType"><SelectValue placeholder="Select type" /></SelectTrigger>
+                        <SelectTrigger id="ticketType" className="!h-11"><SelectValue placeholder="Select type" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="ticket">Ticket</SelectItem>
                             <SelectItem value="credit">Credit</SelectItem>
@@ -560,7 +564,7 @@ export default function ManualConsumeTab() {
                 <div className="space-y-2">
                     <Label htmlFor="ticketStatus">Ticket Status</Label>
                     <Select value={ticketStatus} onValueChange={setTicketStatus}>
-                        <SelectTrigger id="ticketStatus"><SelectValue placeholder="Select status" /></SelectTrigger>
+                        <SelectTrigger id="ticketStatus" className="!h-11"><SelectValue placeholder="Select status" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="active">Active</SelectItem>
                             <SelectItem value="unused">Unused</SelectItem>
@@ -572,7 +576,7 @@ export default function ManualConsumeTab() {
                 <div></div>
 
                 <div className="flex justify-end pt-2"> 
-                    <Button onClick={handleConsumeSearch} disabled={isConsumeSearching} className="w-full">
+                    <Button onClick={handleConsumeSearch} disabled={isConsumeSearching} className="w-full h-11">
                         <Search className="mr-2 h-4 w-4" />
                         {isConsumeSearching ? "Searching..." : "Search"}
                     </Button>

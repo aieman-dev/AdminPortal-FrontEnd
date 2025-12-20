@@ -41,7 +41,7 @@ export const SIDEBAR_NAVIGATION = [
   },
   {
     name: "Settings",
-    href: "/portal/page-4",
+    href: "/portal/setting",
     icon: Settings,
   },
   // FUTURE: Add "Software A" here easily!

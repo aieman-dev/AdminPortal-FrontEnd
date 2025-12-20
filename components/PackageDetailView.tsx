@@ -1,86 +1,23 @@
-// components/PackageDetailView.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Calendar, Clock, Ticket, Globe, User, FileText, CheckCircle, ArrowLeft, X, Check, Loader2, AlertCircle } from "lucide-react";
+import { Search, Calendar, Ticket, Globe, User, FileText, CheckCircle, ArrowLeft, X, Loader2, AlertCircle } from "lucide-react";
 import { Package, PackageItem } from "@/type/packages";
 import { packageService } from "@/services/package-services"; 
 import { ApprovalModal } from "@/components/PackageModals"; 
 import { useAuth } from "@/hooks/use-auth";
 import { isFinanceApprover } from "@/lib/auth";
 import { BACKEND_API_BASE } from "@/lib/config";
+import { getNationalityLabel } from "@/lib/constants"
+import { formatDate, formatCurrency } from "@/lib/formatter";
+import { getProxiedImageUrl } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator"; 
 
-// Props: We accept ID and Source from the parent page wrapper
 interface PackageDetailViewProps {
   id: string;
   source: "pending" | "active"; 
-}
-
-const getNationalityLabel = (code: string | undefined) => {
-  if (code === "L") return "Malaysian";
-  if (code === "F") return "International";
-  if (!code || code === "N/A") return "All";
-  return code;
-}
-
-// UPDATED: Date Formatters
-const formatDisplayDate = (dateString: string | undefined) => {
-  if (!dateString) return "—";
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return dateString;
-  
-  return date.toLocaleString("en-GB", { 
-    day: "2-digit", 
-    month: "short", 
-    year: "numeric",
-    hour: '2-digit', 
-    minute: '2-digit', 
-    hour12: true 
-  }).replace(',', ' ');
-};
-
-const formatExpiryDateTime = (dateString: string | undefined) => {
-  if (!dateString) return "—";
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return dateString;
-
-  // No manual +1 day calculation here. Trusting backend data.
-  return date.toLocaleString("en-GB", { 
-    day: "2-digit", 
-    month: "short", 
-    year: "numeric", 
-    hour: '2-digit', 
-    minute: '2-digit', 
-    hour12: true 
-  }).replace(',', ' ');
-};
-
-const IMAGE_ASSET_API_PATH = "api/Package/image-asset?id=";
-
-// Helper to proxy HTTP images if needed
-function getProxiedImageUrl(url: string | null | undefined): string {
-  const DEFAULT_IMAGE = "/packages/DefaultPackageImage.png";
-  if (!url) return DEFAULT_IMAGE;
-  if (url.startsWith("blob:") || url.startsWith("/packages/")) return url;
-  
-  let targetUrl = url;
-  if (url.startsWith(BACKEND_API_BASE) || url.startsWith("http://")) {
-    targetUrl = url;
-  } else if (url.startsWith("/")) {
-    targetUrl = `${BACKEND_API_BASE}${url}`;
-  } else if (url.length > 0 && !url.includes('/')) {
-    targetUrl = `${BACKEND_API_BASE}/${IMAGE_ASSET_API_PATH}${url}`;
-  } else {
-      return DEFAULT_IMAGE;
-  }
-
-  if (targetUrl.startsWith(BACKEND_API_BASE) || targetUrl.startsWith("http://")) {
-    return `/api/proxy-image?url=${encodeURIComponent(targetUrl)}`;
-  }
-  return DEFAULT_IMAGE;
 }
 
 export default function PackageDetailView({ id, source }: PackageDetailViewProps) {
@@ -95,47 +32,33 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
   const [packageData, setPackageData] = useState<Package | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasVisitedItemsTab, setHasVisitedItemsTab] = useState(false);
-  
-  // Modal State
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
-
 
   useEffect(() => {
     const fetchPackage = async () => {
       if (!id) return;
       try {
         setLoading(true);
-        
-        // LOGIC: If source is 'pending', we tell the service. 
-        // If 'active', we pass undefined (service defaults to main table).
         const apiSource = source === "pending" ? "pending" : undefined;
-        
         const data = await packageService.getPackageById(Number(id), apiSource);
         
         if (data) {
           setPackageData(data);
+          // Standardized field: remark2
           setRejectionNotes(data.remark2 || "");
         } else {
-          toast({
-              title: "Error",
-              description: "Failed to load package details.",
-              variant: "destructive"
-          });
+          toast({ title: "Error", description: "Failed to load package details.", variant: "destructive" });
         }
       } catch (error) {
         console.error("Error:", error);
-        toast({
-            title: "Error",
-            description: "An unexpected error occurred while fetching details.",
-            variant: "destructive"
-        });
+        toast({ title: "Error", description: "An unexpected error occurred.", variant: "destructive" });
       } finally {
         setLoading(false);
       }
     };
 
     fetchPackage();
-  }, [id, source]);
+  }, [id, source, toast]);
 
   const handleTabChange = (tab: "overview" | "items") => {
     setActiveTab(tab);
@@ -146,58 +69,40 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
 
   const handleReject = async () => {
     if (!rejectionNotes.trim()) {
-      toast({
-          title: "Rejection Required",
-          description: "Please provide rejection notes.",
-          variant: "default"
-      });
+      toast({ title: "Rejection Required", description: "Please provide rejection notes.", variant: "default" });
       return;
     }
-      try {
-        setLoading(true); 
-        await packageService.updateStatus(packageData!.id, "Rejected", rejectionNotes);
-        
-        toast({
-            title: "Package Rejected",
-            description: `Package ID ${packageData!.id} was successfully rejected.`,
-            variant: "destructive" // Using destructive for rejection feedback
-        });
-        setTimeout(() => router.push("/portal/packages"), 1500);
-      } catch (error) {
-        console.error(error);
-        toast({
-            title: "Rejection Failed",
-            description: "Failed to reject package. Please try again.",
-            variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
+    if (!packageData) return;
+
+    try {
+      setLoading(true); 
+      // Ensure we use 'packageData.id'
+      await packageService.updateStatus(packageData.id, "Rejected", rejectionNotes);
+      
+      toast({ title: "Package Rejected", description: `Package ID ${packageData.id} rejected.`, variant: "destructive" });
+      setTimeout(() => router.push("/portal/packages"), 1500);
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Rejection Failed", description: "Failed to reject package.", variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
  };
 
   const handleApproveClick = () => setIsApprovalModalOpen(true);
 
   const handleConfirmApprove = async () => {
+    if (!packageData) return;
     setIsApprovalModalOpen(false); 
     try {
         setLoading(true); 
-        await packageService.updateStatus(packageData!.id, "Approved");
+        await packageService.updateStatus(packageData.id, "Approved");
 
-        toast({
-            title: "Package Approved!",
-            description: `Package ID ${packageData!.id} is now Active.`,
-            variant: "success", 
-            duration : 50000
-        });
+        toast({ title: "Package Approved!", description: `Package ID ${packageData.id} is now Active.`, variant: "success" });
         setTimeout(() => router.push("/portal/packages"), 1500);
-        } catch (error) {
+    } catch (error) {
         console.error(error);
-        toast({
-            title: "Approval Failed",
-            description: "Failed to approve package. Please check the network.",
-            variant: "destructive",
-            duration : 50000
-        });
+        toast({ title: "Approval Failed", description: "Failed to approve package.", variant: "destructive" });
     } finally {
         setLoading(false);
     }
@@ -225,35 +130,34 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
     );
   }
 
-  // UI Helpers
+  // --- UI Helpers ---
   const isPending = packageData.status === "Pending";
-  const packageItems: PackageItem[] = packageData.items || packageData.packageitems || [];
+  // FIX: Access only 'items' (Service ensures this is populated)
+  const packageItems: PackageItem[] = packageData.items || [];
+  
   const filteredItems = packageItems.filter((item: PackageItem) =>
     item.itemName.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  const displayImage = getProxiedImageUrl(packageData.imageUrl || packageData.imageID);
   
-  const pType = (packageData.packageType || packageData.PackageType || 'Entry').toLowerCase();
+  // FIX: Access only 'imageUrl' (Service ensures this is populated)
+  const displayImage = getProxiedImageUrl(packageData.imageUrl);
+  
+  // FIX: Access only 'packageType' (camelCase)
+  const pType = (packageData.packageType || 'Entry').toLowerCase();
   const isPoint = pType.includes('point') && !pType.includes('reward');
-  const priceUnit = isPoint ? "Pts" : "RM";
-  const primaryDisplayValue = isPoint ? (packageData.point ?? 0) : (packageData.price ?? packageData.totalPrice ?? 0);
-
-  const formattedPrice = primaryDisplayValue.toLocaleString('en-US', { 
-      minimumFractionDigits: isPoint ? 0 : 2, 
-      maximumFractionDigits: isPoint ? 0 : 2
-  });
-  const priceContent = isPoint ? `${formattedPrice} ${priceUnit}` : `${priceUnit} ${formattedPrice}`;
+  
+  // FIX: Use 'price' or 'point' directly based on type
+  const primaryDisplayValue = isPoint ? (packageData.point ?? 0) : (packageData.price ?? 0);
 
   return (
     <>
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        {/* Header Navigation */}
+        {/* Header */}
         <div className="flex items-center gap-3 mb-4 border-b-2 border-[#E5E7EB] pb-3">
           <button onClick={() => router.push("/portal/packages")} className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 transition">
             <ArrowLeft size={20} className="text-gray-600 dark:text-gray-300" />
           </button>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-            {/* Dynamic Title based on Source */}
             {source === 'pending' ? 'Package Request (Pending)' : 'Package Detail'}
           </h1>
         </div>
@@ -277,7 +181,7 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
             <div className="w-48 flex-shrink-0">
               <img
                 src={displayImage}
-                alt={packageData.name || packageData.PackageName}
+                alt={packageData.name}
                 className="w-full h-[220px] object-cover rounded-xl shadow-md"
                 onError={(e) => (e.currentTarget.src = "/packages/DefaultPackageImage.png")}
               />
@@ -287,7 +191,8 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
               <div className="flex items-center gap-3">
                 <h2 className="text-2xl font-bold dark:text-white">
                   <span className="text-[#5B5FEF] dark:text-indigo-500">
-                    {priceContent} 
+                    {/* FIX: Use centralized formatter */}
+                    {formatCurrency(primaryDisplayValue, isPoint)}
                   </span>
                 </h2>
                 <span className={`px-3 py-1 rounded-full text-sm font-semibold ${packageData.status === "Active" ? "bg-green-100 text-green-700" : packageData.status === "Pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
@@ -295,22 +200,24 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
                 </span>
               </div>
 
+              {/* FIX: Use 'name' only */}
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                {packageData.name || packageData.PackageName}
+                {packageData.name}
               </h3>
 
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300 text-sm">
                 <Calendar className="text-gray-400" size={16} />
-                <span className="font-medium">{formatDisplayDate(packageData.effectiveDate)}</span>
+                <span className="font-medium">{formatDate(packageData.effectiveDate)}</span>
                 <span className="text-gray-400">→</span>
                 <Calendar className="text-gray-400" size={16} />
-                <span className="font-medium">{formatExpiryDateTime(packageData.lastValidDate)}</span>
+                <span className="font-medium">{formatDate(packageData.lastValidDate)}</span>
               </div>
 
               <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-3 flex flex-wrap gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <Ticket className="text-indigo-600 dark:text-indigo-400" size={16} />
-                  <span>{packageData.PackageType === "RewardP" ? "Reward Point" : (packageData.PackageType || "-")}</span>
+                  {/* FIX: Use 'packageType' only */}
+                  <span>{packageData.packageType === "RewardP" ? "Reward Point" : (packageData.packageType || "-")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Globe className="text-indigo-600 dark:text-indigo-400" size={16} />
@@ -319,11 +226,9 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
                 <div className="flex items-center gap-2">
                   <User className="text-indigo-600 dark:text-indigo-400" size={16} />
                  <div className="flex flex-col leading-none">
-                      {/* Label (e.g. A1 - Adult) */}
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
                         {packageData.ageCategory ?? "-"}
                       </span>
-                      {/* Description (e.g. Aged 11-59) */}
                       {packageData.ageDescription && (
                           <span className="text-[11px] text-muted-foreground mt-0.5">
                             {packageData.ageDescription}
@@ -333,33 +238,32 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
                 </div>
               </div>
 
-              {/* REFINED DISPLAY BLOCK: Submitter, Approver, and Remarks */}
               <div className="space-y-3 pt-2 text-sm">
                   {/* Submitter Info */}
                   <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                       <User className="text-gray-500" size={16} />
+                      {/* FIX: Use 'submittedBy' only */}
                       <span className="font-medium text-gray-900 dark:text-white">
-                          {packageData.submittedBy || packageData.createdBy || "N/A"}
+                          {packageData.submittedBy || "N/A"}
                       </span>
                       <span className="text-muted-foreground ml-2"> - Created on </span>
                       <span className="font-medium">
-                          {formatDisplayDate(packageData.createdDate)}
+                          {formatDate(packageData.createdDate)}
                       </span>
                   </div>
                   
-                  {/* TP Remark (Submitter's Remark) */}
+                  {/* TP Remark */}
                   <div className="flex items-start gap-2 text-gray-600 dark:text-gray-400">
                       <FileText className="text-gray-500 mt-1 flex-shrink-0" size={16} />
                       <span className="flex-1">
                           <span className="font-medium text-gray-900 dark:text-white">Remark: </span>
-                          {packageData.remark || packageData.tpremark || "No remarks provided"}
+                          {/* FIX: Use 'remark' only */}
+                          {packageData.remark || "No remarks provided"}
                       </span>
                   </div>
                   
                   <Separator className="my-3" />
                   
-                  {/* Approval/Rejection Info (Only show if reviewed) */}
-                  {/* FIX: Ensure correct reviewer name and date fallback */}
                   {!isPending && (
                       <div className="space-y-3">
                           <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
@@ -370,32 +274,27 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
                               )}
                               
                               <span className="font-medium text-gray-900 dark:text-white">
-                                  {/* FIX 1: Use approvedBy for the reviewer, fallback to lastModifiedBy, then System */}
-                                  {packageData.reviewedBy || packageData.reviewedDate || "System"} - {packageData.status} 
+                                  {packageData.reviewedBy || "System"} - {packageData.status} 
                               </span>
                               <span className="text-muted-foreground ml-2"> on </span>
-                              
-                              {/* FIX 2: Use approvedDate or modifiedDate for the timestamp, fallback to '—' */}
                               <span className="font-medium">
-                                  {(packageData.reviewedDate && formatDisplayDate(packageData.reviewedDate)) || "—"}
+                                  {(packageData.reviewedDate && formatDate(packageData.reviewedDate)) || "—"}
                               </span>
                           </div>
                           
-                          {/* Finance Remark (Rejection Reason/Final Note) */}
+                          {/* Finance Remark */}
                           <div className="flex items-start gap-2 text-gray-600 dark:text-gray-400">
                               <FileText className="text-gray-500 mt-1 flex-shrink-0" size={16} />
                               <span className="flex-1">
                                   <span className="font-medium text-gray-900 dark:text-white">Finance Remark: </span>
+                                  {/* FIX: Use 'remark2' only */}
                                   {packageData.remark2  || (packageData.status === "Rejected" ? "No rejection reason provided." : "N/A")}
                               </span>
                           </div>
                       </div>
                   )}
               </div>
-              {/* ---------------------------------------------------- */}
 
-              {/* 🔴 CRITICAL FIX: Action Area Visibility */}
-              {/* Only show buttons if Pending AND Finance AND source is requests */}
               {source === "pending" && isFinance && isPending && (
                 <div className="border-t border-gray-200 dark:border-gray-600 pt-5 mt-5">
                   <div className="flex items-start gap-2 mb-4">
@@ -409,7 +308,6 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
                     />
                   </div>
 
-                  {/* Warning Message */}
                   <div className="flex items-center gap-2 text-gray-500 text-xs mb-4 justify-center">
                     <AlertCircle className="w-4 h-4" />
                     <span>Button becomes available after verifying the package item.</span>
@@ -457,19 +355,14 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto">
                   {filteredItems.map((item, index) => {
-                    // Logic for item display units (assuming item follows parent type logic if not explicit)
                     const itemVal = isPoint ? (item.point || 0) : (item.price || 0);
-                    const formattedItem = itemVal.toLocaleString('en-US', { 
-                        minimumFractionDigits: isPoint ? 0 : 2,
-                        maximumFractionDigits: isPoint ? 0 : 2
-                     });
-
-                      return (
+                    return (
                         <div key={index} className="bg-white dark:bg-gray-700 rounded-lg px-4 py-3 border border-gray-200 dark:border-gray-600 shadow-sm flex items-center justify-between">
                         <div className="flex flex-col"><span className="font-medium text-gray-700 dark:text-gray-200 text-sm">{item.itemName}</span><span className="text-xs text-gray-400"> </span></div>
                         <div className="flex items-center gap-3">
                             <span className="text-gray-600 dark:text-gray-400 text-sm">
-                                {isPoint ? `${formattedItem} Pts` : `RM ${formattedItem}`}
+                                {/* FIX: Use standardized formatter */}
+                                {formatCurrency(itemVal, isPoint)}
                             </span>
                             <span className="text-gray-500 dark:text-gray-400 text-sm">Qty: {item.entryQty ?? 1}</span>
                         </div>
