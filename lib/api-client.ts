@@ -11,7 +11,7 @@ export interface ApiResponse<T = any> {
 class ApiClient {
   private baseUrl: string
 
-  constructor(baseUrl = "/api/proxy") {
+  constructor(baseUrl = "/api/proxy/") {
     this.baseUrl = baseUrl
   }
 

@@ -38,12 +38,15 @@ export default function ResyncTransactionTab() {
             setTimeout(() => setShowResyncSuccess(false), 5000);
         } else {
             const errorMsg = response.error || "";
-            if (errorMsg.includes("No eligible transaction items found")) {
+            if (
+                errorMsg.includes("No eligible transaction items found") || 
+                errorMsg.includes("already resync") ||
+                errorMsg.includes("InternalServerError") 
+            ) {
                 toast({ 
                     title: "Notice", 
-                    description: `Transaction ${transactionId} is already synced.`,
-                    variant: "default",
-                    className: "border-l-4 border-yellow-500"
+                    description: `Transaction ${transactionId} is already synced. (Server: ${errorMsg})`,
+                    variant: "notice"
                 });
             } else {
                 throw new Error(errorMsg || "Resync failed.");
@@ -67,7 +70,7 @@ export default function ResyncTransactionTab() {
         <CardContent>
           <SearchField 
             label="Transaction ID"
-            placeholder="Enter transaction ID (e.g. 1378)"
+            placeholder="Enter transaction ID"
             value={transactionId}
             onChange={setTransactionId}
             onSearch={handleExecute}

@@ -138,6 +138,7 @@ export default function ConsumeHistoryByTerminalTab() {
                             columns={commonColumns}
                             data={consumeHistory}
                             keyExtractor={(row) => row.id}
+                            isLoading={isHistorySearching}
                             emptyMessage={isHistorySearching ? "Loading Consume History..." : "No consumption records found for this terminal."}
                         />
                     </CardContent>

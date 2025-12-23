@@ -200,7 +200,7 @@ export const itPoswfService = {
 
     searchShopifyOrder: async (orderName: string): Promise<ApiResponse<ShopifyOrder>> => {
         const formattedOrderName = orderName.trim().startsWith("#") ? orderName.trim() : `#${orderName.trim()}`;
-        const payload = { orderId: formattedOrderName }; 
+        const payload = { orderName: formattedOrderName }; 
 
         const response = await apiClient.post<ShopifyOrder>(ENDPOINTS.SEARCH_SHOPIFY_ORDER, payload);
 

@@ -74,7 +74,7 @@ export default function SettingsPage() {
                 <AlertTitle className="text-amber-800 dark:text-amber-300 font-semibold">Profile Locked</AlertTitle>
                 <AlertDescription className="text-amber-800/90 dark:text-amber-200/90 text-xs leading-relaxed">
                     To protect your SuperApp access (Parking, Office Entry), profile editing is disabled here. 
-                    Please contact HR or use the SuperApp to update your details.
+                    Please contact MIS or use the SuperApp to update your details.
                 </AlertDescription>
             </Alert>
 

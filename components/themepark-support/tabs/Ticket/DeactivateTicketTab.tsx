@@ -230,9 +230,9 @@ export default function DeactivateTicketTab() {
         </CardContent>
       </Card>
 
-      {(ticketDetails.length > 0 || consumptionHistory.length > 0) && (
+      {(isSearching || ticketDetails.length > 0 || consumptionHistory.length > 0) && (
         <Card>
-          <CardContent className="pt-6 space-y-4">
+          <CardContent className="space-y-4">
             <div className="flex items-center gap-2 text-lg font-semibold">
                 <Ticket className="h-5 w-5 text-muted-foreground" />
                 Ticket & Consumption Details

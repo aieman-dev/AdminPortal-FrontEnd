@@ -9,7 +9,8 @@ async function handleRequest(request: NextRequest, { params }: { params: { path:
   const path = resolvedParams.path.join("/"); 
 
   // 2. Construct the full Backend URL
-  const backendUrl = `${BACKEND_API_BASE}/api/${path}`;
+  const query = request.nextUrl.search;
+  const backendUrl = `${BACKEND_API_BASE}/api/${path}${query}`;
   
   // 3. Extract the Authorization header (JWT)
   const authHeader = request.headers.get("authorization");
@@ -49,7 +50,7 @@ async function handleRequest(request: NextRequest, { params }: { params: { path:
 
     if (!apiResponse.ok) {
       return NextResponse.json(
-        { error: data.message || data.error || `Backend Error: ${apiResponse.statusText}` }, 
+        { error: data.message || data.error || `Backend Error: ${apiResponse.statusText}`, ...data }, 
         { status: apiResponse.status }
       );
     }

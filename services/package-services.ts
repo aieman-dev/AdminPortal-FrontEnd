@@ -1,6 +1,7 @@
 // services/package-services.ts
 
 import { apiClient } from "@/lib/api-client";
+import { getAuthToken } from "@/lib/auth";
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
 import { 
     Package, 
@@ -24,14 +25,14 @@ const ENDPOINTS = {
   CREATE: "Package/create",
   DRAFT: "Package/draft",
   SEARCH_IMAGES: "Package/images/search",
-  UPLOAD: "Package/upload", // NOTE: This one likely still uses specific proxy if binary
+  UPLOAD: "proxy-upload", 
   BULK_DELETE: "Package/deactivate-draft",
   CREATION_DATA: "Package/creationdata",
   
   // Status & Detail
   UPDATE_STATUS: "Package/status",
   GET_LIST: "packageView/search",
-  GET_ONE: "packageView/detail",
+  GET_ONE: "packageView/details",
   DUPLICATE: "Package/duplicate",
 
   // IT-POSWF Support
@@ -149,10 +150,23 @@ export const packageService = {
   uploadImage: async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append("file", file);
-    // Note: We keep using the specific proxy here because generic JSON proxy doesn't handle FormData well yet
-    const response = await apiClient.post<{ imageId: string }>("/proxy-upload", formData); 
-    if (!response.success || !response.data?.imageId) throw new Error(response.error || "Image upload failed");
-    return response.data.imageId;
+
+    const response = await fetch("/api/proxy-upload", {
+        method: "POST",
+        body: formData,
+        headers: {
+            // Manually inject token since we aren't using apiClient
+            "Authorization": `Bearer ${getAuthToken()}`
+        }
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.error || "Image upload failed");
+    }
+    
+    return data.imageId;
   },
 
   //  SEARCH IMAGES

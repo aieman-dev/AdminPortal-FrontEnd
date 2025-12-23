@@ -136,7 +136,7 @@ export default function SearchHistoryRecordTab() {
 
   // --- COLUMN DEFINITIONS ---
   const transactionColumns: TableColumn<GroupedInvoice>[] = [
-      { header: "Invoice No", accessor: "invoiceNo", sortable: true, cell: (val, row) => (
+      { header: "Invoice No", accessor: "invoiceNo", sortable: true, className: "w-[300px]", cell: (val, row) => (
           <div className="flex items-center gap-2">
              <span className="font-medium text-blue-600 dark:text-blue-400">{val}</span>
              <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-blue-100 px-1 text-[10px] font-bold text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
@@ -144,10 +144,10 @@ export default function SearchHistoryRecordTab() {
              </span>
           </div>
       )},
-      { header: "Total Amount", accessor: "totalAmount", sortable: true, className: "text-right", cell: (val) => formatCurrency(val)},
+      { header: "Total Amount", accessor: "totalAmount", sortable: true, className: "w-[150px] text-right", cell: (val) => formatCurrency(val)},
       { header: "Type", accessor: "trxType", sortable: true, className: "text-center", cell: (val) => <StatusBadge status={val} /> },
       { header: "Created Date", accessor: "createdDate", sortable: true, className: "text-center", cell: (val) => <span className="text-muted-foreground text-sm">{formatDate(val as string)}</span> },
-      { header: "Actions", accessor: "id", className: "text-right", cell: () => (
+      { header: "Actions", accessor: "id", className: "text-right pr-20", cell: () => (
           <Button variant="ghost" size="sm" className="h-8 gap-1 text-muted-foreground hover:text-foreground" onClick={(e) => e.stopPropagation()}>
               <Pencil className="h-3.5 w-3.5" /> Edit
           </Button>
@@ -238,11 +238,9 @@ export default function SearchHistoryRecordTab() {
                     emptyTitle="No Transactions Found"
                     emptyIcon={SearchX}
                     emptyMessage={searchTerm ? "No records found matching your search." : "Enter a search term to begin."}
-                    // New Props
                     renderSubComponent={renderDetailRow}
                     onSort={handleSort}
                     sortConfig={sortConfig}
-                    // REFACTOR: Internal Pagination
                     pagination={{
                         currentPage: trxPage,
                         totalPages: Math.ceil(sortedTransactions.length / ITEMS_PER_PAGE),
@@ -264,7 +262,6 @@ export default function SearchHistoryRecordTab() {
                 emptyTitle="No Tickets Found"
                 emptyIcon={SearchX}
                 emptyMessage={searchTerm ? "No ticket records found." : "Enter a search term to begin."}
-                // REFACTOR: Internal Pagination
                 pagination={{
                     currentPage: ticketPage,
                     totalPages: Math.ceil(ticketData.length / ITEMS_PER_PAGE),

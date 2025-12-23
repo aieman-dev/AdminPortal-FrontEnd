@@ -74,7 +74,8 @@ export function DataTable<T>({
         <Table>
           <TableHeader className="bg-muted/50">
             <TableRow>
-              {renderSubComponent && <TableHead className="w-[50px]"></TableHead>}
+              {renderSubComponent && <TableHead className="w-[48px] min-w-[48px] px-2"></TableHead>}
+              
               {columns.map((column, index) => (
                 <TableHead 
                     key={index} 
@@ -84,7 +85,11 @@ export function DataTable<T>({
                     )}
                     onClick={() => column.sortable && onSort && typeof column.accessor === 'string' && onSort(column.accessor as string)}
                 >
-                    <div className="flex items-center gap-1">
+                    <div className={cn(
+                        "flex items-center gap-1",
+                        column.className?.includes("text-right") && "justify-end",
+                        column.className?.includes("text-center") && "justify-center"
+                    )}>
                         {column.header}
                         {column.sortable && (
                             <ArrowUpDown className={cn(
@@ -101,12 +106,26 @@ export function DataTable<T>({
           </TableHeader>
           <TableBody>
             {isLoading ? (
+              // --- SKELETON LOADING STATE ---
               Array.from({ length: 5 }).map((_, rowIndex) => (
                 <TableRow key={`skeleton-row-${rowIndex}`}>
-                    {renderSubComponent && <TableCell><Skeleton className="h-4 w-4 rounded-full" /></TableCell>}
-                    {columns.map((_, colIndex) => (
-                      <TableCell key={`skeleton-cell-${colIndex}`}>
-                        <Skeleton className="h-5 rounded-md opacity-50 animate-pulse" style={{ width: `${Math.random() * 40 + 40}%` }} />
+                    
+                    {renderSubComponent && (
+                        <TableCell className="w-[48px] min-w-[48px] px-2 text-center">
+                            <Skeleton className="h-4 w-4 rounded-full mx-auto" />
+                        </TableCell>
+                    )}
+                    
+                    {columns.map((column, colIndex) => (
+                      <TableCell key={`skeleton-cell-${colIndex}`} className={column.className}>
+                        <Skeleton 
+                            className={cn(
+                                "h-5 rounded-md opacity-70 animate-pulse",
+                                column.className?.includes("text-right") ? "ml-auto" : 
+                                column.className?.includes("text-center") ? "mx-auto" : ""
+                            )} 
+                            style={{ width: `${Math.random() * 30 + 60}%` }} 
+                        />
                       </TableCell>
                   ))}
                 </TableRow>
@@ -129,28 +148,28 @@ export function DataTable<T>({
                 return (
                   <React.Fragment key={rowKey}>
                     <TableRow
-                        style={{ 
+                    style={{ 
                                 animationDelay: `${index * 0.05}s`, 
-                                animationFillMode: 'forwards' 
+                                animationFillMode: 'both' 
                             }}
-                            className={cn(
-                                "opacity-0 animate-in fade-in slide-in-from-bottom-2 duration-300", 
-                                "transition-all border-b hover:bg-muted/30",
-                                renderSubComponent ? "cursor-pointer" : "",
-                                isExpanded 
-                                    ? "bg-muted/30 border-b-0 border-l-4 border-l-primary" 
-                                    : "border-l-4 border-l-transparent"
-                            )}
-                            onClick={() => renderSubComponent && toggleRow(rowKey)}
-                        >
+                        className={cn(
+                            "animate-in fade-in slide-in-from-bottom-2 duration-300",
+                            "transition-all border-b hover:bg-muted/30",
+                            renderSubComponent ? "cursor-pointer" : "",
+                            isExpanded 
+                                ? "bg-muted/30 border-b-0 border-l-4 border-l-primary" 
+                                : "border-l-4 border-l-transparent"
+                        )}
+                        onClick={() => renderSubComponent && toggleRow(rowKey)}
+                    >
+                      
                       {renderSubComponent && (
-                          <TableCell>
+                          <TableCell className="w-[48px] min-w-[48px] px-2 text-center">
                               {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                           </TableCell>
                       )}
 
                       {columns.map((column, colIndex) => {
-                        // FIXED: Added safe type casting for row access
                         const value = typeof column.accessor === "function" 
                             ? column.accessor(row) 
                             : row[column.accessor as keyof T];
@@ -161,7 +180,6 @@ export function DataTable<T>({
                       })}
                     </TableRow>
 
-                    {/* Sub-Component Row */}
                     {isExpanded && renderSubComponent && (
                         <TableRow className="bg-muted/10 hover:bg-muted/10 border-t-0 shadow-inner animate-in fade-in slide-in-from-top-1 duration-200">
                             <TableCell colSpan={columns.length + 1} className="p-0">

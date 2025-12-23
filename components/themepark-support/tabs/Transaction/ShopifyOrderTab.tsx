@@ -133,7 +133,7 @@ export default function ShopifyOrderTab() {
 
       {(isSearching || dataForTable.length > 0) && (
         <Card>
-          <CardContent className="space-y-4 pt-6">
+          <CardContent className="space-y-4">
             <div className="flex items-center gap-2">
               <ShoppingBag className="h-5 w-5" />
               <div className="text-lg font-semibold">Transaction Details</div>
