@@ -43,6 +43,7 @@ interface DataTableProps<T> {
   renderSubComponent?: (row: T) => ReactNode;
   onSort?: (key: string) => void;
   sortConfig?: SortConfig | null;
+  onRowClick?: (row: T) => void;
 }
 
 export function DataTable<T>({ 
@@ -56,7 +57,8 @@ export function DataTable<T>({
   isLoading = false,
   renderSubComponent,
   onSort,
-  sortConfig
+  sortConfig,
+  onRowClick
 }: DataTableProps<T>) {
 
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -155,12 +157,15 @@ export function DataTable<T>({
                         className={cn(
                             "animate-in fade-in slide-in-from-bottom-2 duration-300",
                             "transition-all border-b hover:bg-muted/30",
-                            renderSubComponent ? "cursor-pointer" : "",
+                            (onRowClick || renderSubComponent) ? "cursor-pointer" : "",
                             isExpanded 
                                 ? "bg-muted/30 border-b-0 border-l-4 border-l-primary" 
                                 : "border-l-4 border-l-transparent"
                         )}
-                        onClick={() => renderSubComponent && toggleRow(rowKey)}
+                        onClick={() => {
+                          if (renderSubComponent) toggleRow(rowKey);
+                          if (onRowClick) onRowClick(row);
+                        }}
                     >
                       
                       {renderSubComponent && (

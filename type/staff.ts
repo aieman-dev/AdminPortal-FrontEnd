@@ -1,4 +1,5 @@
 // type/staff.ts
+import { ActionType } from "@/type/activity-log";
 
 // --- FRONTEND INTERFACES ---
 
@@ -11,6 +12,14 @@ export interface StaffMember {
   status: string; 
   createdDate: string;
   roleId?: number;
+}
+
+export interface ExtendedStaffMember extends StaffMember {
+    lastAction?: {
+        description: string;
+        timestamp: string;
+        type: ActionType; 
+    }
 }
 
 export interface SearchedUser {

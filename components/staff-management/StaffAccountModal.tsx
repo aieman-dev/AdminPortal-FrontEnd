@@ -90,7 +90,7 @@ export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAcco
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] w-[95vw] max-h-[90vh] overflow-y-auto gap-6">
         <DialogHeader>
           <DialogTitle>Assign Staff Role</DialogTitle>
           <DialogDescription>Search for an existing user and grant them system access.</DialogDescription>
@@ -107,6 +107,7 @@ export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAcco
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                className="text-base md:text-sm"
               />
               <Button onClick={handleSearch} disabled={isSearching} variant="secondary">
                 {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
@@ -160,7 +161,7 @@ export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAcco
                     <div className="text-sm text-muted-foreground">{selectedUser.email}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">ID: {selectedUser.accId}</div>
                  </div>
-                 <Button variant="ghost" size="sm" onClick={() => setSelectedUser(null)} className="text-xs h-7">
+                 <Button variant="ghost" size="sm" onClick={() => setSelectedUser(null)} className="text-xs h-8 px-3 shrink-0">
                     Change
                  </Button>
               </div>

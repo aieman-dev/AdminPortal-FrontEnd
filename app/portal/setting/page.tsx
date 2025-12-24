@@ -1,32 +1,67 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { PageHeader } from "@/components/portal/page-header"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
-import { User, Mail, Phone, Building, Shield, Bell, Info, AlertTriangle, CheckCircle2, XCircle, Calendar, Activity } from "lucide-react"
+import { User, Mail, Phone, Building, Shield, Bell, Info, AlertTriangle, CheckCircle2, XCircle, Calendar, Activity, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useAuth } from "@/hooks/use-auth"
 import { canViewPackageManagement, canViewThemeParkSupport, canCreatePackage, isFinanceApprover } from "@/lib/auth"
-
-// --- MOCK USER DATA (For display only) ---
-const USER_META = {
-    joinedDate: "15 Jan 2023",
-    lastLogin: "Today, 10:42 AM"
-}
+import { staffService } from "@/services/staff-services" 
+import { StaffMember } from "@/type/staff" 
+import { formatDate } from "@/lib/formatter"
 
 export default function SettingsPage() {
   const { toast } = useToast()
   const { user } = useAuth()
+
+  // State to hold the real data from API
+  const [profile, setProfile] = useState<StaffMember | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   
   // Default preferences
   const [preferences, setPreferences] = useState({
       packageUpdates: true, 
       systemAnnouncements: false, 
   })
+
+  // --- FETCH REAL USER DATA ---
+  useEffect(() => {
+    const fetchProfile = async () => {
+        if (!user?.email) return;
+
+        try {
+            setIsLoading(true);
+            // 1. Search using the logged-in user's email
+            // The API returns a list of matches based on the query string
+            const results = await staffService.getStaffList(user.email);
+            
+            // 2. Find the exact match to ensure we display the correct user
+            const myProfile = results.find(u => u.email.toLowerCase() === user.email?.toLowerCase());
+            
+            if (myProfile) {
+                setProfile(myProfile);
+            } else {
+                console.warn("User profile not found in staff list.");
+            }
+        } catch (error) {
+            console.error("Failed to load profile settings:", error);
+            toast({ 
+                title: "Data Error", 
+                description: "Could not load latest profile details.", 
+                variant: "destructive" 
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    fetchProfile();
+  }, [user?.email, toast]);
 
   const handleToggle = (key: keyof typeof preferences) => {
       const newValue = !preferences[key];
@@ -42,7 +77,6 @@ export default function SettingsPage() {
       { label: "View Themepark Support", allowed: canViewThemeParkSupport(user?.department) },
   ];
 
-  // Determine if user should see package alerts (MIS/TP/Finance)
   const showPackageAlerts = user?.department 
     ? ["MIS", "TP", "FINANCE"].some(d => user.department.toUpperCase().includes(d))
     : true;
@@ -51,7 +85,7 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <PageHeader 
         title="Settings" 
-        description="View your profile details, permissions, and system preferences.(hardcoded)" 
+        description="View your profile details, permissions, and system preferences." 
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -86,7 +120,9 @@ export default function SettingsPage() {
                     <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                         <Shield className="h-3 w-3" /> User ID
                     </div>
-                    <div className="font-mono text-sm font-medium text-foreground pl-5">{user?.id || "N/A"}</div>
+                    <div className="font-mono text-sm font-medium text-foreground pl-5 h-5 flex items-center">
+                        {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (profile?.accId || user?.id || "N/A")}
+                    </div>
                 </div>
                 
                 {/* Name */}
@@ -94,7 +130,9 @@ export default function SettingsPage() {
                     <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                         <User className="h-3 w-3" /> Full Name
                     </div>
-                    <div className="text-sm font-medium text-foreground pl-5">{user?.name || "N/A"}</div>
+                    <div className="text-sm font-medium text-foreground pl-5 h-5 flex items-center">
+                        {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (profile?.fullName || user?.name || "N/A")}
+                    </div>
                 </div>
 
                 {/* Email */}
@@ -102,32 +140,38 @@ export default function SettingsPage() {
                     <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                         <Mail className="h-3 w-3" /> Email Address
                     </div>
-                    <div className="text-sm font-medium text-foreground pl-5">{user?.email || "N/A"}</div>
+                    <div className="text-sm font-medium text-foreground pl-5 h-5 flex items-center">
+                        {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (profile?.email || user?.email || "N/A")}
+                    </div>
                 </div>
 
                 {/* Role */}
                 <div className="space-y-1.5">
                     <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                        <Building className="h-3 w-3" /> Department / Role
+                        <Building className="h-3 w-3" /> System Role
                     </div>
-                    <div className="text-sm font-medium text-foreground pl-5">{user?.department || "N/A"} <span className="text-muted-foreground text-xs">({user?.role})</span></div>
+                    <div className="text-sm font-medium text-foreground pl-5 h-5 flex items-center">
+                         {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (profile?.roleName || user?.department || "N/A")}
+                    </div>
                 </div>
 
-                {/* Date Created */}
+                {/* Date Created (REAL DATA) */}
                 <div className="space-y-1.5">
                     <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                         <Calendar className="h-3 w-3" /> Date Created
                     </div>
-                    <div className="text-sm font-medium text-foreground pl-5">{USER_META.joinedDate}</div>
+                    <div className="text-sm font-medium text-foreground pl-5 h-5 flex items-center">
+                        {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : formatDate(profile?.createdDate)}
+                    </div>
                 </div>
 
-                {/* Status */}
+                {/* Status (REAL DATA) */}
                 <div className="space-y-1.5">
                     <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                         <Activity className="h-3 w-3" /> Account Status
                     </div>
-                    <div className="pl-5">
-                        <StatusBadge status="Active" />
+                    <div className="pl-5 h-5 flex items-center">
+                        {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <StatusBadge status={profile?.status || "Unknown"} />}
                     </div>
                 </div>
 

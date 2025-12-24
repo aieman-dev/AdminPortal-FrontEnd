@@ -1,3 +1,4 @@
+// app/portal/staff-management/page.tsx
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
@@ -6,24 +7,30 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
-import { Pencil, UserPlus, Users, SearchX } from "lucide-react"
+import { UserPlus, Users, Eye, ChevronRight, ArrowUpRight, Clock } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { StaffAccountModal } from "@/components/staff-management/StaffAccountModal" 
-import { useRouter } from "next/navigation" 
-import { formatDate } from "@/lib/formatter";
+import { ActivityCell } from "@/components/staff-management/ActivityCell"; // Import the new component
+import { ActionType } from "@/type/activity-log"; 
+import { StaffDrawer } from "@/components/staff-management/StaffDrawer" 
+import { formatDate, getRelativeTime } from "@/lib/formatter";
 import { staffService } from "@/services/staff-services"
-import { type StaffMember } from "@/type/staff"
+import { type StaffMember, type ExtendedStaffMember } from "@/type/staff"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
 
-
 export default function UsersStaffManagementPage() {
-  const router = useRouter()
   const { toast } = useToast()
   
   const [searchQuery, setSearchQuery] = useState("")
-  const [accounts, setAccounts] = useState<StaffMember[]>([]) 
+  const [accounts, setAccounts] = useState<ExtendedStaffMember[]>([]) 
   const [isSearching, setIsSearching] = useState(false)
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  
+  // Modal States
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  
+  // Drawer States
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null)
 
   const fetchStaff = useCallback(async (query: string = "") => {
     setIsSearching(true);
@@ -31,18 +38,53 @@ export default function UsersStaffManagementPage() {
     
     try {
       const data = await staffService.getStaffList(query);
-      setAccounts(data);
+
+      // --- MOCK DATA GENERATOR (Simulating Backend Activity Log) ---
+      const enrichedData: ExtendedStaffMember[] = data.map((staff, index) => {
+          const possibleActions: { desc: string; type: ActionType }[] = [
+              { desc: "System Login", type: 'AUTH_LOGIN' },
+              { desc: "Changed Password", type: 'AUTH_PASSWORD_CHANGE' },
+              { desc: "Created 'Year End Promo'", type: 'PKG_CREATE' },
+              { desc: "Approved 'Family Bundle'", type: 'PKG_APPROVE' },
+              { desc: "Rejected 'Test Package'", type: 'PKG_REJECT' },
+              { desc: "Voided Transaction #1092", type: 'TRX_VOID' },
+              { desc: "Resynced Transaction #8821", type: 'TRX_RESYNC' },
+              { desc: "Deactivated Ticket #T-7712", type: 'TICKET_DEACTIVATE' },
+              { desc: "Manual Consume (SuperApp)", type: 'TRX_CONSUME' }
+          ];
+
+          const randomAction = possibleActions[(index + staff.accId) % possibleActions.length];
+
+          const now = new Date();
+          // Random time: between 1 minute and 2 days ago
+          const minutesAgo = (index * 17) % (60 * 48); 
+          now.setMinutes(now.getMinutes() - minutesAgo);
+
+          return {
+              ...staff,
+              lastAction: {
+                  description: randomAction.desc,
+                  type: randomAction.type,
+                  timestamp: now.toISOString()
+              }
+          };
+      });
+
+      // Sort by Most Recent Activity
+      const sortedData = enrichedData.sort((a, b) => {
+         const dateA = new Date(a.lastAction?.timestamp || 0).getTime();
+         const dateB = new Date(b.lastAction?.timestamp || 0).getTime();
+         return dateB - dateA; 
+      });
+
+      setAccounts(sortedData);
       
       if (query && data.length === 0) {
         toast({ title: "Search Complete", description: "No staff found." });
       }
     } catch (error) {
       console.error("Fetch error:", error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to load staff list.", 
-        variant: "destructive" 
-      });
+      toast({ title: "Error", description: "Failed to load staff list.", variant: "destructive" });
     } finally {
       setIsSearching(false);
     }
@@ -52,30 +94,28 @@ export default function UsersStaffManagementPage() {
     fetchStaff();
   }, [fetchStaff]);
 
-  const handleSearch = () => {
-    fetchStaff(searchQuery);
+  const handleSearch = () => fetchStaff(searchQuery);
+
+  const handleViewDetails = (user: StaffMember) => {
+      setSelectedStaff(user);
+      setIsDrawerOpen(true);
   }
 
-  const handleOpenCreateModal = () => {
-    setIsModalOpen(true);
-  }
-  
-  const handleEdit = (user: StaffMember) => {
-    router.push(`/portal/staff-management/${user.accId}`); 
-  }
-  
-  const handleModalClose = () => {
-      setIsModalOpen(false);
-  }
-  
-  const handleCreationSuccess = () => {
-      fetchStaff(searchQuery); 
-  }
-
-  const columns: TableColumn<StaffMember>[] = [
+  const columns: TableColumn<ExtendedStaffMember>[] = [
       { header: "Staff ID", accessor: "accId", className: "font-medium pl-6" },
-      { header: "Name", accessor: "fullName", cell: (val) => val || "-" },
-      { header: "Email (Login)", accessor: "email" },
+      { 
+          header: "Name", 
+          accessor: "fullName", 
+          cell: (val, row) => (
+            <button 
+                onClick={() => handleViewDetails(row)}
+                className="font-medium text-foreground hover:text-primary hover:underline text-left"
+            >
+                {val || "-"}
+            </button>
+          ) 
+      },
+      { header: "Email", accessor: "email" },
       { 
           header: "Role", 
           accessor: "roleName", 
@@ -87,6 +127,12 @@ export default function UsersStaffManagementPage() {
           )
       },
       { 
+        header: "Recent Activity", 
+        accessor: "lastAction", 
+        className: "w-[240px]",
+        cell: (val: any) => <ActivityCell activity={val} />
+      },
+      { 
           header: "Status", 
           accessor: "status", 
           className: "text-center",
@@ -96,11 +142,15 @@ export default function UsersStaffManagementPage() {
       {
           header: "Action",
           accessor: "accId",
-          className: "text-right",
+          className: "text-right pr-10",
           cell: (_, row) => (
-            <Button variant="ghost" size="sm" onClick={() => handleEdit(row)}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Edit
+            <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => handleViewDetails(row)}
+                className="h-8 gap-1 text-muted-foreground hover:text-primary"
+            >
+              Details <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           )
       }
@@ -110,9 +160,9 @@ export default function UsersStaffManagementPage() {
     <div className="space-y-6">
       <PageHeader 
           title="Staff User Management" 
-          description="Manage access and details for internal system staff accounts."
+          description="Manage access, roles, and audit activity logs for system staff."
       >
-        <Button onClick={handleOpenCreateModal}>
+        <Button onClick={() => setIsCreateModalOpen(true)}>
           <UserPlus className="h-4 w-4 mr-2" />
           Assign Role to User
         </Button>
@@ -138,6 +188,7 @@ export default function UsersStaffManagementPage() {
                 data={accounts}
                 keyExtractor={(row) => String(row.accId)}
                 isLoading={isSearching}
+                onRowClick={handleViewDetails}
                 emptyIcon={Users}
                 emptyTitle="No Staff Found"
                 emptyMessage="No staff members found. Try adjusting your search."
@@ -145,11 +196,19 @@ export default function UsersStaffManagementPage() {
         </CardContent>
       </Card>
       
+      {/* 1. Create Modal */}
       <StaffAccountModal 
-          isOpen={isModalOpen} 
-          onOpenChange={handleModalClose}
-          onSuccess={handleCreationSuccess}
+          isOpen={isCreateModalOpen} 
+          onOpenChange={setIsCreateModalOpen}
+          onSuccess={() => fetchStaff(searchQuery)}
           initialData={null} 
+      />
+
+      {/* 2. Side Drawer (The new feature) */}
+      <StaffDrawer 
+          isOpen={isDrawerOpen}
+          staff={selectedStaff}
+          onClose={() => setIsDrawerOpen(false)}
       />
     </div>
   )

@@ -68,9 +68,22 @@ export function StatCard({
         <div className="space-y-1">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
           
-          <motion.p className={cn("text-2xl font-semibold", valueColor)}>
-             {displayValue}
-          </motion.p>
+          <div className="flex items-center gap-2">
+            <motion.p className={cn("text-2xl font-semibold", valueColor)}>
+               {displayValue}
+            </motion.p>
+
+            {trend && (
+                <span className={cn(
+                    "text-[10px] font-medium px-1.5 py-0.5 rounded-full flex items-center",
+                    trend.positive 
+                        ? "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400" 
+                        : "text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-400"
+                )}>
+                    {trend.positive ? "↑" : "↓"} {trend.value}
+                </span>
+            )}
+          </div>
 
           {description && <p className="text-xs text-muted-foreground">{description}</p>}
         </div>
@@ -78,14 +91,6 @@ export function StatCard({
           <Icon className="h-6 w-6 text-primary" />
         </div>
       </div>
-      {trend && (
-        <div className="mt-4 flex items-center gap-1">
-          <span className={`text-xs font-medium ${trend.positive ? "text-green-600" : "text-red-600"}`}>
-            {trend.positive ? "↑" : "↓"} {trend.value}
-          </span>
-          <span className="text-xs text-muted-foreground">from last month</span>
-        </div>
-      )}
     </Card>
   )
 }

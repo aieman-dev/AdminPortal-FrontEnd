@@ -35,6 +35,19 @@ export const formatDateTime = (dateString: string | undefined | null): string =>
   }).format(date).replace(',', ''); 
 };
 
+// Helper to format relative time (e.g. "2 mins ago")
+export const getRelativeTime = (dateStr: string) => {
+    if (!dateStr) return "Unknown";
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) return "Just now";
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+}
+
 /**
  * Standard Currency Formatter
  * Output: "RM 50.00" or "50 Pts"

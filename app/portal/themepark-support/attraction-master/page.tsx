@@ -2,37 +2,29 @@
 
 import { PageHeader } from "@/components/portal/page-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { PackageIcon, Settings, History, DivideCircle, Loader2 } from "lucide-react"
+import { PackageIcon, Settings, History, DivideCircle } from "lucide-react"
+import { LoaderState } from "@/components/ui/loader-state"
 import dynamic from "next/dynamic"
 
 // --- LAZY LOADING COMPONENTS ---
 // This splits the code into small chunks. They are only fetched when needed.
 const PackageListingTab = dynamic(
   () => import("@/components/themepark-support/tabs/Attraction/PackageListingTab"),
-  { loading: () => <TabLoadingState /> }
+  { loading: () => <LoaderState /> }
 )
 const UpdateTerminalTab = dynamic(
   () => import("@/components/themepark-support/tabs/Attraction/UpdateTerminalTab"),
-  { loading: () => <TabLoadingState /> }
+  { loading: () => <LoaderState /> }
 )
 const ConsumeHistoryByTerminalTab = dynamic(
   () => import("@/components/themepark-support/tabs/Attraction/ConsumeHistoryByTerminalTab"),
-  { loading: () => <TabLoadingState /> }
+  { loading: () => <LoaderState /> }
 )
 const BComparePackageTab = dynamic(
   () => import("@/components/themepark-support/tabs/Attraction/BComparePackageTab"),
-  { loading: () => <TabLoadingState /> }
+  { loading: () => <LoaderState /> }
 )
 
-// Reusable Loading Component for Tabs
-function TabLoadingState() {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 text-muted-foreground h-[400px] border rounded-lg bg-muted/10">
-      <Loader2 className="h-10 w-10 animate-spin mb-4 text-primary" />
-      <p>Loading module...</p>
-    </div>
-  )
-}
 
 export default function AttractionMasterPage() {
    const tabTransitionClass = "mt-0 space-y-6 outline-none animate-in fade-in slide-in-from-bottom-5 duration-500 fill-mode-forward";

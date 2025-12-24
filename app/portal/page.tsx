@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { 
     Ticket, ShoppingCart, Activity,  
-    ArrowRight, Package, XCircle, CheckCircle2, Wallet, Users,
+    ArrowRight, Package as PackageIcon, XCircle, CheckCircle2, Wallet, Users,
     FileText, PlusCircle, AlertTriangle, Monitor,
     Clock, BarChart3, History, Trophy, TrendingUp,
     ScrollText, Server, RefreshCw, ShieldCheck
@@ -16,7 +16,10 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGri
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 import { motion, useSpring, useTransform } from "framer-motion" // Ensure hooks are imported
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
+import { packageService } from "@/services/package-services"
+import { Package } from "@/type/packages"
+import { getRelativeTime } from "@/lib/formatter"
 
 // --- NEW HELPER COMPONENT FOR BADGES ---
 function AnimatedCounter({ value, prefix = "", suffix = "" }: { value: number, prefix?: string, suffix?: string }) {
@@ -51,11 +54,6 @@ const chartData = [
   { name: "Sun", sales: 3490, consume: 4300 },
 ]
 
-const pendingPackages = [
-    { id: 101, name: "Family Fun Bundle", submittedBy: "Ali", date: "2 mins ago" },
-    { id: 102, name: "VIP Waterpark Access", submittedBy: "Sarah", date: "1 hour ago" },
-    { id: 103, name: "Couple Retreat Promo", submittedBy: "John", date: "3 hours ago" },
-]
 
 const systemActivities = [
     { id: 1, action: "System Alert", detail: "Terminal T-105 went offline", time: "45 mins ago", icon: AlertTriangle, color: "text-red-600", bg: "bg-red-100" },
@@ -115,12 +113,36 @@ export default function DashboardPage() {
   const viewMode = getRoleView(user?.department);
   const descriptionText = getRoleDescription(viewMode);
 
+  const [pendingPackages, setPendingPackages] = useState<Package[]>([]);
+  const [loadingPending, setLoadingPending] = useState(true);
+
+  // FETCH PENDING PACKAGES ON MOUNT
+  useEffect(() => {
+      const fetchPending = async () => {
+          try {
+              // Reusing existing service: getPackages(status, startDate, endDate, page...)
+              // We want 'Pending' status, Page 1, maybe top 5 items
+              const { packages } = await packageService.getPackages("Pending", undefined, undefined, 1);
+              
+              // Slice to show only top 3-5 on dashboard
+              setPendingPackages(packages.slice(0, 5));
+          } catch (error) {
+              console.error("Failed to fetch pending packages for dashboard", error);
+          } finally {
+              setLoadingPending(false);
+          }
+      };
+
+      fetchPending();
+  }, []);
+
   const renderStats = () => {
+    const pendingCount = loadingPending ? 0 : pendingPackages.length;
       let items = [];
       if(viewMode === "FINANCE") {
           items = [
             <StatCard key="1" title="Total Revenue" value="RM 45,231" description="Sales processed today" icon={ShoppingCart} trend={{ value: "8%", positive: true }} />,
-            <StatCard key="2" title="Packages Pending" value="3" description="Waiting for your approval" icon={Clock} valueColor="text-orange-600" />,
+            <StatCard key="2" title="Packages Pending" value={pendingCount.toString()} description="Waiting for your approval" icon={Clock} valueColor="text-orange-600" />,
             <StatCard key="3" title="Void Requests" value="12" description="Transactions voided today" icon={XCircle} valueColor="text-red-600" />,
             <StatCard key="4" title="Active Packages" value="145" description="Live in system" icon={Ticket} />
           ];
@@ -135,7 +157,7 @@ export default function DashboardPage() {
           items = [
             <StatCard key="1" title="Total Revenue" value="RM 45,231" description="Daily system revenue" icon={ShoppingCart} />,
             <StatCard key="2" title="Active Terminals" value="42 / 45" description="3 terminals offline" icon={Activity} valueColor="text-green-600" />,
-            <StatCard key="3" title="Pending Packages" value="3" description="Workflow bottlenecks" icon={Clock} valueColor="text-orange-600" />,
+            <StatCard key="3" title="Pending Packages" value={pendingCount.toString()} description="Workflow bottlenecks" icon={Clock} valueColor="text-orange-600" />,
             <StatCard key="4" title="System Health" value="98%" description="All services operational" icon={Monitor} valueColor="text-green-600" />
           ];
       }
@@ -257,7 +279,6 @@ export default function DashboardPage() {
         
         {/* LEFT COLUMN */}
         <motion.div variants={itemVariants} className="col-span-7 lg:col-span-4 flex flex-col gap-6">
-            
             <Card className="hover:shadow-md transition-shadow duration-200">
                 <CardHeader>
                     <CardTitle>Performance Overview</CardTitle>
@@ -279,39 +300,99 @@ export default function DashboardPage() {
                 </CardContent>
             </Card>
 
-            {renderBottomWidget()}
-
+            <Card className="flex flex-col flex-1 h-full hover:shadow-md transition-shadow duration-200">
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            {viewMode === "TECH" ? <History className="h-5 w-5 text-muted-foreground" /> : <Trophy className="h-5 w-5 text-yellow-500" />}
+                            <CardTitle className="text-base">{viewMode === "TECH" ? "Recent System Activity" : "Top Performing Packages"}</CardTitle>
+                        </div>
+                        {viewMode !== "TECH" && <Badge variant="outline" className="text-xs font-normal">This Week</Badge>}
+                    </div>
+                </CardHeader>
+                <CardContent className="flex-1">
+                    <div className="space-y-4">
+                        {viewMode === "TECH" ? (
+                            systemActivities.map((item) => (
+                                <div key={item.id} className="flex items-start gap-3 pb-3 border-b last:border-0 last:pb-0">
+                                    <div className={`mt-0.5 h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${item.bg} ${item.color}`}>
+                                        <item.icon size={14} />
+                                    </div>
+                                    <div className="space-y-0.5">
+                                        <p className="text-sm font-medium leading-none">{item.action}</p>
+                                        <p className="text-xs text-muted-foreground">{item.detail}</p>
+                                    </div>
+                                    <div className="ml-auto text-xs text-muted-foreground tabular-nums">
+                                        {item.time}
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            topPackages.map((pkg, idx) => (
+                                <div key={pkg.id} className="flex items-center justify-between pb-3 border-b last:border-0 last:pb-0">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-xs font-medium text-muted-foreground">
+                                            {idx + 1}
+                                        </div>
+                                        <div className="space-y-0.5">
+                                            <p className="text-sm font-medium leading-none">{pkg.name}</p>
+                                            <p className="text-xs text-muted-foreground">{pkg.sold} sold</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-sm font-semibold">{pkg.revenue}</p>
+                                        <div className="flex items-center justify-end gap-1 text-[10px] text-green-600">
+                                            <TrendingUp size={10} /> {pkg.trend}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
         </motion.div>
 
         {/* RIGHT COLUMN */}
         <motion.div variants={itemVariants} className="col-span-7 lg:col-span-3 flex flex-col gap-6">
-            
             <Card className="hover:shadow-md transition-shadow duration-200">
                 <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                         <CardTitle className="text-base">Pending Packages</CardTitle>
                         {/*  ANIMATED BADGE HERE  */}
                         <Badge variant="secondary" className="bg-orange-100 text-orange-700 hover:bg-orange-100">
-                             <AnimatedCounter value={3} suffix=" Pending" />
+                             <AnimatedCounter value={pendingPackages.length} suffix=" Pending" />
                         </Badge>
                     </div>
                     <CardDescription>Recently submitted packages awaiting review.</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4">
-                    {pendingPackages.map((pkg) => (
-                        <div key={pkg.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => router.push(`/portal/packages/pdetails/requests/${pkg.id}`)}>
-                            <div className="flex items-center gap-3">
+                    {loadingPending ? (
+                        <div className="py-8 text-center text-sm text-muted-foreground">Loading pending items...</div>
+                    ) : pendingPackages.length === 0 ? (
+                        <div className="py-8 text-center text-sm text-muted-foreground">No pending packages found.</div>
+                    ) : (
+                        pendingPackages.map((pkg) => (
+                        <div 
+                                key={pkg.id} 
+                                className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" 
+                                onClick={() => router.push(`/portal/packages/pdetails/requests/${pkg.id}`)}
+                            >
+                                <div className="flex items-center gap-3">
                                 <div className="h-9 w-9 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
-                                    <Package size={16} />
+                                    <PackageIcon size={16} />
                                 </div>
                                 <div className="space-y-0.5">
-                                    <div className="text-sm font-medium">{pkg.name}</div>
-                                    <div className="text-xs text-muted-foreground">by {pkg.submittedBy} • {pkg.date}</div>
-                                </div>
+                                        <div className="text-sm font-medium truncate max-w-[150px]">{pkg.name}</div>
+                                        <div className="text-xs text-muted-foreground">
+                                            by {pkg.submittedBy || "Unknown"} • {getRelativeTime(pkg.createdDate)}
+                                        </div>
+                                    </div>
                             </div>
                             <ArrowRight size={16} className="text-muted-foreground" />
                         </div>
-                    ))}
+                        ))
+                    )}
                     <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => router.push('/portal/packages?filter=Pending')}>
                         View All Pending
                     </Button>

@@ -2,32 +2,25 @@
 
 import { PageHeader } from "@/components/portal/page-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { X, Calendar, Key, Wallet, Loader2 } from "lucide-react"
+import { X, Calendar, Key, Wallet } from "lucide-react"
+import { LoaderState } from "@/components/ui/loader-state"
 import dynamic from "next/dynamic"
-
-// --- LAZY LOADING CONFIGURATION ---
-const TabLoading = () => (
-  <div className="flex flex-col items-center justify-center py-24 text-muted-foreground border rounded-lg bg-muted/5 h-[400px]">
-    <Loader2 className="h-8 w-8 animate-spin mb-3 text-primary" />
-    <p>Loading module...</p>
-  </div>
-)
 
 const DeactivateTicketTab = dynamic(
   () => import("@/components/themepark-support/tabs/Ticket/DeactivateTicketTab"), 
-  { loading: () => <TabLoading /> }
+  { loading: () => <LoaderState /> }
 )
 const ExtendExpiryTab = dynamic(
   () => import("@/components/themepark-support/tabs/Ticket/ExtendExpiryTab"), 
-  { loading: () => <TabLoading /> }
+  { loading: () => <LoaderState /> }
 )
 const UpdateQrPasswordTab = dynamic(
   () => import("@/components/themepark-support/tabs/Ticket/UpdateQrPasswordTab"), 
-  { loading: () => <TabLoading /> }
+  { loading: () => <LoaderState /> }
 )
 const ManualConsumeTab = dynamic(
   () => import("@/components/themepark-support/tabs/Ticket/ManualConsumeTab"), 
-  { loading: () => <TabLoading /> }
+  { loading: () => <LoaderState /> }
 )
 
 export default function TicketMasterPage() {

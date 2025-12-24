@@ -3,23 +3,17 @@
 import { PageHeader } from "@/components/portal/page-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Users, History, Loader2 } from "lucide-react"
+import { LoaderState } from "@/components/ui/loader-state"
 import dynamic from "next/dynamic"
 
-// --- LAZY LOADING ---
-const TabLoading = () => (
-  <div className="flex flex-col items-center justify-center py-20 text-muted-foreground h-[300px] border rounded-lg bg-muted/10">
-    <Loader2 className="h-8 w-8 animate-spin mb-3 text-primary" />
-    <p>Loading account module...</p>
-  </div>
-)
 
 const AccountManagementTab = dynamic(
   () => import("@/components/themepark-support/tabs/Account/AccountManagementTab"), 
-  { loading: () => <TabLoading /> }
+  { loading: () => <LoaderState message="Loading account module..." className="h-[300px]" /> }
 )
 const SearchHistoryRecordTab = dynamic(
   () => import("@/components/themepark-support/tabs/Account/SearchHistoryRecordTab"), 
-  { loading: () => <TabLoading /> }
+  { loading: () => <LoaderState message="Loading search history module..." className="h-[300px]"  /> }
 )
 
 export default function AccountMasterPage() {

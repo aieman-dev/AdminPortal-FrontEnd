@@ -2,42 +2,31 @@
 
 import { PageHeader } from "@/components/portal/page-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { XCircle, Wallet, CheckCircle2, ShoppingBag, Settings, Loader2 } from "lucide-react"
-import { useAutoSearch } from "@/hooks/use-auto-search"
+import { XCircle, Wallet, CheckCircle2, ShoppingBag, Settings } from "lucide-react"
+import { LoaderState } from "@/components/ui/loader-state"
 import dynamic from "next/dynamic"
 
 // --- LAZY LOADING COMPONENTS ---
 const VoidTransactionTab = dynamic(
     () => import("@/components/themepark-support/tabs/Transaction/voidTransactionTab"),
-    { loading: () => <TabLoadingState /> }
+    { loading: () => <LoaderState /> }
 )
 const RetailManualConsumeTab = dynamic(
     () => import("@/components/themepark-support/tabs/Transaction/RetailManualConsumeTab"),
-    { loading: () => <TabLoadingState /> }
+    { loading: () => <LoaderState /> }
 )
 const ResyncTransactionTab = dynamic(
     () => import("@/components/themepark-support/tabs/Transaction/ResyncTransactionTab"),
-    { loading: () => <TabLoadingState /> }
+    { loading: () => <LoaderState /> }
 )
 const ShopifyOrderTab = dynamic(
     () => import("@/components/themepark-support/tabs/Transaction/ShopifyOrderTab"),
-    { loading: () => <TabLoadingState /> }
+    { loading: () => <LoaderState /> }
 )
 const ConsumeTerminalTab = dynamic(
     () => import("@/components/themepark-support/tabs/Transaction/ConsumeTerminalTab"),
-    { loading: () => <TabLoadingState /> }
+    { loading: () => <LoaderState /> }
 )
-
-// Reusable Loading Component (Same visual style)
-function TabLoadingState() {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 text-muted-foreground h-[400px] border rounded-lg bg-muted/10">
-      <Loader2 className="h-10 w-10 animate-spin mb-4 text-primary" />
-      <p>Loading module...</p>
-    </div>
-  )
-}
-
 
 export default function TransactionMasterPage() {
   const tabTransitionClass = "mt-0 space-y-6 outline-none animate-in fade-in slide-in-from-bottom-5 duration-500 fill-mode-forward";
