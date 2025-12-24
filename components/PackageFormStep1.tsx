@@ -91,8 +91,11 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
 
   //  Handle Image Selection & Preview
   useEffect(() => {
+    let objectUrl: string | null = null;
+
     if (form.imageID instanceof File) {
-        setImagePreviewUrl(URL.createObjectURL(form.imageID));
+        objectUrl = URL.createObjectURL(form.imageID);
+        setImagePreviewUrl(objectUrl);
         setImageSearchQuery(form.imageID.name);
     } else if (typeof form.imageID === "string" && form.imageID) {
       const selectedImg = imageOptions.find(i => i.id === form.imageID);
@@ -106,6 +109,9 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
       setImagePreviewUrl(null);
       setImageSearchQuery("");
     }
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+  };
   }, [form.imageID, imageOptions]);
 
   // Click Outside for Image Dropdown

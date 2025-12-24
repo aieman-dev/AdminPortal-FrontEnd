@@ -6,7 +6,11 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "prepare": "husky",
+    "analyze": "cross-env ANALYZE=true next build",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -66,13 +70,30 @@
     "zod": "3.25.76"
   },
   "devDependencies": {
+    "@chromatic-com/storybook": "^4.1.3",
+    "@next/bundle-analyzer": "^16.1.1",
+    "@storybook/addon-a11y": "^10.1.10",
+    "@storybook/addon-docs": "^10.1.10",
+    "@storybook/addon-onboarding": "^10.1.10",
+    "@storybook/addon-vitest": "^10.1.10",
+    "@storybook/nextjs-vite": "^10.1.10",
     "@tailwindcss/postcss": "^4.1.9",
     "@types/node": "^22",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@vitest/browser-playwright": "^4.0.16",
+    "@vitest/coverage-v8": "^4.0.16",
+    "cross-env": "^10.1.0",
+    "eslint": "^8",
+    "eslint-config-next": "^16.1.1",
+    "husky": "^9.1.7",
+    "playwright": "^1.57.0",
     "postcss": "^8.5",
+    "storybook": "^10.1.10",
     "tailwindcss": "^4.1.9",
     "tw-animate-css": "1.3.3",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite": "^7.3.0",
+    "vitest": "^4.0.16"
   }
 }

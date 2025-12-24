@@ -1,7 +1,8 @@
 // components/themepark-support/tabs/Ticket/DeactivateTicketTab.tsx
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
@@ -22,6 +23,8 @@ import { DataTable, type TableColumn } from "@/components/themepark-support/it-p
 
 export default function DeactivateTicketTab() {
   const { toast } = useToast()
+  const searchParams = useSearchParams() 
+  const urlQuery = searchParams.get('search')
 
   const [searchQuery, setSearchQuery] = useState("")
   const [ticketDetails, setTicketDetails] = useState<DeactivatableTicket[]>([])
@@ -30,6 +33,17 @@ export default function DeactivateTicketTab() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
   const [deactivatingRow, setDeactivatingRow] = useState<ConsumptionHistory | null>(null)
   const [updatingRowIds, setUpdatingRowIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (urlQuery) {
+        setSearchQuery(urlQuery);
+        // Trigger the search immediately
+        fetchData(urlQuery, false);
+        // Clean the URL so refresh doesn't trigger it again
+        window.history.replaceState(null, '', window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlQuery]);
 
   // ... (fetchData and other handlers remain exactly the same) ...
   const fetchData = async (query: string, retainState: boolean = false) => {

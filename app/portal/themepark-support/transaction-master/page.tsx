@@ -1,5 +1,6 @@
 "use client"
 
+import { useSearchParams } from "next/navigation"
 import { PageHeader } from "@/components/portal/page-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { XCircle, Wallet, CheckCircle2, ShoppingBag, Settings } from "lucide-react"
@@ -29,6 +30,9 @@ const ConsumeTerminalTab = dynamic(
 )
 
 export default function TransactionMasterPage() {
+  const searchParams = useSearchParams();
+  const activeTab = searchParams.get('tab') || "void-transaction";
+
   const tabTransitionClass = "mt-0 space-y-6 outline-none animate-in fade-in slide-in-from-bottom-5 duration-500 fill-mode-forward";
   
   return (
@@ -38,7 +42,7 @@ export default function TransactionMasterPage() {
         description="Unified management for transaction reversal, consumption, resync, and Shopify order validation."
       />
 
-      <Tabs defaultValue="void-transaction" className="space-y-6">
+      <Tabs defaultValue={activeTab} className="space-y-6">
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
           <TabsList className="inline-flex h-auto p-0 bg-transparent border-b w-full md:w-auto min-w-full md:min-w-0 justify-start rounded-none">
             <TabsTrigger value="void-transaction" className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px relative data-[state=active]:z-10">

@@ -1,7 +1,8 @@
 // components/it-poswf/tabs/Transaction/ShopifyOrderTab.tsx
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { ShoppingBag, Search, SearchX, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -18,17 +19,29 @@ interface ShopifyTableData extends ShopifyOrder {
 
 export default function ShopifyOrderTab() {
   const { toast } = useToast()
+  const searchParams = useSearchParams() 
+  const urlQuery = searchParams.get('search')
   const [orderName, setOrderName] = useState("")
   const [searchResult, setSearchResult] = useState<ShopifyTableData | null>(null)
   const [isSearching, setIsSearching] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const handleSearch = async () => {
-    const rawInput = orderName.trim().replace(/#/g, '');
+  useEffect(() => {
+    if (urlQuery) {
+        setOrderName(urlQuery);
+        performSearch(urlQuery);
+        window.history.replaceState(null, '', window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlQuery]);
 
-    if (!rawInput.trim()) {
+  // 3. CORE SEARCH LOGIC
+  const performSearch = async (query: string) => {
+    const rawInput = query.trim().replace(/#/g, '');
+    
+    if (!rawInput) {
       setSearchResult(null)
-      setErrorMessage("Please enter an Order Name.")
+      setErrorMessage("Please enter an Order Name (e.g., 29174).")
       return
     }
 
@@ -72,6 +85,11 @@ export default function ShopifyOrderTab() {
     } finally {
       setIsSearching(false)
     }
+  }
+
+  // 4. MANUAL BUTTON HANDLER
+  const handleSearch = () => {
+      performSearch(orderName);
   }
 
   const orderTrxColumns: TableColumn<ShopifyTableData>[] = [

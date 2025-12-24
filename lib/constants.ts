@@ -22,6 +22,13 @@ export const ALLOWED_FILE_TYPES = ["image/jpeg", "image/png", "image/gif", "appl
 
 // --- BUSINESS LOGIC CONSTANTS ---
 
+export const ROLES = {
+  MIS_SUPER: "MIS_SUPERADMIN",
+  IT_ADMIN: "IT_ADMIN",
+  TP_ADMIN: "TP_ADMIN",
+  FINANCE: "FINANCE_ADMIN"
+} as const;
+
 // Staff Roles (Used in StaffAccountModal)
 export const STAFF_ROLES = [
   { label: "IT Admin", value: "IT" },

@@ -1,12 +1,7 @@
 // lib/auth.ts
+import { ROLES } from "./constants";
 
-export type Department = 
-  "MIS_SUPERADMIN" |
-  "MIS_SUPPORT" |
-  "IT_ADMIN" |
-  "IT_SUPPORT" |
-  "TP_ADMIN" |
-  "FINANCE_ADMIN";
+export type Department = typeof ROLES[keyof typeof ROLES];
 
 export interface User {
   id: string;
@@ -79,7 +74,6 @@ export async function login(email: string, password: string): Promise<AuthRespon
     if (typeof window !== "undefined") {
       localStorage.setItem(AUTH_TOKEN_KEY, token);
       localStorage.setItem(USER_DATA_KEY, JSON.stringify(user));
-      // Optional: Set a cookie for middleware if you have any
       document.cookie = `token=${token}; path=/; secure; samesite=strict`;
     }
 
@@ -131,30 +125,27 @@ export function getAuthToken(): string | null {
 export function canViewPackageManagement(department?: string): boolean {
   if (!department) return false;
   const deptUpper = department.toUpperCase();
-  // CRITICAL FIX: Allow all departments EXCEPT IT_ADMIN.
-  return deptUpper !== "IT_ADMIN";
+  return deptUpper !== ROLES.IT_ADMIN;
 }
 
 export function canViewThemeParkSupport(department?: string): boolean {
   if (!department) return false;
   const deptUpper = department.toUpperCase();
-  // CRITICAL FIX: Only MIS and IT roles. Exclude TP_ADMIN and FINANCE_ADMIN.
   return deptUpper.includes("MIS") || deptUpper.includes("IT");
 }
 
 export function canCreatePackage(department?: string): boolean {
   if (!department) return false;
-  // Rules: Admins only (Finance usually approves, doesn't create)
-  const allowed = ["MIS_SUPERADMIN", "TP_ADMIN"];
-  return allowed.includes(department);
+  const allowed = [ROLES.MIS_SUPER, ROLES.TP_ADMIN];
+  return allowed.includes(department as any);
 }
 
 export function canDraftPackage(department?: string): boolean {
   if (!department) return false;
-  const allowed = ["MIS_SUPERADMIN", "TP_ADMIN"];
-  return allowed.includes(department);
+  const allowed = [ROLES.MIS_SUPER, ROLES.TP_ADMIN];
+  return allowed.includes(department as any);
 }
 
 export function isFinanceApprover(department?: string): boolean {
-  return department === "FINANCE_ADMIN";
+  return department === ROLES.FINANCE;
 }

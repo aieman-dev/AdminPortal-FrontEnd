@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useEffect, useCallback } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -34,6 +35,8 @@ interface GroupedInvoice {
 
 export default function SearchHistoryRecordTab() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const urlQuery = searchParams.get('search');
 
   const [searchType, setSearchType] = useState<"email" | "mobile" | "invoice">("email")
   const [searchTerm, setSearchTerm] = useState("")
@@ -49,21 +52,29 @@ export default function SearchHistoryRecordTab() {
   // Sorting
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
 
-  const handleSearch = async () => {
-    if (!searchTerm) return;
+  // 1. EXTRACTED SEARCH LOGIC
+  // We need this so the useEffect can call it with specific values (avoiding stale state)
+  const executeSearch = useCallback(async (type: string, term: string) => {
+    if (!term) return;
     setIsSearching(true);
     setSortConfig(null);
     setTrxPage(1);
     setTicketPage(1);
-    
+    setRawHistoryData([]);
+    setTicketData([]);
+
     try {
-        const response = await itPoswfService.searchHistory(searchType, searchTerm);
+        const response = await itPoswfService.searchHistory(type, term);
         if (response.success && response.data) { 
             setRawHistoryData(response.data.transactionHistory || []); 
             setTicketData(response.data.ticketHistory || []);
 
-            if ((response.data.transactionHistory?.length || 0) === 0 && (response.data.ticketHistory?.length || 0) === 0) {
-                 toast({ title: "Search Complete", description: "No records found." });
+            const totalCount = (response.data.transactionHistory?.length || 0) + (response.data.ticketHistory?.length || 0);
+            
+            if (totalCount === 0) {
+                 toast({ title: "Search Complete", description: "No records found.", variant: "default" });
+            } else {
+                 toast({ title: "Search Complete", description: `Found ${totalCount} records.` });
             }
         } else {
             toast({ title: "Search Failed", description: response.error || "Server error.", variant: "destructive" });
@@ -73,7 +84,41 @@ export default function SearchHistoryRecordTab() {
     } finally {
         setIsSearching(false);
     }
+  }, [toast]);
+
+  // 2. AUTO-DETECT & SEARCH EFFECT
+  useEffect(() => {
+    if (urlQuery) {
+        const cleanQuery = urlQuery.trim();
+        setSearchTerm(cleanQuery);
+
+        // --- SMART DETECTION LOGIC ---
+        let detectedType: "email" | "mobile" | "invoice" = "invoice"; // Default fallback
+
+        if (cleanQuery.includes("@")) {
+            detectedType = "email";
+        } 
+        // Phone: Starts with + or 0, mostly numbers, > 8 chars
+        else if (/^[+0][0-9\s-]{8,}$/.test(cleanQuery)) {
+            detectedType = "mobile";
+        }
+        
+        setSearchType(detectedType);
+        
+        // Trigger Search immediately with detected values
+        executeSearch(detectedType, cleanQuery);
+
+        // Clean URL
+        window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, [urlQuery, executeSearch]);
+
+  // 3. MANUAL TRIGGER
+  const handleManualSearch = () => {
+      executeSearch(searchType, searchTerm);
   }
+
+  
 
   // --- DATA PROCESSING ---
   const groupedTransactions = useMemo(() => {
@@ -206,11 +251,11 @@ export default function SearchHistoryRecordTab() {
               </Select>
             </div>
             <SearchField
-              label="Search Term"
-              placeholder="Enter search term..."
+              label="Search"
+              placeholder="Enter Email, Mobile No, or Invoice No"
               value={searchTerm}
               onChange={setSearchTerm}
-              onSearch={handleSearch}
+              onSearch={handleManualSearch}
               isSearching={isSearching}
             />
           </div>

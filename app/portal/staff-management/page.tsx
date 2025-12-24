@@ -2,6 +2,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useSearchParams } from "next/navigation"
 import { PageHeader } from "@/components/portal/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -20,6 +21,8 @@ import { DataTable, type TableColumn } from "@/components/themepark-support/it-p
 
 export default function UsersStaffManagementPage() {
   const { toast } = useToast()
+  const searchParams = useSearchParams()
+  const urlQuery = searchParams.get('search')
   
   const [searchQuery, setSearchQuery] = useState("")
   const [accounts, setAccounts] = useState<ExtendedStaffMember[]>([]) 
@@ -91,8 +94,15 @@ export default function UsersStaffManagementPage() {
   }, [toast]);
 
   useEffect(() => {
-    fetchStaff();
-  }, [fetchStaff]);
+    if (urlQuery) {
+        setSearchQuery(urlQuery);
+        fetchStaff(urlQuery);
+        window.history.replaceState(null, '', window.location.pathname);
+    } else {
+        fetchStaff();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlQuery]);
 
   const handleSearch = () => fetchStaff(searchQuery);
 

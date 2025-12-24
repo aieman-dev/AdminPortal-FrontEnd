@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, use } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Calendar, SearchX } from "lucide-react"
@@ -14,6 +15,8 @@ import { DataTable, type TableColumn } from "@/components/themepark-support/it-p
 
 export default function ExtendExpiryTab() {
   const { toast } = useToast()
+  const searchParams = useSearchParams()
+  const urlQuery = searchParams.get('search')
 
   const [extendSearchQuery, setExtendSearchQuery] = useState("")
   const [extendSearchResult, setExtendSearchResult] = useState<ExtendTicketData[]>([])
@@ -23,8 +26,11 @@ export default function ExtendExpiryTab() {
   const [editedDates, setEditedDates] = useState<Record<string, Date>>({})
   const [isUpdatingTicketNo, setIsUpdatingTicketNo] = useState<string | null>(null);
 
-  const handleExtendSearch = async () => {
-    if (!extendSearchQuery) return
+  const handleExtendSearch = async (queryOverride?: string) => {
+    const term = queryOverride !== undefined ? queryOverride : extendSearchQuery;
+
+    if (!term) return
+
     setIsExtendSearching(true)
     setExtendSearchResult([]) 
     setEditedDates({}) 
@@ -56,6 +62,15 @@ export default function ExtendExpiryTab() {
       setIsExtendSearching(false)
     }
   }
+
+  useEffect(() => {
+    if (urlQuery) {
+      setExtendSearchQuery(urlQuery)
+      handleExtendSearch(urlQuery) 
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlQuery]);
 
   const handleDateTimeChange = (ticketNo: string, newDate: Date | undefined) => {
       if (newDate) {
@@ -165,7 +180,7 @@ export default function ExtendExpiryTab() {
                 placeholder="Enter invoice or transaction number"
                 value={extendSearchQuery}
                 onChange={setExtendSearchQuery}
-                onSearch={handleExtendSearch}
+                onSearch={() => handleExtendSearch()}
                 isSearching={isExtendSearching}
             />
           </div>

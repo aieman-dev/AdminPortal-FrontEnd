@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field" // <--- Import
 import { PasswordDisplay } from "@/components/themepark-support/it-poswf/password-display"
@@ -10,6 +11,8 @@ import { useToast } from "@/hooks/use-toast"
 
 export default function UpdateQrPasswordTab() {
   const { toast } = useToast()
+  const searchParams = useSearchParams() 
+  const urlQuery = searchParams.get('search')
 
   const [qrInvoiceNo, setQrInvoiceNo] = useState("")
   const [qrSearchResult, setQrSearchResult] = useState<PasswordData | null>(null)
@@ -17,8 +20,11 @@ export default function UpdateQrPasswordTab() {
   const [isResetting, setIsResetting] = useState(false)
   const [resetSuccess, setResetSuccess] = useState(false)
 
-  const handleQrSearch = async () => {
-    if (!qrInvoiceNo) return
+  const handleQrSearch = async (queryOverride?: string) => {
+    const term = queryOverride !== undefined ? queryOverride : qrInvoiceNo;
+
+    if (!term) return
+
     setIsQrSearching(true)
     setResetSuccess(false)
     setQrSearchResult(null);
@@ -40,6 +46,15 @@ export default function UpdateQrPasswordTab() {
       setIsQrSearching(false);
     }
   }
+
+  useEffect(() => {
+    if (urlQuery) {
+        setQrInvoiceNo(urlQuery);
+        handleQrSearch(urlQuery); // Trigger immediately
+        window.history.replaceState(null, '', window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlQuery]);
 
   const handleResetPassword = async () => {
     if (!qrInvoiceNo) return
@@ -74,7 +89,7 @@ export default function UpdateQrPasswordTab() {
             placeholder="Enter invoice number"
             value={qrInvoiceNo}
             onChange={setQrInvoiceNo}
-            onSearch={handleQrSearch}
+            onSearch={() => handleQrSearch()}
             isSearching={isQrSearching}
           />
         </CardContent>

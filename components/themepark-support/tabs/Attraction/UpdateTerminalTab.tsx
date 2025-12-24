@@ -1,7 +1,8 @@
 // components/themepark-support/tabs/Attraction/UpdateTerminalTab.tsx
 "use client"
 
-import { useState } from "react"
+import { useState,useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -21,6 +22,8 @@ import { DataTable, type TableColumn } from "@/components/themepark-support/it-p
 
 export default function UpdateTerminalTab() {
   const { toast } = useToast()
+  const searchParams = useSearchParams()
+  const urlQuery = searchParams.get('search')
 
   const [terminalSearchTerm, setTerminalSearchTerm] = useState("")
   const [terminals, setTerminals] = useState<Terminal[]>([]);
@@ -29,7 +32,10 @@ export default function UpdateTerminalTab() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
 
-  const handleTerminalSearch = async () => {
+  const handleTerminalSearch = async (queryOverride?: string) => {
+      const term = queryOverride !== undefined ? queryOverride : terminalSearchTerm;
+      if (!term) return
+
     setIsTerminalSearching(true)
     setTerminals([]) 
 
@@ -56,6 +62,15 @@ export default function UpdateTerminalTab() {
         setIsTerminalSearching(false)
     }
   }
+
+  useEffect(() => {
+    if (urlQuery) {
+        setTerminalSearchTerm(urlQuery);
+        handleTerminalSearch(urlQuery); 
+        window.history.replaceState(null, '', window.location.pathname);
+    } 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlQuery]);
 
   const handleEdit = (terminal: Terminal) => {
     setEditingTerminal({ ...terminal })
@@ -150,7 +165,7 @@ export default function UpdateTerminalTab() {
                 placeholder="Enter terminal name or UUID"
                 value={terminalSearchTerm}
                 onChange={setTerminalSearchTerm}
-                onSearch={handleTerminalSearch}
+                onSearch={() => handleTerminalSearch()}
                 isSearching={isTerminalSearching}
               />
           </div>

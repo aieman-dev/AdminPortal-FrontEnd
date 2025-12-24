@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle2 } from "lucide-react"
@@ -10,14 +11,18 @@ import { SearchField } from "@/components/themepark-support/it-poswf/search-fiel
 
 export default function ResyncTransactionTab() {
   const { toast } = useToast()
+  const searchParams = useSearchParams() 
+  const urlQuery = searchParams.get('search')
   
   const [transactionId, setTransactionId] = useState("")
   const [isExecuting, setIsExecuting] = useState(false)
   const [showResyncSuccess, setShowResyncSuccess] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
 
-  const handleExecute = async () => {
-    if (!transactionId.trim()) {
+  const handleExecute = async (idOverride?: string) => {
+    const targetId = idOverride !== undefined ? idOverride : transactionId;
+
+    if (!targetId.trim()) {
         toast({ title: "Input Required", description: "Please enter a Transaction ID.", variant: "destructive" });
         return;
     }
@@ -64,6 +69,15 @@ export default function ResyncTransactionTab() {
     }
   }
 
+  useEffect(() => {
+    if (urlQuery) {
+      setTransactionId(urlQuery);
+      handleExecute(urlQuery); // Trigger immediately
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlQuery]);
+
   return (
     <>
       <Card>
@@ -73,7 +87,7 @@ export default function ResyncTransactionTab() {
             placeholder="Enter transaction ID"
             value={transactionId}
             onChange={setTransactionId}
-            onSearch={handleExecute}
+            onSearch={() => handleExecute()}
             isSearching={isExecuting}
           />
         </CardContent>

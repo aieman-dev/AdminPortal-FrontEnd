@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
@@ -17,6 +18,8 @@ import { Badge } from "@/components/ui/badge"
 
 export default function VoidTransactionTab() {
   const { toast } = useToast()
+  const searchParams = useSearchParams()
+  const urlQuery = searchParams.get('search')
 
   const [voidInvoiceNo, setVoidInvoiceNo] = useState("")
   const [voidSearchResult, setVoidSearchResult] = useState<VoidTransaction[]>([])
@@ -25,8 +28,11 @@ export default function VoidTransactionTab() {
   const [voidingTransaction, setVoidingTransaction] = useState<VoidTransaction | null>(null)
   const [isVoiding, setIsVoiding] = useState(false)
 
-  const handleVoidSearch = async () => {
-    if (!voidInvoiceNo) return
+  const handleVoidSearch = async (queryOverride?: string) => {
+    const term = queryOverride !== undefined ? queryOverride : voidInvoiceNo;
+
+    if (!term) return
+    
     setIsVoidSearching(true)
     setVoidSearchResult([])
 
@@ -50,6 +56,15 @@ export default function VoidTransactionTab() {
       setIsVoidSearching(false)
     }
   }
+
+  useEffect(() => {
+    if (urlQuery) {
+      setVoidInvoiceNo(urlQuery)
+      handleVoidSearch(urlQuery) 
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlQuery]);
 
   const handleVoidClick = (transaction: VoidTransaction) => {
     setVoidingTransaction(transaction)
@@ -137,7 +152,7 @@ export default function VoidTransactionTab() {
             placeholder="Enter invoice number"
             value={voidInvoiceNo}
             onChange={setVoidInvoiceNo}
-            onSearch={handleVoidSearch}
+            onSearch={() => handleVoidSearch()}
             isSearching={isVoidSearching}
           />
         </CardContent>

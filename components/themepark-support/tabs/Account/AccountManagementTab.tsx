@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react" 
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
@@ -20,6 +20,9 @@ export default function AccountManagementTab() {
   const router = useRouter()
   const { toast } = useToast()
 
+  const searchParams = useSearchParams()
+  const urlQuery = searchParams.get('search') 
+
   // 1. Initialize state by reading from localStorage on mount
   const [searchEmail, setSearchEmail] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -31,15 +34,7 @@ export default function AccountManagementTab() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [isSearching, setIsSearching] = useState(false)
 
-  // 2. Persist state to localStorage whenever searchEmail changes
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(LOCAL_STORAGE_KEY, searchEmail);
-    }
-  }, [searchEmail]);
-
-
-  // 3. Extracted and memoized the core search logic
+  // 2. SEARCH LOGIC (Memoized)
   const executeSearch = useCallback(async (query: string) => {
     if (!query) {
         setAccounts([]);
@@ -53,51 +48,51 @@ export default function AccountManagementTab() {
 
       if (response.success && response.data) {
         setAccounts(response.data)
-
         if (response.data.length === 0) {
-          toast({
-            title: "Search Complete",
-            description: "No accounts found matching the search criteria.",
-          })
+          toast({ title: "Search Complete", description: "No accounts found matching the search criteria." })
         }
       } else {
         setAccounts([])
-        toast({
-          title: "Search Failed",
-          description: response.error || "Could not retrieve account list.",
-          variant: "destructive"
-        })
+        toast({ title: "Search Failed", description: response.error || "Could not retrieve account list.", variant: "destructive" })
       }
     } catch (error) {
       console.error("Account Search Error:", error)
       setAccounts([])
-      toast({
-        title: "Network Error",
-        description: "Failed to connect to the account search service.",
-        variant: "destructive"
-      })
+      toast({ title: "Network Error", description: "Failed to connect to the account search service.", variant: "destructive" })
     } finally {
       setIsSearching(false)
     }
   }, [toast])
 
-
-  // 4. FIX: This useEffect now runs only ONCE on mount to load the previously saved 
-  // email (if present), but crucially, it does NOT re-run on every keystroke, 
-  // eliminating the lag.
+  // 3. INITIALIZATION EFFECT (Handles URL & LocalStorage)
   useEffect(() => {
-    if (searchEmail) {
-        // Trigger initial search only if a value was restored from localStorage
-        executeSearch(searchEmail); 
+    // If URL param exists, it takes PRIORITY over LocalStorage
+    if (urlQuery) {
+        setSearchEmail(urlQuery);
+        executeSearch(urlQuery);
+        // Clean the URL so refreshing doesn't trigger it again
+        window.history.replaceState(null, '', window.location.pathname);
+    } 
+    // Otherwise, if we have a saved email, run that
+    else if (searchEmail) {
+        executeSearch(searchEmail);
     }
-  }, [executeSearch]); // <-- Removed searchEmail from dependency array
+    // We only want this to run ONCE on mount (or when urlQuery changes)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlQuery, executeSearch]); 
 
-  // Function used by the SearchField component (called on button click/Enter key)
+  // 4. PERSISTENCE EFFECT (Save to LocalStorage when user types)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(LOCAL_STORAGE_KEY, searchEmail);
+    }
+  }, [searchEmail]);
+
+  // 5. MANUAL SEARCH TRIGGER
   const handleSearchClick = () => {
-    // CRITICAL FIX: Only trim and execute the search when the button is clicked.
     executeSearch(searchEmail.trim());
   }
-
+  
   const handleEdit = (accountId: string) => {
     router.push(`/portal/themepark-support/account-master/${accountId}`) 
   }
