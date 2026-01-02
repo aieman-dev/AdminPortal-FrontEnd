@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // Components
 import StepIndicator from "@/components/StepIndicator";
@@ -13,12 +13,18 @@ import { ConfirmationModal, DraftModal, SuccessModal } from '@/components/Packag
 import { PackageFormData } from "@/type/packages";
 import { packageService } from "@/services/package-services"; 
 import { useToast } from "@/hooks/use-toast";
+import { LoaderState } from "@/components/ui/loader-state";
 
 const PackageFormPage = () => {
   const router = useRouter();
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+
+  // edit
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('id');
   
   // Modals
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -44,6 +50,48 @@ const PackageFormPage = () => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
   }, []);
+
+  useEffect(() => {
+    const fetchPackageData = async () => {
+        if (!editId) return;
+        
+        setIsLoadingData(true);
+        try {
+            let data = await packageService.getPackageById(Number(editId), "pending");
+            
+            if (!data) {
+                 data = await packageService.getPackageById(Number(editId));
+            }
+
+            if (data) {
+                setForm({
+                    packageName: data.name,
+                    packageType: data.packageType,
+                    nationality: data.nationality,
+                    ageCategory: data.ageCategory, 
+                    effectiveDate: data.effectiveDate,
+                    lastValidDate: data.lastValidDate,
+                    tpremark: data.remark,
+                    imageID: data.imageUrl, 
+                    imageUrl: data.imageUrl, 
+                    dayPass: data.dayPass || "",
+                    packageitems: data.items,
+                    totalPrice: data.price || data.point || 0
+                });
+            } else {
+                toast({ title: "Error", description: "Package not found.", variant: "destructive" });
+                router.push("/portal/packages");
+            }
+        } catch (error) {
+            console.error("Fetch Error:", error);
+            toast({ title: "Error", description: "Failed to load package details.", variant: "destructive" });
+        } finally {
+            setIsLoadingData(false);
+        }
+    };
+
+    fetchPackageData();
+  }, [editId, router, toast]);
 
   // Navigation
   const next = () => setStep((s) => Math.min(s + 1, 3));
@@ -80,15 +128,17 @@ const PackageFormPage = () => {
     try {
         let finalImageID : string | null = null;
         
-        // Handle image upload if a new file is present
         if (form.imageID instanceof File) {
             finalImageID = await packageService.uploadImage(form.imageID);
         } else if (typeof form.imageID === "string" && form.imageID) {
             finalImageID = form.imageID;
         }
 
-        // Call the new service function
-        await packageService.saveDraft(form, finalImageID || ""); // Pass empty string if null, as expected by the service.
+        if (editId) {
+          await packageService.saveDraft(form, finalImageID || "", Number(editId));
+        } else {
+          await packageService.saveDraft(form, finalImageID || "");
+        }
         
         console.log("Package saved as draft successfully");
         setShowDraft(true);
@@ -120,7 +170,11 @@ const PackageFormPage = () => {
         finalImageID = form.imageID;
       }
 
-      await packageService.createPackage(form, finalImageID || "");
+      if (editId) {
+        await packageService.updatePackage(Number(editId), form, finalImageID || "");
+      } else {
+        await packageService.createPackage(form, finalImageID || "");
+      }
       
       console.log("Package created successfully");
       setShowSuccess(true);

@@ -1,17 +1,27 @@
-// components/PackageModals.tsx
 import React from "react";
-import { Check } from "lucide-react";
+import { Check, AlertTriangle } from "lucide-react";
 
+// 1. Updated Interface to accept dynamic content
 type ConfirmationModalProps = {
   isOpen: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  title?: string;                // Dynamic Title
+  description?: React.ReactNode; // Dynamic Message (allows Bold text etc)
+  variant?: 'default' | 'destructive'; // To change colors (Blue vs Red)
+  confirmLabel?: string;         // Custom button text
+  cancelLabel?: string;
 };
 
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   isOpen,
   onConfirm,
   onCancel,
+  title = "Are You Sure?",
+  description = "This action cannot be undone.",
+  variant = 'default',
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
 }) => {
   if (!isOpen) return null;
 
@@ -24,43 +34,61 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     hour12: true,
   });
 
+  const isDestructive = variant === 'destructive';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4 animate-scale-in">
-        <h2 className="text-2xl font-bold text-center text-gray-900 mb-6">
-          Are You Sure?
-        </h2>
+      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-
+      ll mx-4 animate-scale-in border border-white/20">
+        
+        {/* Header with optional Icon for destructive actions */}
+        <div className="flex flex-col items-center mb-6">
+            {isDestructive && (
+                <div className="mb-4 p-3 bg-red-100 rounded-full">
+                    <AlertTriangle className="text-red-600 w-8 h-8" />
+                </div>
+            )}
+            <h2 className={`text-2xl font-bold text-center ${isDestructive ? "text-red-600" : "text-gray-900"}`}>
+            {title}
+            </h2>
+        </div>
 
-        <div className="bg-gray-100 rounded-xl p-6 mb-6 text-center space-y-2">
-          <p className="text-gray-700">
-            Upon submission, the package will be forwarded for review
-          </p>
-          <p className="text-gray-600 text-sm">
-            (Further edits will not be allowed after submission.)
-          </p>
-          <p className="text-gray-500 text-sm mt-4">
-            Current Date : {currentDate}
-          </p>
+        <div className="bg-gray-50 rounded-xl p-6 mb-8 text-center border border-gray-100">
+          <div className="text-gray-700 text-base leading-relaxed mb-4">
+            {description}
+          </div>
+          
+          <div className="flex items-center justify-center gap-2 text-gray-400 text-xs uppercase tracking-wider font-medium">
+             <span className="text-gray-500">Action Date:</span>
+             <span className="text-gray-500">{currentDate}</span>
+          </div>
         </div>
 
         <div className="flex gap-4">
           <button
             onClick={onCancel}
-            className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors shadow-md"
+            className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors shadow-sm"
           >
-            No
+            {cancelLabel}
           </button>
+          
           <button
             onClick={onConfirm}
-            className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-md"
+            className={`flex-1 px-6 py-3 text-white font-semibold rounded-lg transition-colors shadow-md flex items-center justify-center gap-2
+              ${isDestructive 
+                ? "bg-red-600 hover:bg-red-700" 
+                : "bg-[#5B5FEF] hover:bg-[#4a4edb]" // Using your theme blue
+              }`}
           >
-            Yes
+            {confirmLabel}
           </button>
         </div>
       </div>
     </div>
   );
 };
+
+// --- Other modals remain the same, just keeping them here for completeness ---
 
 type SuccessModalProps = {
   isOpen: boolean;
@@ -105,7 +133,7 @@ export const SuccessModal: React.FC<SuccessModalProps> = ({
             </button>
             <button
               onClick={onCreateNew}
-              className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-md"
+              className="flex-1 px-6 py-3 bg-[#5B5FEF] hover:bg-[#4a4edb] text-white font-semibold rounded-lg transition-colors shadow-md"
             >
               Create New Package
             </button>
@@ -123,7 +151,7 @@ type DraftModalProps = {
 };
 
 export const DraftModal: React.FC<DraftModalProps> = ({
-    isOpen,
+   isOpen,
   onViewStatus,
   onCreateNew,
 }) => {
@@ -160,7 +188,7 @@ export const DraftModal: React.FC<DraftModalProps> = ({
             </button>
             <button
               onClick={onCreateNew}
-              className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-md"
+              className="flex-1 px-6 py-3 bg-[#5B5FEF] hover:bg-[#4a4edb] text-white font-semibold rounded-lg transition-colors shadow-md"
             >
               Create New Package
             </button>

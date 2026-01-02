@@ -35,6 +35,7 @@ export default function PackageFilters({
     { label: "Pending", value: "Pending", color: "#9C6500", hover: "#C27C00" },
     { label: "Active", value: "Active", color: "#006100", hover: "#008000" },
     { label: "Expiring Soon", value: "ExpiringSoon", color: "#FF9800", hover: "#FFB84D" },
+    { label: "Expired", value: "Expired", color: "#B91C1C", hover: "#991B1B" },
     { label: "Rejected", value: "Rejected", color: "#9C0005", hover: "#C40007" },
     { label: "Draft", value: "Draft", color: "#4F46E5", hover: "#080087" },
     { label: "Show All", value: "Show All", color: "#9CA3AF", hover: "#B0B6BD" },

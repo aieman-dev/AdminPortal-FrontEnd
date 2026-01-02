@@ -22,22 +22,31 @@ export const ALLOWED_FILE_TYPES = ["image/jpeg", "image/png", "image/gif", "appl
 
 // --- BUSINESS LOGIC CONSTANTS ---
 
+// 1. The Single Source of Truth for Frontend Logic
 export const ROLES = {
   MIS_SUPER: "MIS_SUPERADMIN",
   IT_ADMIN: "IT_ADMIN",
   TP_ADMIN: "TP_ADMIN",
-  FINANCE: "FINANCE_ADMIN"
+  FINANCE: "FINANCE"
 } as const;
 
-// Staff Roles (Used in StaffAccountModal)
+// 2. Map Backend Strings -> Frontend Roles
+export const BACKEND_ROLE_MAP: Record<string, string> = {
+  "ITTP_Support": ROLES.IT_ADMIN, 
+  "SuperAdmin": ROLES.MIS_SUPER,
+  "TP_Admin": ROLES.TP_ADMIN,
+  "Finance": ROLES.FINANCE
+};
+
+// 3. UI Dropdown 
 export const STAFF_ROLES = [
-  { label: "IT Admin", value: "IT" },
-  { label: "MIS Superadmin", value: "MIS" },
+  { label: "IT Admin", value: "ITTP_Support" },
+  { label: "MIS Superadmin", value: "SuperAdmin" },
   { label: "Finance", value: "Finance" },
-  { label: "Theme Park / Operations", value: "TP" }
+  { label: "Theme Park", value: "TP_Admin" } 
 ] as const;
 
-// Nationality Codes (Used in PackageForm & Details)
+// Nationality Codes
 export const NATIONALITY_OPTIONS = [
   { label: "Malaysian", value: "L" },
   { label: "International", value: "F" },

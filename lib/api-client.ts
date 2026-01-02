@@ -1,5 +1,12 @@
 // lib/api-client.ts
 import { getAuthToken } from "./auth"
+import { AppError, ErrorType } from "@/lib/errors"
+
+export const triggerOfflineState = () => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("sys:offline"));
+  }
+};
 
 export interface ApiResponse<T = any> {
   success: boolean
@@ -16,7 +23,6 @@ class ApiClient {
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
-    const token = getAuthToken(); 
     const headers = new Headers(options.headers);
 
     // 1. Handle Content-Type (Skip for FormData so browser sets boundary)
@@ -24,43 +30,55 @@ class ApiClient {
       headers.set("Content-Type", "application/json");
     }
 
-    // 2. Auto-inject Auth Token (Only if not already provided by the caller)
-    if (token && !headers.has("Authorization")) {
-      headers.set("Authorization", `Bearer ${token}`);
-    }
-
     const cleanEndpoint = endpoint.startsWith("/") ? endpoint.slice(1) : endpoint;
 
     try {
-      const response = await fetch(`${this.baseUrl}${cleanEndpoint}`, {
-        ...options,
-        headers,
-      });
+      const response = await fetch(`${this.baseUrl}${cleanEndpoint}`, { ...options, headers });
+        
+        // 1. Network / Parsing Errors handled by catch block below
+        let data;
+        try {
+          data = await response.json();
+        } catch {
+          data = null;
+        }
 
-      let data;
-      try {
-        data = await response.json();
-      } catch {
-        data = null;
-      }
+        // 2. "How to know": Check Response.ok and Status Code
+        if (!response.ok) {
+          if (response.status === 503 || response.status === 502) {
+             //triggerOfflineState();  //--- TRIGGER OFFLINE UI, comment for disable
+          }
+          const errorMessage = data?.error || data?.message || response.statusText;
+          
+          // Throw an AppError so the Service knows EXACTLY what happened
+          throw AppError.fromStatusCode(response.status, errorMessage);
+        }
 
-      if (!response.ok) {
-        return {
-          success: false,
-          error: data?.error || data?.message || "An error occurred",
+        return { success: true, data: data };
+
+      } catch (error) {
+        // 3. Handle Network Failures (Fetch failed to connect)
+        if (error instanceof TypeError && error.message === "Failed to fetch") {
+          //triggerOfflineState(); //--- TRIGGER OFFLINE UI, comment for disable
+          console.warn("Backend disconnected. Suppressing offline screen for UI development.");
+          return { 
+            success: false, 
+            error: "Unable to connect to server. Please check your internet connection." 
+          };
+        }
+
+        // 4. Pass through our custom AppError messages
+        if (error instanceof AppError) {
+            return { success: false, error: error.message }; 
+            // OR, if you want services to handle specific codes:
+            // throw error; 
+        }
+
+        return { 
+          success: false, 
+          error: error instanceof Error ? error.message : "An unexpected error occurred" 
         };
       }
-
-      return {
-        success: true,
-        data: data,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Network error",
-      };
-    }
   }
 
   async get<T>(endpoint: string, headers?: Record<string, string>): Promise<ApiResponse<T>> {

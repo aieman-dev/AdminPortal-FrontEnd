@@ -169,6 +169,10 @@ export interface CreatePackagePayload {
     }[];
 }
 
+export interface UpdatePackagePayload extends CreatePackagePayload {
+    id: number;
+}
+
 export interface PackageFilterPayload {
     Status: string;
     SearchQuery: string | null;
@@ -184,3 +188,27 @@ export interface UpdateStatusPayload {
     Status: string;
     Remark2?: string;
 }
+
+export interface DashboardSummaryDTO {
+    ticketConsumption: number;
+    pendingPackages: number;
+    draftPackages: number;
+    activeTerminals: number;
+    totalTerminals: number;
+    salesAmount: number;
+    salesCount: number;
+    consumeAmount: number;
+    consumeCount: number;
+    bestSellingPackages: {
+        packageName: string;
+        totalSold: number;
+        totalRevenue?: number; 
+    }[]; 
+    weeklySalesChart: {
+        date: string;
+        dayName: string;
+        totalAmount: number;
+        isForecast?: boolean; 
+    }[];
+}
+

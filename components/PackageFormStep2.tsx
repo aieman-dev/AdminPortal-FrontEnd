@@ -2,11 +2,13 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { PackageFormData, PackageItem } from "../type/packages";
-import { Loader2, ShoppingCart, List, Trash2 } from "lucide-react"; 
+import { ShoppingCart, List, Trash2, SearchX } from "lucide-react"; 
 import { packageService } from "@/services/package-services"; 
 import { formatCurrency } from "@/lib/formatter";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { getProxiedImageUrl } from "@/lib/utils"; 
+import { LoaderState } from "@/components/ui/loader-state";
+import { EmptyState } from "@/components/portal/empty-state";
+import { getProxiedImageUrl, formatPackagePrice, isPointPackage } from "@/lib/utils"; 
 
 type Props = {
   form: PackageFormData;
@@ -21,7 +23,7 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
   const [items, setItems] = useState<PackageItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [mobileTab, setMobileTab] = useState<"browse" | "summary">("browse");
-  const isPointMode = form.packageType === "Point"; 
+  const isPointMode = isPointPackage(form.packageType);
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -161,12 +163,15 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
           
           <div className="flex flex-col gap-2 overflow-y-auto pb-4 p-1 scrollbar-hide flex-1">
             {loading ? (
-              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                <Loader2 className="h-8 w-8 animate-spin mb-2" />
-                <p>Loading items...</p>
-              </div>
+              <LoaderState message="Loading items..." className="h-full border-none bg-transparent" />
             ) : filtered.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">No items found.</div>
+              <div className="h-full flex items-center justify-center">
+                    <EmptyState 
+                        icon={SearchX} 
+                        title="No items found" 
+                        description="Try searching for a different item name."
+                    />
+                </div>
             ) : (
               filtered.map((item) => {
                 const activeItem = form.packageitems.find((s) => s.attractionId === item.attractionId);
@@ -310,9 +315,8 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
                     <span className="text-foreground font-medium truncate w-[60%] select-none">{item.itemName}</span>
                     <span className="text-muted-foreground text-xs flex flex-col items-end select-none">
                         <span>Qty: {item.entryQty}</span>
-                        {/* Uses formatCurrency correctly here */}
                         <span className="font-semibold text-indigo-600">
-                            {formatCurrency(isPointMode ? item.point : item.price, isPointMode)}
+                           {formatPackagePrice(isPointMode ? item.point : item.price, form.packageType)}
                         </span>
                     </span>
                   </div>
@@ -322,8 +326,7 @@ const PackageFormStep2: React.FC<Props> = ({ form, setForm, onNext, onBack }) =>
           <div className="mt-4 pt-4 border-t border-border shrink-0">
               <div className="flex justify-between font-bold text-lg text-foreground mb-6">
                   <span>Total:</span>
-                  {/* Uses formatCurrency correctly here */}
-                  <span>{formatCurrency(form.totalPrice, isPointMode)}</span>
+                  <span>{formatPackagePrice(form.totalPrice, form.packageType)}</span>
               </div>
               <div className="flex gap-2">
                   <button onClick={onBack} className="flex-1 py-2 border border-border rounded-md text-foreground hover:bg-white dark:hover:bg-gray-800 transition">Back</button>

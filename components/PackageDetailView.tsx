@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Calendar, Ticket, Globe, User, FileText, CheckCircle, ArrowLeft, X, Loader2, AlertCircle } from "lucide-react";
+import { Search, Calendar, Ticket, Globe, User, FileText, CheckCircle, ArrowLeft, X, AlertCircle, SearchX } from "lucide-react";
 import { Package, PackageItem } from "@/type/packages";
 import { packageService } from "@/services/package-services"; 
 import { ApprovalModal } from "@/components/PackageModals"; 
@@ -11,9 +11,12 @@ import { isFinanceApprover } from "@/lib/auth";
 import { BACKEND_API_BASE } from "@/lib/config";
 import { getNationalityLabel } from "@/lib/constants"
 import { formatDate, formatCurrency } from "@/lib/formatter";
-import { getProxiedImageUrl } from "@/lib/utils";
+import { getProxiedImageUrl, formatPackagePrice, isPointPackage } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { EmptyState } from "@/components/portal/empty-state";
 import { Separator } from "@/components/ui/separator"; 
+import { LoaderState } from "@/components/ui/loader-state"
+import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge";
 
 interface PackageDetailViewProps {
   id: string;
@@ -109,14 +112,7 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
-          <p className="text-gray-500 font-medium">Loading...</p>
-        </div>
-      </div>
-    );
+    return <LoaderState message="Loading package details..." className="min-h-[60vh] border-none bg-transparent" />
   }
 
   if (!packageData) {
@@ -146,8 +142,9 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
   const pType = (packageData.packageType || 'Entry').toLowerCase();
   const isPoint = pType.includes('point') && !pType.includes('reward');
   
-  // FIX: Use 'price' or 'point' directly based on type
-  const primaryDisplayValue = isPoint ? (packageData.point ?? 0) : (packageData.price ?? 0);
+  const primaryValue = isPointPackage(packageData.packageType) 
+    ? (packageData.point ?? 0) 
+    : (packageData.price ?? 0);
 
   return (
     <>
@@ -192,13 +189,15 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
                 <h2 className="text-2xl font-bold dark:text-white">
                   <span className="text-[#5B5FEF] dark:text-indigo-500">
                     {/* FIX: Use centralized formatter */}
-                    {formatCurrency(primaryDisplayValue, isPoint)}
+                    {formatPackagePrice(primaryValue, packageData.packageType)}
                   </span>
                 </h2>
-                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${packageData.status === "Active" ? "bg-green-100 text-green-700" : packageData.status === "Pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
-                  {packageData.status}
-                </span>
+                <StatusBadge 
+                    status={packageData.status} 
+                    className="text-sm px-3 py-1 h-auto rounded-full" 
+                />
               </div>
+              
 
               {/* FIX: Use 'name' only */}
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">
@@ -349,9 +348,13 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
 
             <div className="rounded-lg bg-[#ECECEC] p-2">
               {filteredItems.length === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400 text-center py-8 text-sm">
-                  No items available.
-                </p>
+                <div className="h-full flex items-center justify-center py-10">
+                      <EmptyState 
+                          icon={SearchX} 
+                          title="No items available" 
+                          description="This package has no items, or they don't match your search." 
+                      />
+                  </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto">
                   {filteredItems.map((item, index) => {

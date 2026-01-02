@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { DivideCircle, Search, Copy } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
@@ -164,36 +165,26 @@ export default function BComparePackageTab() {
             <Card>
                 <CardContent>
                     <div className="space-y-2">
-                        <Label htmlFor="package-search" className="text-sm font-medium">
-                            Search Package
-                        </Label>
-                        <div className="flex gap-2">
-                            <Input
-                                id="package-search"
-                                placeholder="Enter package name"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                onKeyDown={(e) => e.key === "Enter" && fetchUnsyncedPackages()} 
-                                className="h-11 flex-1"
-                            />
-                            <div className="w-[200px]">
-                                <Select value={packageType} onValueChange={setPackageType}>
-                                    <SelectTrigger id="package-type" className="!h-11">
-                                        <SelectValue placeholder="All Types" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Types</SelectItem> 
-                                        <SelectItem value="Entry">Entry</SelectItem>
-                                        <SelectItem value="Point">Point</SelectItem>
-                                        <SelectItem value="Reward">Reward</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <Button onClick={fetchUnsyncedPackages} disabled={isSearching} className="h-11 px-8">
-                                <Search className="mr-2 h-4 w-4" />
-                                {isSearching ? "Searching..." : "Search"}
-                            </Button>
-                        </div>
+                        <SearchField 
+                            label="Search Package"
+                            placeholder="Enter package name"
+                            value={searchQuery}
+                            onChange={setSearchQuery}
+                            onSearch={fetchUnsyncedPackages}
+                            isSearching={isSearching}
+                            extraFilters={
+                                    <Select value={packageType} onValueChange={setPackageType}>
+                                        <SelectTrigger className="h-11 w-full md:w-[200px]">
+                                            <SelectValue placeholder="All Types" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Types</SelectItem> 
+                                            <SelectItem value="Entry">Entry</SelectItem>
+                                            <SelectItem value="Point">Point</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                            }
+                        />
                     </div>
                 </CardContent>
             </Card>

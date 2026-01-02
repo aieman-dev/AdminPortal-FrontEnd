@@ -21,9 +21,14 @@ export function StatusBadge({ status, variant, colorMap, className }: StatusBadg
     debit: "bg-gray-500/10 text-gray-600 hover:bg-gray-500/20 border-gray-200",
     purchase: "bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200", 
     consume: "bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200", 
+
+    // --- PACKAGE LIFECYCLE (Merged from PackageCard) ---
+    active: "bg-emerald-100 text-emerald-700 border-transparent dark:bg-emerald-500/15 dark:text-emerald-400",
+    draft: "bg-indigo-100 text-indigo-700 border-transparent dark:bg-indigo-500/15 dark:text-indigo-400",
+    rejected: "bg-red-100 text-red-700 border-transparent dark:bg-red-500/15 dark:text-red-400",
+    expiring: "bg-orange-100 text-orange-800 border-transparent dark:bg-orange-500/15 dark:text-orange-400",
     
-    // Operational Statuses
-    active: "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-emerald-200", 
+    // Operational Statuses 
     expired: "bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200", 
     inactive: "bg-red-100 text-red-700 hover:bg-red-200 border-red-200",
     voided: "bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-200 decoration-line-through",
@@ -36,16 +41,20 @@ export function StatusBadge({ status, variant, colorMap, className }: StatusBadg
 
   const safeStatus = status ?? "N/A"
   const colors = colorMap || defaultColorMap
-  const statusLower = safeStatus.toLowerCase().trim()
-  const colorClass = colors[statusLower] || "bg-gray-100 text-gray-600 border-gray-200"
-  const shouldPulse = ["pending", "processing", "syncing"].includes(statusLower);
+
+  let statusKey = safeStatus.toLowerCase().trim();
+  if (statusKey === "expiringsoon") statusKey = "expiring";
+
+  const colorClass = colors[statusKey] || "bg-gray-100 text-gray-600 border-gray-200"
+  const shouldPulse = ["pending", "processing", "syncing"].includes(statusKey);
 
   return (
     <Badge 
       variant={variant || "outline"} 
       // Added 'w-24' (fixed width) and 'justify-center' (center text)
       className={cn(
-        "border w-24 justify-center whitespace-nowrap", 
+        //"border w-24 justify-center whitespace-nowrap", 
+        "border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
         colorClass, 
         className,
         shouldPulse && "animate-pulse")}

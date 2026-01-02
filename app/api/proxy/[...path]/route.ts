@@ -1,51 +1,68 @@
+// app/api/proxy/[...path]/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { BACKEND_API_BASE } from "@/lib/config";
+import { cookies } from "next/headers";
 
 // Helper to handle all HTTP methods
-async function handleRequest(request: NextRequest, { params }: { params: { path: string[] } }) {
-  // 1. Reconstruct the backend path (e.g., "Package/create" or "support/void/search")
-  // You need to await params in Next.js 15+ 
+async function handleRequest(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const resolvedParams = await params;
   const path = resolvedParams.path.join("/"); 
 
-  // 2. Construct the full Backend URL
   const query = request.nextUrl.search;
   const backendUrl = `${BACKEND_API_BASE}/api/${path}${query}`;
   
-  // 3. Extract the Authorization header (JWT)
-  const authHeader = request.headers.get("authorization");
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("accessToken")?.value
 
-  // 4. Prepare headers
   const headers: HeadersInit = {
     "Content-Type": "application/json",
     "ngrok-skip-browser-warning": "true",
-    "Authorization": authHeader || "",
   };
 
-  try {
-    // 5. Forward the request
-    // We get the body for POST/PUT, but not for GET/DELETE
-    const body = (request.method === "POST" || request.method === "PUT") 
-      ? await request.json() 
-      : undefined;
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
 
+  try {
+    // 1. Parse Body (Safely)
+    let body: any = undefined;
+    if (request.method === "POST" || request.method === "PUT") {
+        try {
+            // Attempt to parse JSON. 
+            // If body is empty, this throws, and we catch it.
+            // If body is 'false', this returns false.
+            body = await request.json();
+        } catch (e) {
+            // Body is likely empty or invalid
+            body = undefined;
+        }
+    }
+
+    // 2. Forward Request
     const apiResponse = await fetch(backendUrl, {
       method: request.method,
       headers: headers,
-      body: body ? JSON.stringify(body) : undefined,
+      
+      // --- THE CRITICAL FIX IS HERE ---
+      // We check if body is explicitly not undefined.
+      // This allows 'false' and '0' to pass through correctly.
+      body: body !== undefined ? JSON.stringify(body) : undefined,
     });
 
-    // 6. Handle the response
     const responseText = await apiResponse.text();
     let data;
     try {
         data = responseText ? JSON.parse(responseText) : {};
     } catch {
-        // If backend returns HTML error (common with Ngrok/IIS errors)
         return NextResponse.json(
             { error: "Backend returned non-JSON response", details: responseText.slice(0, 200) }, 
             { status: 502 }
         );
+    }
+
+    if (apiResponse.status === 401) {
+       return NextResponse.json({ error: "Unauthorized or Token Expired" }, { status: 401 });
     }
 
     if (!apiResponse.ok) {
@@ -63,7 +80,6 @@ async function handleRequest(request: NextRequest, { params }: { params: { path:
   }
 }
 
-// Export handlers for each method you need
 export async function GET(req: NextRequest, ctx: any) { return handleRequest(req, ctx); }
 export async function POST(req: NextRequest, ctx: any) { return handleRequest(req, ctx); }
 export async function PUT(req: NextRequest, ctx: any) { return handleRequest(req, ctx); }

@@ -1,25 +1,33 @@
 // lib/server-api.ts
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { BACKEND_API_BASE } from "@/lib/config";
 
-// This function can ONLY be used in Server Components (app/page.tsx, layout.tsx)
-export async function serverFetch<T>(endpoint: string): Promise<T | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("token")?.value;
+// This function can ONLY be used in Server Components
+export async function serverFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
+  
+  // 1. Try to get Token from Request Header (set by Middleware during refresh)
+  const headersList = await headers();
+  let token = headersList.get("x-access-token");
 
-  // 1. If we are on the server, we can skip the Next.js Proxy (/api/proxy)
-  // and hit the backend DIRECTLY. This is faster.
+  // 2. If not in header, get from Cookie (standard case)
+  if (!token) {
+    const cookieStore = await cookies();
+    token = cookieStore.get("accessToken")?.value || null;
+  }
+
   const url = `${BACKEND_API_BASE}/api/${endpoint}`;
 
   try {
     const res = await fetch(url, {
-      method: "GET",
+      method: options.method || "GET",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token || ""}`,
-        "ngrok-skip-browser-warning": "true", // Keep this if using ngrok
+        "ngrok-skip-browser-warning": "true",
+        ...options.headers, 
       },
-      cache: "no-store", // Ensure fresh data every time
+      ...options,
+      cache: "no-store",
     });
 
     if (!res.ok) {
@@ -27,9 +35,8 @@ export async function serverFetch<T>(endpoint: string): Promise<T | null> {
       return null;
     }
 
-    // 2. Return data directly
     const json = await res.json();
-    return json as T; // Some backends wrap data in { data: ... }, adjust if needed
+    return json as T; 
   } catch (error) {
     console.error("ServerFetch Fatal:", error);
     return null;

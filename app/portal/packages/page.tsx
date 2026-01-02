@@ -2,26 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, Trash2, AlertTriangle, Search } from "lucide-react";
+import { Plus, Trash2, Search, PackageX, Send, Loader2 } from "lucide-react"; // Removed AlertTriangle
 import PackageFilters from "@/components/PackageFilters";
+import { ConfirmationModal } from '@/components/PackageModals'; // We only need this one
 import PackageCard from "@/components/PackageCard";
 import { packageService } from "@/services/package-services"; 
 import { Package } from "@/type/packages"; 
 import { useAuth } from "@/hooks/use-auth";
 import { canCreatePackage } from "@/lib/auth"; 
 import { getProxiedImageUrl } from "@/lib/utils"; 
+import { formatDate } from "@/lib/formatter";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button"; 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { EmptyState } from "@/components/portal/empty-state";
+import { LoaderState } from "@/components/ui/loader-state";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 
 interface PackageListItem {
@@ -39,18 +33,8 @@ interface PackageListItem {
   createdDate: string | undefined; 
 }
 
-const formatShortDate = (dateString: string | undefined) => {
-  if (!dateString) return "—";
-  const date = new Date(dateString.split('T')[0]);
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
-
-// FIX: Removed local getProxiedImageUrl function and IMAGE_ASSET_API_PATH constant
-// We now use the version imported from "@/lib/utils"
+// 1. Define types for our dynamic action state
+type ActionType = 'SUBMIT' | 'DELETE' | null;
 
 export default function PackagesPage() {
   const { user } = useAuth();
@@ -68,7 +52,16 @@ export default function PackagesPage() {
   const [isLoading, setIsLoading] = useState(true);
   
   const [selectedPackageIds, setSelectedPackageIds] = useState<Set<number>>(new Set());
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  
+  // 2. CONSOLIDATED ACTION STATE
+  // If targetId is set, it's a Single action. If targetId is null, it's a Bulk action.
+  const [actionState, setActionState] = useState<{
+    type: ActionType;
+    targetId: number | null; 
+    isOpen: boolean;
+  }>({ type: null, targetId: null, isOpen: false });
+
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -79,9 +72,6 @@ export default function PackagesPage() {
     start: null,
     end: null
   });
-
-  const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     setSelectedPackageIds(new Set());
@@ -94,21 +84,13 @@ export default function PackagesPage() {
         const endStr = dateRange.end ? dateRange.end.toISOString() : undefined;
 
         const { packages: rawData, totalPages: total, totalRecords: records } = await packageService.getPackages(
-          activeFilter, 
-          startStr, 
-          endStr, 
-          currentPage, 
-          searchQuery,
-          packageTypeFilter 
+          activeFilter, startStr, endStr, currentPage, searchQuery, packageTypeFilter 
         );
 
         const formatted: PackageListItem[] = rawData.map((pkg: Package) => {
             const pType = (pkg.packageType || 'Entry');
             const isPoint = pType.toLowerCase().includes('point') && !pType.toLowerCase().includes('reward');
-            
-            const finalPrice = isPoint
-                ? (pkg.point ?? 0) 
-                : (pkg.price ?? 0); 
+            const finalPrice = isPoint ? (pkg.point ?? 0) : (pkg.price ?? 0); 
             
             return ({
               id: pkg.id,
@@ -129,22 +111,18 @@ export default function PackagesPage() {
         setPackages(formatted);
         setTotalPages(total);
         setTotalRecords(records);
-
       } catch (error) {
-        console.error("Error loading packages:", error);
+        toast({ title: "Error", description: "Failed to load packages.", variant: "destructive" })
       } finally {
         setIsLoading(false);
       }
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchPackages();
-    }, 500);
+    const timer = setTimeout(() => { fetchPackages(); }, 500);
     return () => clearTimeout(timer);
   }, [activeFilter, currentPage, searchQuery, dateRange, packageTypeFilter]); 
 
-  // Reset page to 1 when filters change
   const handleFilterChange = (filter: string) => { setActiveFilter(filter); setCurrentPage(1); };
   const handleSearchChange = (query: string) => { setSearchQuery(query); setCurrentPage(1); };
   const handleDateFilter = (start: Date | null, end: Date | null) => { setDateRange({ start, end }); setCurrentPage(1); };
@@ -173,36 +151,134 @@ export default function PackagesPage() {
       toast({ title: "Package Duplicated", description: `New ID: ${response.newPackageId}. Status: Draft.` });
       setActiveFilter("Draft");
     } catch (error) {
-      toast({ title: "Duplication Failed", description: error instanceof Error ? error.message : "Failed to duplicate.", variant: "destructive" });
+      toast({ title: "Duplication Failed", description: "Failed to duplicate.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   }
 
-  const handleDeleteClick = (id: number) => {
-    setDeleteId(id);
+  // --- 3. DYNAMIC HANDLERS (Open the Modal) ---
+
+  // Triggered by Single Buttons
+  const openSingleSubmit = (id: number) => setActionState({ type: 'SUBMIT', targetId: id, isOpen: true });
+  const openSingleDelete = (id: number) => setActionState({ type: 'DELETE', targetId: id, isOpen: true });
+
+  // Triggered by Bulk Buttons
+  const openBulkSubmit = () => {
+    if (selectedPackageIds.size === 0) return;
+    setActionState({ type: 'SUBMIT', targetId: null, isOpen: true });
+  };
+  const openBulkDelete = () => {
+    if (selectedPackageIds.size === 0) return;
+    setActionState({ type: 'DELETE', targetId: null, isOpen: true });
   };
 
-  const handleConfirmDelete = async () => {
-    if (!deleteId) return;
+  // --- 4. UNIFIED EXECUTION LOGIC ---
+  const executeAction = async () => {
+    // Close modal immediately or keep open with loader. Let's close it.
+    setActionState(prev => ({ ...prev, isOpen: false }));
+    setIsProcessing(true);
+
+    const { type, targetId } = actionState;
     
-    setIsDeleting(true);
+    // Determine IDs: If targetId exists, it's single. Else, it's bulk.
+    const ids = targetId ? [targetId] : Array.from(selectedPackageIds);
+    const count = ids.length;
+
     try {
-        await packageService.bulkDeletePackages([deleteId]); 
+        if (type === 'SUBMIT') {
+            await packageService.submitDraft(ids);
+            toast({ title: "Submitted", description: `${count} package(s) submitted successfully.`, variant: "success" });
+        } 
+        else if (type === 'DELETE') {
+            await packageService.bulkDeletePackages(ids);
+            toast({ title: "Deleted", description: `${count} package(s) deleted successfully.` });
+        }
+
+        // Cleanup
+        fetchPackages();
+        // Only clear selection if it was a BULK action
+        if (!targetId) setSelectedPackageIds(new Set());
         
-        toast({ 
-            title: "Draft Deleted", 
-            description: `Package ID ${deleteId} has been removed successfully.` 
-        });
+    } catch (error : any) {
+        console.log("Submit Error Debug:", error); // Keep this to see the structure in console
+
+      // 1. EXTRACT THE MESSAGE SAFELY
+      // We check multiple places where the backend message might be hiding
+      const backendMessage = 
+          error?.response?.data?.content?.message || // Common Axios pattern
+          error?.content?.message ||                 // Your raw JSON pattern
+          error?.message ||                          // Standard Error object
+          "Unknown error occurred"; 
+
+      // 2. CHECK FOR KEYWORDS
+      // We convert to lowercase to make the check case-insensitive
+      const lowerCaseError = String(backendMessage).toLowerCase();
+
+        if (
+            lowerCaseError.includes("expired") || 
+            lowerCaseError.includes("Last Valid Date") || 
+            lowerCaseError.includes("not 'Draft'")
+        ) {
+            toast({ 
+                title: "Unable to Submit", 
+                description: "Some packages could not be submitted because their 'Last Valid Date' has passed. Please update the dates to a future time and try again.", 
+                variant: "destructive" 
+            });
+        } else {
+            toast({ 
+                title: "Operation Failed", 
+                description: error?.response?.data?.error || "An unexpected error occurred. Please try again.",
+                variant: "destructive" 
+            });
+        }
         
-        fetchPackages(); 
-    } catch (error) {
-        toast({ title: "Deletion Failed", description: "Failed to delete package.", variant: "destructive" });
+        console.error("Action Error:", error);
     } finally {
-        setIsDeleting(false);
-        setDeleteId(null);
+        setIsProcessing(false);
+        setActionState({ type: null, targetId: null, isOpen: false });
     }
   };
+
+  // --- 5. DYNAMIC MODAL TEXT HELPER ---
+  const getModalContent = () => {
+    const isSingle = actionState.targetId !== null;
+    const count = isSingle ? 1 : selectedPackageIds.size;
+    
+    if (actionState.type === 'SUBMIT') {
+        return {
+            title: "Submit for Approval?",
+            description: (
+              <>
+                <p>Upon submission, the package will be forwarded for review.</p>
+                <p className="text-sm text-gray-500 mt-2">(Further edits will not be allowed after submission.)</p>
+                {!isSingle && <p className="mt-2 font-semibold">Total Packages: {count}</p>}
+              </>
+            ),
+            variant: "default" as const, // Blue
+            confirmLabel: "Yes, Submit",
+            cancelLabel: "Cancel"
+        };
+    }
+    
+    if (actionState.type === 'DELETE') {
+        return {
+            title: "Delete Package?",
+            description: (
+              <>
+                <p>Are you sure you want to delete {isSingle ? "this package" : <b>{count} packages</b>}?</p>
+                <p className="text-sm text-red-500 mt-2">This action cannot be undone.</p>
+              </>
+            ),
+            variant: "destructive" as const, // Red
+            confirmLabel: "Yes, Delete",
+            cancelLabel: "No, Keep"
+        };
+    }
+    return { title: "", description: "" };
+  };
+
+  const modalContent = getModalContent();
 
   const handleSelectPackage = (id: number, checked: boolean) => {
       const newSet = new Set(selectedPackageIds);
@@ -217,24 +293,6 @@ export default function PackagesPage() {
       } else {
           const allIds = new Set(packages.map(p => p.id));
           setSelectedPackageIds(allIds);
-      }
-  };
-
-  const handleBulkDelete = async () => {
-      if (selectedPackageIds.size === 0) return;
-      if (!window.confirm(`Are you sure you want to delete ${selectedPackageIds.size} draft packages?`)) return;
-
-      setIsBulkDeleting(true);
-      try {
-          const ids = Array.from(selectedPackageIds);
-          await packageService.bulkDeletePackages(ids);
-          toast({ title: "Bulk Delete Success", description: `${ids.length} packages deleted.` });
-          setSelectedPackageIds(new Set());
-          fetchPackages(); 
-      } catch (error) {
-          toast({ title: "Bulk Delete Failed", description: "Some packages could not be deleted.", variant: "destructive" });
-      } finally {
-          setIsBulkDeleting(false);
       }
   };
 
@@ -269,25 +327,46 @@ export default function PackagesPage() {
                       <span className="text-sm font-medium">Select All</span>
                   </div>
                   {selectedPackageIds.size > 0 && (
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        onClick={handleBulkDelete} 
-                        disabled={isBulkDeleting}
-                        className="ml-auto"
-                      >
-                        {isBulkDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <Trash2 className="w-4 h-4 mr-2"/>}
-                        Delete Selected ({selectedPackageIds.size})
-                      </Button>
+                      <div className="ml-auto flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={openBulkSubmit} 
+                            disabled={isProcessing}
+                            className="text-indigo-600 border-indigo-200 bg-indigo-50 hover:bg-indigo-100"
+                          >
+                            {isProcessing && actionState.type === 'SUBMIT' ? (
+                                // 1. Loading State: Spinning Icon only
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                                // 2. Normal State: Send Icon
+                                <Send className="w-4 h-4 mr-2"/>
+                            )}
+                            Submit Selected ({selectedPackageIds.size})
+                          </Button>
+                          
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            onClick={openBulkDelete} 
+                            disabled={isProcessing}
+                          >
+                            {isProcessing && actionState.type === 'DELETE' ? (
+                                  // 1. Loading State: Spinning Icon only
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              ) : (
+                                  // 2. Normal State: Trash Icon
+                                  <Trash2 className="w-4 h-4 mr-2"/>
+                              )}
+                              Delete Selected ({selectedPackageIds.size})
+                            </Button>
+                      </div>
                   )}
               </div>
           )}
 
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-              <Loader2 className="h-10 w-10 animate-spin mb-4 text-blue-600" />
-              <p>Loading packages...</p>
-            </div>
+            <LoaderState message="Loading packages..." className="h-auto py-24 border-dashed" />
           ) : packages.length > 0 ? (
             <>
               <div className="text-sm text-muted-foreground mt-4 mb-2">
@@ -304,7 +383,7 @@ export default function PackagesPage() {
                     category={pkg.category || "N/A"}
                     description={pkg.ageDescription}
                     packageType={pkg.packageType}
-                    dateDisplay={formatShortDate(pkg.createdDate)} 
+                    dateDisplay={formatDate(pkg.createdDate)} 
                     nationality={pkg.nationality}
                     status={pkg.status}
                     image={pkg.image}
@@ -314,7 +393,9 @@ export default function PackagesPage() {
                     onClick={() => handlePackageClick(pkg.id)}
                     onDuplicate={() => handleDuplicate(pkg.id)}
                     onEdit={() => handleEdit(pkg.id)}
-                    onDelete={() => handleDeleteClick(pkg.id)}
+                    // 6. Connect PackageCard Actions
+                    onDelete={() => openSingleDelete(pkg.id)}
+                    onSubmit={() => openSingleSubmit(pkg.id)}
                   />
                 ))}
               </div>
@@ -328,10 +409,12 @@ export default function PackagesPage() {
                />
             </>
           ) : (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border border-dashed rounded-lg bg-muted/30 mt-12">
-               <Search className="h-10 w-10 mb-4 opacity-50" />
-               <p className="text-lg font-medium">No packages found</p>
-               <p className="text-sm">Try adjusting your filters or search query.</p>
+            <div className="h-80 flex items-center justify-center border border-dashed rounded-lg bg-muted/30 mt-6">
+                <EmptyState 
+                    icon={PackageX} 
+                    title="No packages found" 
+                    description="Try adjusting your filters or search query." 
+                />
             </div>
           )}
         </div>
@@ -347,32 +430,18 @@ export default function PackagesPage() {
         </button>
       )}
 
-      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                <AlertTriangle className="h-5 w-5" />
-                Confirm Deletion
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this package? <br/>
-              <span className="font-semibold text-foreground">Package ID: {deleteId}</span>
-              <br/><br/>
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-                onClick={handleConfirmDelete} 
-                disabled={isDeleting}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? "Deleting..." : "Delete Package"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* 7. ONE DYNAMIC MODAL FOR ALL ACTIONS */}
+      <ConfirmationModal
+        isOpen={actionState.isOpen}
+        onConfirm={executeAction}
+        onCancel={() => setActionState(prev => ({ ...prev, isOpen: false }))}
+        
+        title={modalContent.title}
+        description={modalContent.description}
+        variant={modalContent.variant}
+        confirmLabel={modalContent.confirmLabel}
+        cancelLabel={modalContent.cancelLabel}
+      />
 
     </div>
   );

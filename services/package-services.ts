@@ -3,6 +3,7 @@
 import { apiClient } from "@/lib/api-client";
 import { getAuthToken } from "@/lib/auth";
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
+import { DashboardSummaryDTO } from "@/type/packages";
 import { 
     Package, 
     PackageFormData, 
@@ -11,6 +12,7 @@ import {
     PackageItem,
     BackendPackageDTO,
     CreatePackagePayload,
+    UpdatePackagePayload,
     PackageFilterPayload,
     UpdateStatusPayload
 } from "@/type/packages"; 
@@ -20,10 +22,16 @@ import {
     SelectableItPoswfPackage 
 } from "@/type/themepark-support";
 
-// 1. ENDPOINTS: Direct Backend Paths (No more proxy-create-package etc.)
+// 1. ENDPOINTS: Direct Backend Paths 
 const ENDPOINTS = {
+  // Dashboard
+  DASHBOARD_SUMMARY: "Package/dashboard-summary",
+
+  // Creation
   CREATE: "Package/create",
+  EDIT: "",
   DRAFT: "Package/draft",
+  BULK_SUBMIT: "Package/submitDraft",
   SEARCH_IMAGES: "Package/images/search",
   UPLOAD: "proxy-upload", 
   BULK_DELETE: "Package/deactivate-draft",
@@ -32,7 +40,7 @@ const ENDPOINTS = {
   // Status & Detail
   UPDATE_STATUS: "Package/status",
   GET_LIST: "packageView/search",
-  GET_ONE: "packageView/details",
+  GET_ONE: "packageView/detail",
   DUPLICATE: "Package/duplicate",
 
   // IT-POSWF Support
@@ -40,6 +48,25 @@ const ENDPOINTS = {
   UPDATE_ITPOSWF: "package/extend",
   BCOMPARE_SEARCH: "Package/unsynced",
   BCOMPARE_SYNC: "package/sync",
+};
+
+// --- HELPERS ---
+const getContent = <T>(data: any): T[] => {
+    if (data?.content?.content && Array.isArray(data.content.content)) {
+        return data.content.content;
+    }
+        if (data?.content && Array.isArray(data.content)) {
+        return data.content;
+    }
+    if (Array.isArray(data)) {
+        return data;
+    }
+
+    return []
+};
+
+const getDataObject = <T>(data: any): T => {
+    return data?.content || data?.data || data || {};
 };
 
 // --- CACHING & HELPERS ---
@@ -55,10 +82,11 @@ const getAgeCategoryMap = async (): Promise<Record<string, AgeCategoryMapData>> 
   if (ageCategoryCache) return ageCategoryCache;
   try {
     const response = await apiClient.get<any>(ENDPOINTS.CREATION_DATA);
-    if (response.success && response.data?.ageCategories) {
+    const data = getDataObject<any>(response.data);
+    if (response.success && data?.ageCategories) {
       const map: Record<string, AgeCategoryMapData> = {};
-      response.data.ageCategories.forEach((c: any) => {
-         map[c.ageCode] = { displayText: c.displayText, description: c.description || "" };
+      data.ageCategories.forEach((c: any) => {
+         if(c.ageCode) map[c.ageCode] = { displayText: c.displayText, description: c.description || "" };
       });
       ageCategoryCache = map;
       return map;
@@ -95,10 +123,10 @@ const transformToFrontend = (pkg: BackendPackageDTO, ageMap: Record<string, AgeC
   
   const rawAgeCode = pkg.ageCategory || pkg.category || "";
   const mappedAge = ageMap[rawAgeCode];
+
   const displayAgeCat = mappedAge?.displayText || rawAgeCode || "N/A";
   const displayAgeDesc = mappedAge?.description || "";
 
-  
   const rawItems = pkg.items || pkg.packageitems || [];
   const finalItems: PackageItem[] = rawItems.map(item => ({
       attractionId: item.attractionId,
@@ -111,6 +139,8 @@ const transformToFrontend = (pkg: BackendPackageDTO, ageMap: Record<string, AgeC
       itemType: item.itemType
   }));
 
+  const submitterName = pkg.submittedBy || pkg.createdBy || pkg.createdUserEmail || "System";
+
   return {
     id: pkg.id,
     name: finalName,
@@ -121,15 +151,13 @@ const transformToFrontend = (pkg: BackendPackageDTO, ageMap: Record<string, AgeC
     status: pkg.status || "Draft",
     imageUrl: pkg.imageUrl || pkg.imageID || "",
     nationality: pkg.nationality || "N/A",
-    
     ageCategory: displayAgeCat,
     ageDescription: displayAgeDesc,
-    
     effectiveDate: pkg.effectiveDate || pkg.createdDate || "",
     lastValidDate: pkg.lastValidDate || "",
     createdDate: pkg.createdDate || pkg.dateCreated || "",
     
-    submittedBy: pkg.submittedBy || pkg.createdBy || "System",
+    submittedBy: submitterName,
     reviewedBy: pkg.approvedBy,
     reviewedDate: pkg.reviewedDate,
     
@@ -145,6 +173,13 @@ const transformToFrontend = (pkg: BackendPackageDTO, ageMap: Record<string, AgeC
 // --- SERVICE IMPLEMENTATION ---
 
 export const packageService = {
+
+  //  DASHBOARD SUMMARY
+  getDashboardSummary: async (filter: string = "ThisWeek"): Promise<DashboardSummaryDTO | null> => {
+    const response = await apiClient.get<DashboardSummaryDTO>(`Package/dashboard-summary?filter=${filter}`);
+    if (!response.success) throw new Error(response.error);
+    return response.data!;
+  },
   
   //  UPLOAD IMAGE (Still uses specific proxy for FormData)
   uploadImage: async (file: File): Promise<string> => {
@@ -175,9 +210,12 @@ export const packageService = {
     const response = await apiClient.post<any>(ENDPOINTS.SEARCH_IMAGES, payload);
 
     if (!response.success || !response.data) return { images: [], totalRecords: 0 };
+
+    const data = response.data;
+    const content = data.content || data;
     return {
-        images: response.data.images || [],
-        totalRecords: response.data.totalRecords || 0
+        images: content.images || [],
+        totalRecords: content.totalRecords || 0
     };
   },
 
@@ -189,27 +227,33 @@ export const packageService = {
       return { attractions: [], ageCategories: [] };
     }
     
+    const data = getDataObject<any>(response.data); 
+    
     return {
-        attractions: response.data.attractions || [],
-        ageCategories: response.data.ageCategories || []
+        attractions: data.attractions || [],
+        ageCategories: data.ageCategories || []
     };
   },
 
-  //  CREATE / DRAFT
+  //  CREATE / DRAFT / UPDATE
   createPackage: async (form: PackageFormData, imageId: string) => {
      return packageService._submitPackage(form, imageId, ENDPOINTS.CREATE);
   },
 
-  saveDraft: async (form: PackageFormData, imageId: string) => {
-     return packageService._submitPackage(form, imageId, ENDPOINTS.DRAFT);
+  saveDraft: async (form: PackageFormData, imageId: string, id?: number) => {
+     return packageService._submitPackage(form, imageId, ENDPOINTS.DRAFT, id);
+  },
+
+  updatePackage: async (id: number, form: PackageFormData, imageId: string) => {
+     return packageService._submitPackage(form, imageId, `${ENDPOINTS.EDIT}/${id}`, id);
   },
 
   // Helper for Create/Draft to avoid code duplication
-  _submitPackage: async (form: PackageFormData, imageId: string, endpoint: string) => {
+  _submitPackage: async (form: PackageFormData, imageId: string, endpoint: string, id?: number) => {
     const isPoint = form.packageType === "Point";
     const finalPrice = form.totalPrice || 0;
     
-    const payload: CreatePackagePayload = {
+    const basePayload: CreatePackagePayload = {
         name: form.packageName,
         packageType: form.packageType,
         price: isPoint ? 0 : finalPrice,
@@ -230,9 +274,39 @@ export const packageService = {
         }))
     };
 
-    const response = await apiClient.post(endpoint, payload);
+    let finalPayload: CreatePackagePayload | UpdatePackagePayload = basePayload;
+    if (id) {
+        finalPayload = { ...basePayload, id };
+    }
+
+    const response = endpoint.includes("update") 
+    ? await apiClient.put(endpoint, finalPayload) 
+    : await apiClient.post(endpoint, finalPayload);
     if (!response.success) throw new Error(response.error || "Submission failed");
     return response.data;
+  },
+
+  // Placeholder for Submit Draft API
+  submitDraft: async (ids: number[]) => {
+    const payload = { packageIds: ids };
+
+    try {
+        const response = await apiClient.post(ENDPOINTS.BULK_SUBMIT, payload) as any;
+        
+        if (response.statusCode === 400 || response.success === false) {
+            const error: any = new Error(response.message || "Submission failed");
+            
+            error.content = response.content; 
+            error.response = { data: response }; 
+            
+            throw error;
+        }
+
+        return response.data;
+
+    } catch (error) {
+        throw error;
+    }
   },
 
   //  GET LIST
@@ -258,22 +332,23 @@ export const packageService = {
         PackageType: packageType === "All" ? null : (packageType || null),
     };
 
-    const response = await apiClient.post<BackendPackageDTO[]>(ENDPOINTS.GET_LIST, payload);
+    const response = await apiClient.post<any>(ENDPOINTS.GET_LIST, payload);
 
     if (!response.success) {
       console.error("Fetch packages failed:", response.error);
       return { packages: [], totalPages: 0, totalRecords: 0 };
     }
 
-    const data = response.data || [];
-    // Assuming backend returns list without metadata for now, calculate manually
-    const totalPages = data.length === PAGE_SIZE ? page + 1 : page; 
+    const rawData = response.data;
+    let dataArray: BackendPackageDTO[] = getContent<BackendPackageDTO>(rawData);
+    const totalRecords = rawData?.content?.size || 0;
+    const totalPages = totalRecords > 0 ? Math.ceil(totalRecords / PAGE_SIZE) : 1;
 
     return {
-        packages: data.map(p => transformToFrontend(p, ageMap)),
-        totalPages,
-        totalRecords: -1 
-    };
+        packages: dataArray.map(p => transformToFrontend(p, ageMap)),
+        totalPages, 
+        totalRecords
+    }
   },
 
   // 5. GET DETAIL
@@ -281,16 +356,16 @@ export const packageService = {
     const ageMap = await getAgeCategoryMap();
     const payload = { Id: id, Source: source || null };
     
-    const response = await apiClient.post<BackendPackageDTO>(ENDPOINTS.GET_ONE, payload);
+    const response = await apiClient.post<any>(ENDPOINTS.GET_ONE, payload);
     
     if (!response.success || !response.data) return null;
-    return transformToFrontend(response.data, ageMap);
+    const data = getDataObject<BackendPackageDTO>(response.data);
+    return transformToFrontend(data, ageMap);
   },
 
   // 6. ACTIONS (Status, Duplicate, Delete)
   updateStatus: async (id: number, status: string, remark?: string) => {
     const payload: UpdateStatusPayload = { Id: id, Status: status, Remark2: remark };
-    // NOTE: Backend endpoint is PUT /api/package/status
     const response = await apiClient.put(ENDPOINTS.UPDATE_STATUS, payload);
     if (!response.success) throw new Error(response.error || `Failed to update status to ${status}`);
     return response.data;
@@ -322,7 +397,8 @@ export const packageService = {
     
     if (!response.success) return { packages: [], totalPages: 0, totalRecords: 0 };
 
-    const rawList = response.data?.data || [];
+    const root = response.data?.content || response.data;
+    const rawList = Array.isArray(root) ? root : (root?.data || []);
     const packages: ItPoswfPackage[] = rawList.map((pkg: any) => ({
         id: String(pkg.packageID),
         packageId: pkg.packageID,
@@ -340,8 +416,8 @@ export const packageService = {
 
     return {
         packages,
-        totalPages: response.data?.totalPages || 1,
-        totalRecords: response.data?.totalItems || 0
+        totalPages: root?.totalPages || 1,
+        totalRecords: root?.totalItems || 0
     };
   },
 
@@ -362,7 +438,8 @@ export const packageService = {
       
       if (!response.success || !response.data) return { success: false, error: response.error };
 
-      let mapped: SelectableItPoswfPackage[] = response.data.map(p => ({
+      const rawList = getContent<UnsyncedPackageDTO>(response.data);
+      let mapped: SelectableItPoswfPackage[] = rawList.map(p => ({
           id: String(p.packageID),
           packageId: p.packageID,
           packageName: p.packageName,

@@ -35,7 +35,7 @@ export const SIDEBAR_NAVIGATION = [
     ],
   },
   {
-    name: "Users",
+    name: "Staff Management",
     href: "/portal/staff-management",
     icon: Users,
   },

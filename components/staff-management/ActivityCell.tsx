@@ -8,7 +8,13 @@ interface ActivityCellProps {
 
 export function ActivityCell({ activity }: ActivityCellProps) {
   if (!activity) {
-    return <span className="text-muted-foreground text-xs italic">No recent activity</span>;
+    return (
+        <div className="flex w-full justify-center">
+            <span className="text-muted-foreground/50 text-lg font-light select-none">
+                —
+            </span>
+        </div>
+    );
   }
 
   // 1. Lookup config (Safety: Fallback to DEFAULT if type not found)

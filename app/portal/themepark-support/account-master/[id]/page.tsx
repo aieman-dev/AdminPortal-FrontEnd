@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { AccountDetailsClient } from "./account-details-client"
 import { Account } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support" 
-import { Loader2 } from "lucide-react"
+import { LoaderState } from "@/components/ui/loader-state"
 
 
 // FIX: Destructure 'id' directly from the params object in the function argument
@@ -44,14 +44,7 @@ export default function AccountDetailsPage({ params: { id } }: { params: { id: s
 
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
-          <p className="text-gray-500 font-medium">Loading Account Details...</p>
-        </div>
-      </div>
-    )
+    return <LoaderState message="Loading Account Details..." className="min-h-[60vh] border-none bg-transparent" />
   }
 
   if (!account) {

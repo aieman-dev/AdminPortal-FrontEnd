@@ -5,6 +5,7 @@ import { PackageFormData } from "../type/packages";
 import { useAuth } from "@/hooks/use-auth"; 
 import { canDraftPackage, getAuthToken } from "@/lib/auth";
 import { BACKEND_API_BASE } from "@/lib/config";
+import { formatDate } from "@/lib/formatter";
 import { Loader2 } from "lucide-react";
 
 type Props = {
@@ -181,8 +182,8 @@ const PackageFormStep3: React.FC<Props> = ({ form, onBack, onSubmit, onSaveDraft
               {/* Column 2: Validity */}
               <div>
                 <h4 className="font-semibold mb-3 text-foreground border-b border-border pb-1">Validity</h4>
-                <p className="mb-2"><b className="text-foreground inline-block w-[100px]">Effective:</b> {form.effectiveDate ? new Date(form.effectiveDate).toLocaleDateString("en-GB") : "-"}</p>
-                <p className="mb-2"><b className="text-foreground inline-block w-[100px]">Expires:</b> {form.lastValidDate ? new Date(form.lastValidDate).toLocaleDateString("en-GB") : "-"}</p>
+                <p className="mb-2"><b className="text-foreground inline-block w-[100px]">Effective:</b> {formatDate(form.effectiveDate)}</p>
+                <p className="mb-2"><b className="text-foreground inline-block w-[100px]">Expires:</b> {formatDate(form.lastValidDate)}</p>
                 <p className="mb-2"><b className="text-foreground inline-block w-[100px]">Duration:</b> {validDays} Days</p>
                 <p className="mb-2"><b className="text-foreground inline-block w-[100px]">Day Pass:</b> {form.dayPass || "-"}</p>
               </div>

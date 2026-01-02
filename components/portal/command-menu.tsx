@@ -4,15 +4,29 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
-    Search, Monitor, Ticket, Users, 
-    PlusCircle, ScrollText, ArrowRight, Briefcase, History,
-    RefreshCw, ShoppingBag, XCircle, Calendar, Key, Wallet
+    Search, PlusCircle, ArrowRight, Briefcase, History,
+    RefreshCw, ShoppingBag, XCircle, Calendar, Key, Users,
+    LogOut, Moon, Sun, Ticket, Monitor
 } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth" 
+import { useTheme } from "next-themes"
+
+type CommandItem = {
+    id: string;
+    label: string;
+    icon: React.ElementType;
+    path?: string;
+    action?: () => void;
+    priority?: number;
+    keywords?: string[]; 
+}
 
 export function CommandMenu() {
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState("")
   const router = useRouter()
+  const { logout } = useAuth()
+  const { setTheme } = useTheme()
 
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -21,7 +35,7 @@ export function CommandMenu() {
         setOpen((open) => !open)
       }
       if (e.key === "Escape") {
-        e.preventDefault() // Optional, but good practice
+        e.preventDefault() 
         setOpen(false)
       }
     }
@@ -29,47 +43,67 @@ export function CommandMenu() {
     return () => document.removeEventListener("keydown", down)
   }, [])
 
-  const runCommand = (path: string, searchParam?: string) => {
+  const handleSelect = (item: CommandItem) => {
     setOpen(false)
-    if (searchParam) {
-        // Appends search param, handling existing '?' if present
-        const separator = path.includes('?') ? '&' : '?';
-        router.push(`${path}${separator}search=${encodeURIComponent(searchParam)}`)
-    } else {
-        router.push(path)
+    
+    if (item.action) {
+        item.action(); // Execute function (e.g. Logout)
+    } else if (item.path) {
+        // If the path contains a search query param placeholder, we might need logic here,
+        // but typically your regex logic below constructs the full path with query params included.
+        router.push(item.path)
     }
   }
 
+  // --- SYSTEM ACTIONS ---
+  const systemActions: CommandItem[] = [
+      { 
+          id: "logout", 
+          label: "Log Out", 
+          icon: LogOut, 
+          action: () => logout(),
+          keywords: ["sign out", "exit"]
+      },
+      { 
+          id: "theme-dark", 
+          label: "Switch to Dark Mode", 
+          icon: Moon, 
+          action: () => setTheme("dark"),
+          keywords: ["dark theme", "night mode"]
+      },
+      { 
+          id: "theme-light", 
+          label: "Switch to Light Mode", 
+          icon: Sun, 
+          action: () => setTheme("light"),
+          keywords: ["light theme", "day mode"]
+      },
+      {
+          id: "create-pkg",
+          label: "Create New Package", 
+          icon: PlusCircle,
+          path: "/portal/packages/form",
+          keywords: ["new package", "add package"]
+      }
+  ];
+
   // --- SMART DETECTION LOGIC ---
-  const getDynamicActions = () => {
+  const getDynamicActions = (): CommandItem[] => {
       if (!query) return []
       
       const rawQ = query.trim();
       const lowerQ = rawQ.toLowerCase();
-      const actions = [];
+      const actions: CommandItem[] = [];
 
-      // --- 1. PATTERN RECOGNITION (REGEX) ---
-
-      // Email: Contains '@'
+      // Regex Patterns
       const isEmail = lowerQ.includes("@");
-
-      // Phone: Starts with + or 0, mostly numbers, > 8 chars (e.g. 012-3456789)
       const isPhone = /^[+0][0-9\s-]{8,}$/.test(rawQ);
-
-      // Numeric ID: Pure numbers (e.g. 29174, 23)
       const isNumericID = /^\d+$/.test(rawQ);
-
-      // Ticket: Starts with 'T' followed by numbers (e.g. T004759)
       const isTicket = /^t\d+$/i.test(rawQ);
-
-      // Invoice: 2-4 letters, dash, then numbers (e.g. SYS-2025..., CP-2023...)
       const isInvoice = /^[a-z]{2,10}-+\d*$/i.test(rawQ);
-
-      // Name: Letters/Spaces only, no numbers, > 2 chars
       const isName = !isEmail && !isInvoice && !isTicket && /^[a-zA-Z\s]{3,}$/.test(rawQ);
 
-
-      // --- 2. GENERATE ACTIONS BASED ON TYPE ---
+      // --- GENERATE ACTIONS BASED ON TYPE ---
 
       // SCENARIO A: OPERATIONS (Invoice or Ticket)
       if (isInvoice || isTicket) {
@@ -77,37 +111,36 @@ export function CommandMenu() {
               id: "void-trx", 
               label: `Void Transaction: "${rawQ}"`, 
               icon: XCircle, 
-              path: "/portal/themepark-support/transaction-master?tab=void-transaction",
+              path: `/portal/themepark-support/transaction-master?tab=void-transaction&search=${encodeURIComponent(rawQ)}`,
               priority: 1 
           });
           actions.push({ 
               id: "deactivate", 
               label: `Deactivate Ticket: "${rawQ}"`, 
               icon: Ticket, 
-              path: "/portal/themepark-support/ticket-master?tab=deactivate-ticket",
+              path: `/portal/themepark-support/ticket-master?tab=deactivate-ticket&search=${encodeURIComponent(rawQ)}`,
               priority: 1 
           });
           actions.push({ 
               id: "extend", 
               label: `Extend Expiry: "${rawQ}"`, 
               icon: Calendar, 
-              path: "/portal/themepark-support/ticket-master?tab=extend-expiry",
+              path: `/portal/themepark-support/ticket-master?tab=extend-expiry&search=${encodeURIComponent(rawQ)}`,
               priority: 2 
           });
           actions.push({ 
               id: "security", 
               label: `Update Security No: "${rawQ}"`, 
               icon: Key, 
-              path: "/portal/themepark-support/ticket-master?tab=update-qr-password",
+              path: `/portal/themepark-support/ticket-master?tab=update-qr-password&search=${encodeURIComponent(rawQ)}`,
               priority: 2 
           });
-          // History Search (Usually works with Invoice)
           if (isInvoice) {
               actions.push({
                   id: "hist-inv",
                   label: `View History Record: "${rawQ}"`,
                   icon: History,
-                  path: "/portal/themepark-support/account-master?tab=search-history-record",
+                  path: `/portal/themepark-support/account-master?tab=search-history-record&search=${encodeURIComponent(rawQ)}`,
                   priority: 3
               });
           }
@@ -119,23 +152,15 @@ export function CommandMenu() {
               id: "resync", 
               label: `Resync Transaction ID: ${rawQ}`, 
               icon: RefreshCw, 
-              path: "/portal/themepark-support/transaction-master?tab=resync-transaction",
+              path: `/portal/themepark-support/transaction-master?tab=resync-transaction&search=${encodeURIComponent(rawQ)}`,
               priority: 1 
           });
           actions.push({ 
               id: "shopify", 
               label: `Search Shopify Order: #${rawQ}`, 
               icon: ShoppingBag, 
-              path: "/portal/themepark-support/transaction-master?tab=shopify-order",
+              path: `/portal/themepark-support/transaction-master?tab=shopify-order&search=${encodeURIComponent(rawQ)}`,
               priority: 1 
-          });
-          // Edge case: Numeric Ticket ID? (Some systems use pure numbers for tickets)
-          actions.push({ 
-              id: "deactivate-num", 
-              label: `Deactivate Ticket ID: ${rawQ}`, 
-              icon: Ticket, 
-              path: "/portal/themepark-support/ticket-master?tab=deactivate-ticket",
-              priority: 3 
           });
       }
 
@@ -145,7 +170,7 @@ export function CommandMenu() {
               id: "find-acct", 
               label: `Find Customer Account: "${rawQ}"`, 
               icon: Users, 
-              path: "/portal/themepark-support/account-master?tab=account-management",
+              path: `/portal/themepark-support/account-master?tab=account-management&search=${encodeURIComponent(rawQ)}`,
               priority: 1
           });
           
@@ -154,7 +179,7 @@ export function CommandMenu() {
                   id: "find-staff", 
                   label: `Find Staff Member: "${rawQ}"`, 
                   icon: Briefcase, 
-                  path: "/portal/staff-management",
+                  path: `/portal/staff-management?search=${encodeURIComponent(rawQ)}`,
                   priority: 2
               });
           }
@@ -164,7 +189,7 @@ export function CommandMenu() {
                   id: "hist-ppl",
                   label: `View History Records: "${rawQ}"`,
                   icon: History,
-                  path: "/portal/themepark-support/account-master?tab=search-history-record",
+                  path: `/portal/themepark-support/account-master?tab=search-history-record&search=${encodeURIComponent(rawQ)}`,
                   priority: 2
               });
           }
@@ -173,27 +198,25 @@ export function CommandMenu() {
                   id: "find-terminal", 
                   label: `Update Terminal: "${rawQ}"`, 
                   icon: Monitor, 
-                  // This path matches your UpdateTerminalTab URL logic
-                  path: "/portal/themepark-support/attraction-master?tab=update-terminal",
+                  path: `/portal/themepark-support/attraction-master?tab=update-terminal&search=${encodeURIComponent(rawQ)}`,
                   priority: 2
               });
           }
       }
 
-      return actions.sort((a, b) => a.priority - b.priority);
+      return actions.sort((a, b) => (a.priority || 99) - (b.priority || 99));
   }
 
-  // Define static actions (Dashboard links)
-  const staticActions = [
-      { id: "home", label: "Dashboard", icon: Monitor, path: "/portal" },
-      { id: "new-pkg", label: "Create Package", icon: PlusCircle, path: "/portal/packages/form" },
-  ]
-
-  const filteredStatic = staticActions.filter((action) =>
-    action.label.toLowerCase().includes(query.toLowerCase())
-  )
+  // --- FILTERING LOGIC ---
+  const lowerQ = query.toLowerCase();
   
-  const displayedActions = [...getDynamicActions(), ...filteredStatic]
+  const filteredSystemActions = systemActions.filter(item => 
+      item.label.toLowerCase().includes(lowerQ) || 
+      item.keywords?.some(k => k.includes(lowerQ))
+  );
+
+  // Combine Results: Dynamic Regex Matches FIRST, then System Actions
+  const displayedItems = [...getDynamicActions(), ...filteredSystemActions];
 
   return (
     <AnimatePresence>
@@ -215,7 +238,7 @@ export function CommandMenu() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Enter search"
+                placeholder="Type a command or search..."
                 className="flex-1 bg-transparent outline-none text-base placeholder:text-muted-foreground text-foreground"
                 autoFocus
               />
@@ -223,24 +246,27 @@ export function CommandMenu() {
             </div>
 
             <div className="py-2 max-h-[350px] overflow-y-auto">
-                {displayedActions.length === 0 ? (
+                {displayedItems.length === 0 ? (
                     <p className="p-4 text-sm text-muted-foreground text-center">No results found.</p>
                 ) : (
-                    displayedActions.map((action) => (
+                    displayedItems.map((item) => (
                         <button
-                            key={action.id}
-                            // @ts-ignore
-                            onClick={() => runCommand(action.path, query)} // Pass 'query' as search param
+                            key={item.id}
+                            onClick={() => handleSelect(item)}
                             className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted/50 transition-colors text-left group"
                         >
                             <div className="p-2 rounded-md bg-muted group-hover:bg-background border border-transparent group-hover:border-border transition-colors">
-                                {/* @ts-ignore */}
-                                <action.icon size={16} />
+                                <item.icon size={16} />
                             </div>
-                            <span className="flex-1">
-                                {action.label}
+                            <span className="flex-1 font-medium">
+                                {item.label}
                             </span>
-                            <ArrowRight size={14} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                            {/* Visual indicator for Actions vs Links */}
+                            {item.action ? (
+                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground border px-1.5 rounded">Action</span>
+                            ) : (
+                                <ArrowRight size={14} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                            )}
                         </button>
                     ))
                 )}

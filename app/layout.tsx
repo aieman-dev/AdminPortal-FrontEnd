@@ -7,6 +7,7 @@ import "./globals.css"
 import { Suspense } from "react"
 import { ThemeProvider } from "@/components/theme-provider"
 
+
 export const metadata: Metadata = {
   title: "Theme Park Portal - Secure Authentication System",
   description: "Production-ready theme park portal with authentication and dashboard",
@@ -30,8 +31,10 @@ export default function RootLayout({
         >
           <Suspense 
               fallback={
-                <div className="min-h-screen flex items-center justify-center">
-                  Loading... 
+                <div className="min-h-screen flex flex-col items-center justify-center bg-background text-muted-foreground gap-3">
+                  {/* Use your branding color here */}
+                  <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+                  <p className="text-sm font-medium animate-pulse">Initializing Portal...</p>
                 </div>
               }
             >

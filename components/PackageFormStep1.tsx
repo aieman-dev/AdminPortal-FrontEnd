@@ -55,7 +55,7 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
         const data = await packageService.getCreationData();
         const categories = data.ageCategories || [];
         setAgeOptions(categories.map((c: any) => ({ 
-            value: c.ageCode || c.displayText, // Use ageCode if available, else displayText 
+            value: c.ageCode || c.displayText, 
             label: `${c.displayText}${c.description ? ` (${c.description})` : ""}`
         })));
       } catch (err) { 
@@ -152,6 +152,17 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
               description: `Please fill in all required fields marked with *.`,
               variant: "destructive"
           });
+          return;
+      }
+      const isPast = (dateStr: string) => {
+        if (!dateStr) return false;
+        const d = new Date(dateStr); d.setHours(0,0,0,0);
+        const today = new Date(); today.setHours(0,0,0,0);
+        return d < today;
+      };
+
+      if (isPast(form.effectiveDate) || isPast(form.lastValidDate)) {
+          toast({ title: "Invalid Date", description: "Dates cannot be in the past.", variant: "destructive" });
           return;
       }
       onNext();

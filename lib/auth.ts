@@ -19,79 +19,50 @@ export interface AuthResponse {
 }
 
 // Storage keys
-const AUTH_TOKEN_KEY = "auth_token";
 const USER_DATA_KEY = "user_data";
 
 // Real API Login Function
 export async function login(email: string, password: string): Promise<AuthResponse> {
   try {
-    // STEP 1: Login to get the Token
-    const loginResponse = await fetch("/api/proxy-login", {
+    const response = await fetch("/api/proxy-login", {
       method: "POST",
-      headers: { "Content-Type": "application/json",},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
 
-    const loginData = await loginResponse.json();
+    const data = await response.json();
 
-    if (!loginResponse.ok) {
-      let errorMessage = loginData.message || "Login failed";
-      if (errorMessage.includes("User not found") || errorMessage.includes("IsStaff")) {
-        errorMessage = "Invalid email or password, or account is not active.";
-      }
-      return { success: false, error: errorMessage };
+    if (!response.ok || !data.success) {
+      return { success: false, error: data.message || "Login failed" };
     }
 
-    const token = loginData.token;
-    
+    const user = data.user;
 
-    // STEP 2: Get User Details using the Token
-    const meResponse = await fetch("/api/proxy-me", {
-      method: "GET",
-      headers: { 
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-    });
-
-    const meData = await meResponse.json();
-
-    if (!meResponse.ok) {
-      return { success: false, error: "Login successful, but failed to load user profile." };
-    }
-    
-    // Map the API data to your User object
-    const user: User = {
-      id: meData.id || "0",
-      email: meData.email,
-      name: meData.name,
-      role: "User",
-      department: meData.department as Department
-    };
-
-    
-    // STEP 3: Save Session
+    // Save session data for UI (Token is handled by HttpOnly cookies now)
     if (typeof window !== "undefined") {
-      localStorage.setItem(AUTH_TOKEN_KEY, token);
       localStorage.setItem(USER_DATA_KEY, JSON.stringify(user));
-      document.cookie = `token=${token}; path=/; secure; samesite=strict`;
     }
 
-    return {success: true,user,token,};
+    return { success: true, user };
 
   } catch (error) {
     console.error("Login Error:", error);
-    return {success: false,error: "Network error or server unreachable",};
+    return { success: false, error: "Network error or server unreachable" };
   }
 }
 
 // Logout function - Clear local storage
-export function logout(): void {
+export async function logout(): Promise<void> {
   if (typeof window !== "undefined") {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(USER_DATA_KEY);
-    // Optional: clear cookies
-    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+    
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (e) {
+      console.error("Logout cleanup failed", e);
+    }
+    
+    window.location.href = "/login";
   }
 }
 
@@ -110,13 +81,12 @@ export function getCurrentUser(): User | null {
 // Check if user is authenticated
 export function isAuthenticated(): boolean {
   if (typeof window === "undefined") return false;
-  return !!localStorage.getItem(AUTH_TOKEN_KEY);
+  return !!localStorage.getItem(USER_DATA_KEY);
 }
 
 // Get auth token for API requests
 export function getAuthToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(AUTH_TOKEN_KEY);
+  return null; // Token is now in HttpOnly cookies; no access from JS
 }
 
 // --- PERMISSION HELPERS ---

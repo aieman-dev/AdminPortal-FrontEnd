@@ -1,3 +1,4 @@
+// components/portal/stat-card.tsx
 "use client"
 
 import { Card } from "@/components/ui/card"
@@ -26,35 +27,16 @@ export function StatCard({
   trend,
   valueColor = "text-foreground"
 }: StatCardProps) {
-    // --- INTELLIGENT PARSING LOGIC ---
-    // 1. Check if it's currency
     const isCurrency = value.includes("RM");
-    
-    // 2. Check if it's a split value like "42 / 45"
     const isSplit = value.includes("/");
     const splitParts = isSplit ? value.split("/") : [value];
-    
-    // 3. Extract the number to animate (always the first part)
-    // Remove non-numeric chars but keep decimals if needed
     const numericValue = parseInt(splitParts[0].replace(/[^0-9]/g, '')) || 0;
     
-    // 4. Setup Animation
     const spring = useSpring(0, { bounce: 0, duration: 2000 });
-    
     const displayValue = useTransform(spring, (current) => {
         const rounded = Math.round(current);
-
-        // Case A: Currency (RM 45,231)
-        if (isCurrency) {
-             return `RM ${rounded.toLocaleString()}`;
-        }
-        
-        // Case B: Split Value (42 / 45) -> Animate 42, keep / 45 static
-        if (isSplit) {
-            return `${rounded} /${splitParts[1]}`;
-        }
-
-        // Case C: Standard Number
+        if (isCurrency) return `RM ${rounded.toLocaleString()}`;
+        if (isSplit) return `${rounded} /${splitParts[1]}`;
         return rounded.toLocaleString();
     });
 
@@ -63,34 +45,56 @@ export function StatCard({
     }, [spring, numericValue]);
 
   return (
-    <Card className="p-6 hover:shadow-lg transition-shadow duration-300">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          
-          <div className="flex items-center gap-2">
-            <motion.p className={cn("text-2xl font-semibold", valueColor)}>
-               {displayValue}
-            </motion.p>
+    <div className="relative h-28 w-full z-0 group/wrapper">
+        <Card className="absolute inset-x-0 top-0 h-full hover:h-auto min-h-full flex flex-col overflow-hidden hover:shadow-xl transition-all duration-300 border-border/50 bg-gradient-to-br from-card to-card/50 p-6 hover:z-50">
+            <div className="flex items-start justify-between w-full relative z-10">
+                <div className="space-y-1 flex-1 min-w-0 pr-2">
+                    <div className="text-sm font-medium text-muted-foreground truncate group-hover/wrapper:text-primary transition-colors">
+                        {title}
+                    </div>
+                    
+                    <div className="relative">
+                        <motion.div 
+                            className="flex items-center gap-2"
+                            initial={false}
+                            animate={{ y: 0 }}
+                            whileHover={{ y: -2 }} 
+                        >
+                            <motion.p className={cn("text-2xl font-semibold truncate", valueColor)}>
+                                {displayValue}
+                            </motion.p>
 
-            {trend && (
-                <span className={cn(
-                    "text-[10px] font-medium px-1.5 py-0.5 rounded-full flex items-center",
-                    trend.positive 
-                        ? "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400" 
-                        : "text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-400"
-                )}>
-                    {trend.positive ? "↑" : "↓"} {trend.value}
-                </span>
-            )}
-          </div>
+                            {trend && (
+                                <span className={cn(
+                                    "text-[10px] font-medium px-1.5 py-0.5 rounded-full flex items-center shrink-0 opacity-100 group-hover/wrapper:opacity-0 transition-opacity duration-200",
+                                    trend.positive 
+                                        ? "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400" 
+                                        : "text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-400"
+                                )}>
+                                    {trend.positive ? "↑" : "↓"} {trend.value}
+                                </span>
+                            )}
+                        </motion.div>
 
-          {description && <p className="text-xs text-muted-foreground">{description}</p>}
-        </div>
-        <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-          <Icon className="h-6 w-6 text-primary" />
-        </div>
-      </div>
-    </Card>
+                        {/* Description: Hidden by default, reveals on hover without pushing layout */}
+                        <div className="grid grid-rows-[0fr] group-hover/wrapper:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-in-out">
+                            <div className="overflow-hidden">
+                                <p className="text-xs text-muted-foreground/80 mt-2 opacity-0 group-hover/wrapper:opacity-100 transition-opacity duration-500 delay-75">
+                                    {description || "No details available"}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover/wrapper:bg-primary/20 transition-colors">
+                    <Icon className="h-6 w-6 text-primary" />
+                </div>
+            </div>
+
+            {/* Hover Background Effect */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover/wrapper:opacity-100 transition-opacity duration-500 pointer-events-none" />
+        </Card>
+    </div>
   )
 }

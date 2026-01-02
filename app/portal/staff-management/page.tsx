@@ -1,224 +1,282 @@
-// app/portal/staff-management/page.tsx
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { useSearchParams } from "next/navigation"
+import { useState, useEffect } from "react"
 import { PageHeader } from "@/components/portal/page-header"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
-import { UserPlus, Users, Eye, ChevronRight, ArrowUpRight, Clock } from "lucide-react"
+import { UserPlus, Users, Activity, Shield } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { PaginationControls } from "@/components/ui/pagination-controls"
+
+// Components
 import { StaffAccountModal } from "@/components/staff-management/StaffAccountModal" 
-import { ActivityCell } from "@/components/staff-management/ActivityCell"; // Import the new component
-import { ActionType } from "@/type/activity-log"; 
 import { StaffDrawer } from "@/components/staff-management/StaffDrawer" 
-import { formatDate, getRelativeTime } from "@/lib/formatter";
-import { staffService } from "@/services/staff-services"
-import { type StaffMember, type ExtendedStaffMember } from "@/type/staff"
+import { ActivityDrawer } from "@/components/staff-management/ActivityDrawer" 
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
 
+// Config & Services
+import { formatDate } from "@/lib/formatter";
+import { staffService } from "@/services/staff-services"
+import { type StaffMember, type AuditLog } from "@/type/staff"
+
+// --- HELPERS (Formatting) ---
+const formatActionName = (technicalName: string): string => {
+    if (!technicalName) return "Unknown Action";
+    let clean = technicalName.replace(/^(POST|GET|PUT|DELETE)\s?-\s?/i, "");
+    clean = clean.replace(/([a-z])([A-Z])/g, '$1 $2');
+    return clean.trim();
+};
+
+const parseDescription = (rawDesc: string) => {
+    if (!rawDesc) return "No details provided";
+    const outputIndex = rawDesc.indexOf("Output:");
+    if (outputIndex === -1) return rawDesc.replace("Action:", "").trim();
+    const jsonString = rawDesc.slice(outputIndex + 7).trim(); 
+    try {
+        const data = JSON.parse(jsonString);
+        if (Array.isArray(data)) return `Retrieved ${data.length} records.`;
+        if (typeof data === 'object' && data !== null) {
+            if (data.message) return data.message;
+            return "Operation successful.";
+        }
+        return "Action completed.";
+    } catch {
+        return "Action completed (See details).";
+    }
+};
+
+const getActionStyle = (actionType: string) => {
+    const lower = actionType.toLowerCase();
+    if (lower.includes("insert") || lower.includes("create")) return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800";
+    if (lower.includes("update")) return "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800";
+    if (lower.includes("delete") || lower.includes("void")) return "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800";
+    if (lower.includes("sync")) return "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400";
+    return "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"; 
+};
+
+// --- STAFF DIRECTORY ---
+function StaffDirectoryTab({ onRowClick }: { onRowClick: (s: StaffMember) => void }) {
+    const { toast } = useToast()
+    const [query, setQuery] = useState("")
+    const [staffList, setStaffList] = useState<StaffMember[]>([])
+    const [isLoading, setIsLoading] = useState(false)
+
+    const fetchStaff = async () => {
+        setIsLoading(true)
+        try {
+            const data = await staffService.getStaffList(query)
+            setStaffList(data)
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to load staff list.", variant: "destructive" })
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    useEffect(() => { fetchStaff() }, [])
+
+    const columns: TableColumn<StaffMember>[] = [
+        { header: "Staff ID", accessor: "accId", className: "font-medium pl-6" },
+        { header: "Name", accessor: "fullName", className: "font-medium" },
+        { header: "Email", accessor: "email" },
+        { 
+            header: "Role", accessor: "roleName", className: "text-center",
+            cell: (val) => <span className="inline-flex items-center justify-center min-w-[100px] h-6 rounded-md bg-blue-50 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10 dark:bg-blue-900/30 dark:text-blue-300">{val}</span>
+        },
+        { header: "Status", accessor: "status", className: "text-center", cell: (val) => <StatusBadge status={val} /> },
+        { header: "Joined Date", accessor: "createdDate", cell: (val) => <span className="text-muted-foreground text-sm">{formatDate(val as string)}</span> },
+    ];
+
+    return (
+        <Card>
+            <CardContent>
+                <div className="mb-6">
+                    <SearchField 
+                        label="Search Directory" 
+                        placeholder="Search by name, email or role..." 
+                        value={query} 
+                        onChange={setQuery} 
+                        onSearch={fetchStaff} 
+                        isSearching={isLoading} 
+                    />
+                </div>
+                <DataTable 
+                    columns={columns} 
+                    data={staffList} 
+                    keyExtractor={(row) => row.id} 
+                    isLoading={isLoading} 
+                    emptyIcon={Users}
+                    emptyTitle="No Staff Found"
+                    onRowClick={onRowClick} // Clickable Row
+                />
+            </CardContent>
+        </Card>
+    )
+}
+
+// --- ACTIVITY AUDIT ---
+function ActivityAuditTab({ onRowClick }: { onRowClick: (log: AuditLog) => void }) {
+    const [logs, setLogs] = useState<AuditLog[]>([])
+    const [isLoading, setIsLoading] = useState(false)
+    const [page, setPage] = useState(1)
+    const [totalPages, setTotalPages] = useState(1)
+    const [totalRecords, setTotalRecords] = useState(0)
+    const PAGE_SIZE = 15
+
+    const fetchLogs = async (pageNum: number) => {
+        setIsLoading(true)
+        setPage(pageNum)
+        try {
+            const data = await staffService.getAllAuditLogs(pageNum, PAGE_SIZE)
+            if (data) {
+                setLogs(data.logs)
+                setTotalPages(Math.ceil(data.totalRecords / data.pageSize))
+                setTotalRecords(data.totalRecords)
+            }
+        } catch (e) { console.error(e) } 
+        finally { setIsLoading(false) }
+    }
+
+    useEffect(() => { fetchLogs(1) }, [])
+
+    const columns: TableColumn<AuditLog>[] = [
+        { 
+            header: "Activity", accessor: "actionType", className: "w-[250px] pl-6",
+            cell: (val, row) => {
+                const readable = formatActionName(row.actionType);
+                const style = getActionStyle(row.actionType);
+                return (
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium border ${style}`}>
+                        {readable}
+                    </span>
+                );
+            }
+        },
+        { 
+            header: "User", accessor: "userName", 
+            cell: (val, row) => (
+                <div className="flex flex-col">
+                    <span className="font-medium text-sm">{val || "Unknown"}</span>
+                    <span className="text-xs text-muted-foreground">ID: {row.userId}</span>
+                </div>
+            )
+        },
+        { 
+            header: "Description / Details", accessor: "description", 
+            cell: (val) => {
+                const cleanText = parseDescription(val as string);
+                return <span className="text-sm text-foreground truncate max-w-[400px]" title={cleanText}>{cleanText}</span>
+            }
+        },
+        { 
+            header: "Module", accessor: "module", className: "text-center",
+            cell: (val) => <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground bg-muted px-2 py-1 rounded">{val || "SYSTEM"}</span>
+        },
+        { 
+            header: "Timestamp", accessor: "timestamp", className: "text-right pr-6",
+            cell: (val) => (
+                <div className="flex flex-col items-end">
+                    <span className="text-xs font-medium">{new Date(val as string).toLocaleDateString()}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">{new Date(val as string).toLocaleTimeString()}</span>
+                </div>
+            )
+        }
+    ];
+
+    return (
+        <Card>
+            <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-blue-500" /> Live System Audit
+                </CardTitle>
+                <CardDescription>Real-time log of all actions performed by staff members.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <DataTable 
+                    columns={columns} 
+                    data={logs} 
+                    keyExtractor={(row, i) => `${row.id}-${i}`} 
+                    isLoading={isLoading} 
+                    emptyIcon={Shield}
+                    emptyTitle="No Activity Logs"
+                    onRowClick={onRowClick} // Clickable Row
+                />
+                <PaginationControls 
+                    currentPage={page} 
+                    totalPages={totalPages} 
+                    onPageChange={fetchLogs} 
+                    totalRecords={totalRecords} 
+                    pageSize={PAGE_SIZE}
+                />
+            </CardContent>
+        </Card>
+    )
+}
+
+// --- MAIN PAGE ---
 export default function UsersStaffManagementPage() {
-  const { toast } = useToast()
-  const searchParams = useSearchParams()
-  const urlQuery = searchParams.get('search')
-  
-  const [searchQuery, setSearchQuery] = useState("")
-  const [accounts, setAccounts] = useState<ExtendedStaffMember[]>([]) 
-  const [isSearching, setIsSearching] = useState(false)
-  
-  // Modal States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   
   // Drawer States
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null)
 
-  const fetchStaff = useCallback(async (query: string = "") => {
-    setIsSearching(true);
-    if (query) setAccounts([]); 
-    
-    try {
-      const data = await staffService.getStaffList(query);
-
-      // --- MOCK DATA GENERATOR (Simulating Backend Activity Log) ---
-      const enrichedData: ExtendedStaffMember[] = data.map((staff, index) => {
-          const possibleActions: { desc: string; type: ActionType }[] = [
-              { desc: "System Login", type: 'AUTH_LOGIN' },
-              { desc: "Changed Password", type: 'AUTH_PASSWORD_CHANGE' },
-              { desc: "Created 'Year End Promo'", type: 'PKG_CREATE' },
-              { desc: "Approved 'Family Bundle'", type: 'PKG_APPROVE' },
-              { desc: "Rejected 'Test Package'", type: 'PKG_REJECT' },
-              { desc: "Voided Transaction #1092", type: 'TRX_VOID' },
-              { desc: "Resynced Transaction #8821", type: 'TRX_RESYNC' },
-              { desc: "Deactivated Ticket #T-7712", type: 'TICKET_DEACTIVATE' },
-              { desc: "Manual Consume (SuperApp)", type: 'TRX_CONSUME' }
-          ];
-
-          const randomAction = possibleActions[(index + staff.accId) % possibleActions.length];
-
-          const now = new Date();
-          // Random time: between 1 minute and 2 days ago
-          const minutesAgo = (index * 17) % (60 * 48); 
-          now.setMinutes(now.getMinutes() - minutesAgo);
-
-          return {
-              ...staff,
-              lastAction: {
-                  description: randomAction.desc,
-                  type: randomAction.type,
-                  timestamp: now.toISOString()
-              }
-          };
-      });
-
-      // Sort by Most Recent Activity
-      const sortedData = enrichedData.sort((a, b) => {
-         const dateA = new Date(a.lastAction?.timestamp || 0).getTime();
-         const dateB = new Date(b.lastAction?.timestamp || 0).getTime();
-         return dateB - dateA; 
-      });
-
-      setAccounts(sortedData);
-      
-      if (query && data.length === 0) {
-        toast({ title: "Search Complete", description: "No staff found." });
-      }
-    } catch (error) {
-      console.error("Fetch error:", error);
-      toast({ title: "Error", description: "Failed to load staff list.", variant: "destructive" });
-    } finally {
-      setIsSearching(false);
-    }
-  }, [toast]);
-
-  useEffect(() => {
-    if (urlQuery) {
-        setSearchQuery(urlQuery);
-        fetchStaff(urlQuery);
-        window.history.replaceState(null, '', window.location.pathname);
-    } else {
-        fetchStaff();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlQuery]);
-
-  const handleSearch = () => fetchStaff(searchQuery);
-
-  const handleViewDetails = (user: StaffMember) => {
-      setSelectedStaff(user);
-      setIsDrawerOpen(true);
-  }
-
-  const columns: TableColumn<ExtendedStaffMember>[] = [
-      { header: "Staff ID", accessor: "accId", className: "font-medium pl-6" },
-      { 
-          header: "Name", 
-          accessor: "fullName", 
-          cell: (val, row) => (
-            <button 
-                onClick={() => handleViewDetails(row)}
-                className="font-medium text-foreground hover:text-primary hover:underline text-left"
-            >
-                {val || "-"}
-            </button>
-          ) 
-      },
-      { header: "Email", accessor: "email" },
-      { 
-          header: "Role", 
-          accessor: "roleName", 
-          className: "text-center",
-          cell: (value) => (
-            <span className="inline-flex items-center justify-center w-[120px] h-6 rounded-md bg-blue-50 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10 dark:bg-blue-900/30 dark:text-blue-300 dark:ring-blue-700/30">
-              {value}
-            </span>
-          )
-      },
-      { 
-        header: "Recent Activity", 
-        accessor: "lastAction", 
-        className: "w-[240px]",
-        cell: (val: any) => <ActivityCell activity={val} />
-      },
-      { 
-          header: "Status", 
-          accessor: "status", 
-          className: "text-center",
-          cell: (value) => <StatusBadge status={value} /> 
-      },
-      { header: "Created Date", accessor: "createdDate", cell: (val) => <span className="text-muted-foreground text-sm">{formatDate(val as string)}</span> },
-      {
-          header: "Action",
-          accessor: "accId",
-          className: "text-right pr-10",
-          cell: (_, row) => (
-            <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => handleViewDetails(row)}
-                className="h-8 gap-1 text-muted-foreground hover:text-primary"
-            >
-              Details <ChevronRight className="h-3.5 w-3.5" />
-            </Button>
-          )
-      }
-  ];
+  const [isActivityDrawerOpen, setIsActivityDrawerOpen] = useState(false)
+  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null)
 
   return (
     <div className="space-y-6">
       <PageHeader 
-          title="Staff User Management" 
-          description="Manage access, roles, and audit activity logs for system staff."
+          title="Staff Management" 
+          description="Manage system access and monitor user activities."
       >
         <Button onClick={() => setIsCreateModalOpen(true)}>
           <UserPlus className="h-4 w-4 mr-2" />
-          Assign Role to User
+          Assign Role
         </Button>
       </PageHeader>
 
-      <Card>
-        <CardContent>
-          <SearchField
-            label="Search Staff"
-            placeholder="Search by name, email, or role..."
-            value={searchQuery}
-            onChange={setSearchQuery}
-            onSearch={handleSearch}
-            isSearching={isSearching}
-          />
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="directory" className="space-y-6">
+        <TabsList className="grid w-full max-w-[400px] grid-cols-2">
+            <TabsTrigger value="directory" className="gap-2"><Users className="h-4 w-4" /> Staff Directory</TabsTrigger>
+            <TabsTrigger value="audit" className="gap-2"><Shield className="h-4 w-4" /> Activity Audit</TabsTrigger>
+        </TabsList>
 
-      <Card>
-        <CardContent>
-            <DataTable
-                columns={columns}
-                data={accounts}
-                keyExtractor={(row) => String(row.accId)}
-                isLoading={isSearching}
-                onRowClick={handleViewDetails}
-                emptyIcon={Users}
-                emptyTitle="No Staff Found"
-                emptyMessage="No staff members found. Try adjusting your search."
-            />
-        </CardContent>
-      </Card>
-      
-      {/* 1. Create Modal */}
+        <TabsContent value="directory" className="animate-in fade-in-50 duration-300 mt-0">
+            <StaffDirectoryTab onRowClick={(staff) => {
+                setSelectedStaff(staff);
+                setIsDrawerOpen(true);
+            }} />
+        </TabsContent>
+
+        <TabsContent value="audit" className="animate-in fade-in-50 duration-300 mt-0">
+            <ActivityAuditTab onRowClick={(log) => {
+                setSelectedLog(log);
+                setIsActivityDrawerOpen(true);
+            }} />
+        </TabsContent>
+      </Tabs>
+
       <StaffAccountModal 
           isOpen={isCreateModalOpen} 
           onOpenChange={setIsCreateModalOpen}
-          onSuccess={() => fetchStaff(searchQuery)}
+          onSuccess={() => window.location.reload()} 
           initialData={null} 
       />
 
-      {/* 2. Side Drawer (The new feature) */}
       <StaffDrawer 
           isOpen={isDrawerOpen}
           staff={selectedStaff}
           onClose={() => setIsDrawerOpen(false)}
+      />
+
+      <ActivityDrawer
+          isOpen={isActivityDrawerOpen}
+          log={selectedLog}
+          onClose={() => setIsActivityDrawerOpen(false)}
       />
     </div>
   )

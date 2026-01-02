@@ -38,3 +38,29 @@ export function getProxiedImageUrl(url: string | null | undefined): string {
   
   return `/api/proxy-image?url=${encodeURIComponent(targetUrl)}`;
 }
+
+export function isPointPackage(packageType: string | undefined): boolean {
+    const t = (packageType || "").toLowerCase();
+    // Logic: It is points if it says "point", UNLESS it is "reward point" 
+    // (Adjust this logic based on your specific business rule. 
+    // If RewardP also uses points, remove the second check).
+    return t.includes("point") && !t.includes("reward");
+}
+
+/**
+ * Formats a value based on package type.
+ * e.g. "50 Pts" or "RM 50.00"
+ */
+export function formatPackagePrice(amount: number | undefined, packageType: string | undefined): string {
+    const value = amount || 0;
+    const isPoints = isPointPackage(packageType);
+
+    if (isPoints) {
+        return `${Math.floor(value)} Pts`;
+    }
+    
+    return `RM ${value.toLocaleString("en-US", { 
+        minimumFractionDigits: 2, 
+        maximumFractionDigits: 2 
+    })}`;
+}

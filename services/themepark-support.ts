@@ -83,6 +83,18 @@ const ENDPOINTS = {
 
 // --- HELPERS ---
 
+const getContent = <T>(data: any): T[] => {
+    if (data?.content && Array.isArray(data.content)) return data.content;
+    if (data?.data && Array.isArray(data.data)) return data.data; 
+    if (Array.isArray(data)) return data;
+    return [];
+};
+
+// FIX: Helper to unwrap response.content -> Object
+const getDataObject = <T>(data: any): T => {
+    return data?.content || data?.data || data || {};
+};
+
 const parseAmount = (val: string | number): number => {
     if (typeof val === 'number') return val;
     if (!val) return 0;
@@ -186,8 +198,9 @@ export const itPoswfService = {
             return { success: true, data: { transactionHistory: [], ticketHistory: [] } };
         }
 
-        const rawTrx = response.data.transactionHistory || [];
-        const rawTickets = response.data.ticketHistory || [];
+        const data = getDataObject<any>(response.data);
+        const rawTrx = data.transactionHistory || [];
+        const rawTickets = data.ticketHistory || [];
 
         return { 
             success: true, 
@@ -201,7 +214,6 @@ export const itPoswfService = {
     searchShopifyOrder: async (orderName: string): Promise<ApiResponse<ShopifyOrder>> => {
         const formattedOrderName = orderName.trim().startsWith("#") ? orderName.trim() : `#${orderName.trim()}`;
         const payload = { orderName: formattedOrderName }; 
-
         const response = await apiClient.post<ShopifyOrder>(ENDPOINTS.SEARCH_SHOPIFY_ORDER, payload);
 
         if (!response.success) {
@@ -211,7 +223,8 @@ export const itPoswfService = {
             }
             return { success: false, error: response.error || "Failed to search Shopify order." };
         }
-        return response;
+        const data = getDataObject<ShopifyOrder>(response.data);
+        return { success: true, data };
     },
 
     searchVoidTransactions: async (invoiceNo: string): Promise<ApiResponse<VoidTransaction[]>> => {
@@ -220,13 +233,7 @@ export const itPoswfService = {
 
         if (!response.success) return { success: false, error: response.error || "Failed to search voidable transactions." };
 
-        let result: any[] = [];
-        const data = response.data;
-        if (Array.isArray(data)) {
-            result = (data.length > 0 && Array.isArray(data[0])) ? data.flat() : data;
-        } else if (data && typeof data === 'object') {
-            result = [data];
-        }
+        const result = getContent<any>(response.data);
 
         const mappedData: VoidTransaction[] = result.map((item, index) => ({
             ...item,
@@ -245,14 +252,14 @@ export const itPoswfService = {
     executeVoidTransaction: async (payload: VoidRequestPayload): Promise<ApiResponse<{ messaged: string }>> => {
         const response = await apiClient.post<{ messaged: string }>(ENDPOINTS.VOID_EXECUTE, payload);
         if (!response.success) return { success: false, error: response.error || "Failed to execute void transaction." };
-        return response;
+        return { success: true, data: getDataObject(response.data) };
     },
 
     resyncTransaction: async (trxId: string): Promise<ApiResponse<{ message: string }>> => {
         const endpoint = `${ENDPOINTS.RESYNC_TRANSACTION}?TrxId=${trxId}`;
         const response = await apiClient.get<{ message: string }>(endpoint);
         if (!response.success) return { success: false, error: response.error || "Failed to resync transaction." };
-        return response;
+        return { success: true, data: getDataObject(response.data) };
     },
 
     searchTerminalHistory: async (terminalId: string, searchDate?: string | Date): Promise<ApiResponse<TerminalHistoryData>> => {
@@ -267,10 +274,11 @@ export const itPoswfService = {
 
         if (!response.success || !response.data) return { success: false, error: response.error || "Failed to search terminal history." };
 
+        const rawList = getContent<TerminalTransaction>(response.data);
         const purchaseHistory: TerminalPurchaseHistory[] = [];
         const consumeHistory: TerminalConsumeHistory[] = [];
 
-        response.data.forEach(trx => {
+        rawList.forEach(trx => {
             const mappedTrx = { ...trx, id: String(trx.trxID) };
             if (mappedTrx.trxType.toLowerCase() === 'purchase') {
                 purchaseHistory.push(mappedTrx as TerminalPurchaseHistory);
@@ -286,7 +294,7 @@ export const itPoswfService = {
         const response = await apiClient.post<any>(ENDPOINTS.MANUAL_CONSUME_RETAIL_SEARCH, payload);
         if (!response.success) return { success: false, error: response.error || "Failed to search manual retail consume data." };
 
-        const data = response.data;
+        const data = getDataObject<any>(response.data);
         const finalData: RetailManualConsumeData = {
             accID: data.accID, 
             rQrId: data.rQrId, 
@@ -304,7 +312,7 @@ export const itPoswfService = {
     executeManualConsumeRetail: async (payload: ConsumeExecutePayload): Promise<ApiResponse<{ invoiceNo: string }>> => {
         const response = await apiClient.post<{ invoiceNo: string }>(ENDPOINTS.MANUAL_CONSUME_RETAIL_EXECUTE, payload);
         if (!response.success) return { success: false, error: response.error || "Failed to execute manual retail consume." };
-        return { success: true, data: response.data }; 
+        return { success: true, data: getDataObject(response.data) }
     },
 
     searchManualConsume: async (payload: ManualConsumeSearchPayload): Promise<ApiResponse<ManualConsumeData>> => {
@@ -328,7 +336,7 @@ export const itPoswfService = {
             return { success: false, error: response.error || "Failed to search manual consume data." };
         }
 
-        const data = response.data;
+        const data = getDataObject<any>(response.data);
         const finalData: ManualConsumeData = {
             creditBalance: data.creditBalance || 0,
             tickets: (data.tickets || []).map(mapToAvailableTicket),
@@ -363,7 +371,7 @@ export const itPoswfService = {
             if (isConflict) return { success: false, error: "Ticket/Package is already consumed or has an invalid status." };
             return { success: false, error: response.error || "Failed to execute manual ticket consume." };
         }
-        return { success: true, data: response.data }; 
+        return { success: true, data: getDataObject(response.data) };
     },
 
     findExtendableTickets: async (searchQuery: string): Promise<ApiResponse<ExtendTicketData[]>> => {
@@ -371,9 +379,10 @@ export const itPoswfService = {
         const response = await apiClient.post<any>(ENDPOINTS.EXTEND_EXPIRY_SEARCH, payload);
         if (!response.success) return { success: false, error: response.error || "Failed to find extendable tickets." };
 
+        const content = getDataObject<any>(response.data);
         let result = [];
-        if (Array.isArray(response.data)) result = response.data;
-        else if (response.data) result = [response.data];
+        if (Array.isArray(content)) result = content;
+        else if (content) result = [content];
 
         return { success: true, data: result };
     },
@@ -381,7 +390,7 @@ export const itPoswfService = {
     updateTicketExpiry: async (payload: TicketUpdatePayload): Promise<ApiResponse<{ message: string; ticketsToUpdate: number }>> => {
         const response = await apiClient.post<{ message: string; ticketsToUpdate: number }>(ENDPOINTS.EXTEND_EXPIRY, payload);
         if (!response.success) return { success: false, error: response.error || "Failed to update ticket expiry dates." };
-        return response;
+        return { success: true, data: getDataObject(response.data) };
     },
 
     searchTerminals: async (searchTerm: string): Promise<ApiResponse<Terminal[]>> => {
@@ -389,7 +398,7 @@ export const itPoswfService = {
         const response = await apiClient.post<any>(ENDPOINTS.TERMINAL_SEARCH, payload);
         if (!response.success) return { success: false, error: response.error || "Failed to search terminals." };
 
-        const rawData = Array.isArray(response.data) ? response.data : [];
+        const rawData = getContent<BackendTerminalDTO>(response.data);
         const terminals: Terminal[] = rawData.map(mapToTerminal);
         return { success: true, data: terminals };
     },
@@ -407,7 +416,7 @@ export const itPoswfService = {
         const payload = { TerminalID: Number(terminalId), NewUUID: newUUID.trim() };
         const response = await apiClient.post<{ message: string }>(ENDPOINTS.TERMINAL_UPDATE, payload);
         if (!response.success) return { success: false, error: response.error || "Failed to update terminal UUID." };
-        return response;
+        return { success: true, data: getDataObject(response.data) };
     },
 
     searchQrPassword: async (invoiceNo: string): Promise<ApiResponse<PasswordData>> => {
@@ -415,11 +424,8 @@ export const itPoswfService = {
         const response = await apiClient.post<any>(ENDPOINTS.QR_PASSWORD_SEARCH, payload);
         if (!response.success) return { success: false, error: response.error || "Failed to find QR Password." };
 
-        const mappedData: PasswordData = {
-            invoiceNo: response.data.invoiceNo,
-            currentPassword: response.data.securityNumber 
-        };
-        return { success: true, data: mappedData };
+        const data = getDataObject<any>(response.data);
+        return { success: true, data: { invoiceNo: data.invoiceNo, currentPassword: data.securityNumber } };
     },
     
     resetQrPassword: async (invoiceNo: string): Promise<ApiResponse<PasswordData>> => {
@@ -427,12 +433,9 @@ export const itPoswfService = {
         const response = await apiClient.post<any>(ENDPOINTS.QR_PASSWORD_RESET, payload);
         if (!response.success) return { success: false, error: response.error || "Failed to reset QR Password." };
 
-        const newPass = response.data.data?.newSecurityNumber || response.data.newSecurityNumber;
-        const mappedData: PasswordData = {
-            invoiceNo: response.data.data?.invoiceNo || invoiceNo,
-            currentPassword: newPass 
-        };
-        return { success: true, data: mappedData };
+        const data = getDataObject<any>(response.data);
+        const newPass = data.data?.newSecurityNumber || data.newSecurityNumber;
+        return { success: true, data: { invoiceNo: data.data?.invoiceNo || invoiceNo, currentPassword: newPass } };
     },
 
     searchAccounts: async (email: string): Promise<ApiResponse<Account[]>> => {
@@ -440,16 +443,21 @@ export const itPoswfService = {
         const response = await apiClient.post<any>(ENDPOINTS.SEARCH_ACCOUNTS, payload);
         if (!response.success) return { success: false, error: response.error || "Failed to search accounts." };
 
-        const rawResult = Array.isArray(response.data) ? response.data : (response.data && response.data.accID ? [response.data] : []);
-        const accounts: Account[] = rawResult.map(mapToAccount);
-        return { success: true, data: accounts };
+        const content = getDataObject<any>(response.data);
+        let rawResult = [];
+        if (Array.isArray(content)) rawResult = content;
+        else if (content && content.accID) rawResult = [content];
+
+        return { success: true, data: rawResult.map(mapToAccount) };
     },
 
     getAccountDetails: async (accId: string): Promise<ApiResponse<Account>> => {
         const payload = { accID: Number(accId) };
         const response = await apiClient.post<BackendAccountDTO>(ENDPOINTS.GET_ACCOUNT_DETAILS, payload);
         if (!response.success || !response.data) return { success: false, error: response.error || "Failed to retrieve account details." };
-        return { success: true, data: mapToAccount(response.data) };
+        
+        const data = getDataObject<BackendAccountDTO>(response.data);
+        return { success: true, data: mapToAccount(data) };
     },
 
     resetAccountPassword: async (accId: string): Promise<ApiResponse<{ message: string }>> => {
@@ -498,7 +506,7 @@ export const itPoswfService = {
         const payload = { email: email };
         const response = await apiClient.post<BalanceDetail>(ENDPOINTS.BALANCE_DETAILS, payload);
         if (!response.success) return { success: false, error: response.error || "Failed to retrieve balance details." };
-        return response;
+        return { success: true, data: getDataObject<BalanceDetail>(response.data) };
     },
 
     searchDeactivatableTickets: async (searchQuery: string): Promise<ApiResponse<DeactivatableTicket[]>> => {
@@ -509,7 +517,8 @@ export const itPoswfService = {
         };
         const response = await apiClient.post<any[]>(ENDPOINTS.DEACTIVATE_TICKET_SEARCH, payload);
         if (!response.success || !response.data) return { success: false, error: response.error || "Failed to search tickets." };
-        return { success: true, data: response.data.map(mapToDeactivatableTicket) };
+        const rawList = getContent<any>(response.data);
+        return { success: true, data: rawList.map(mapToDeactivatableTicket) };
     },
 
     searchConsumptionHistory: async (invoiceNo: string, ticketNo: string = ""): Promise<ApiResponse<ConsumptionHistory[]>> => {
@@ -519,7 +528,8 @@ export const itPoswfService = {
         };
         const response = await apiClient.post<any[]>(ENDPOINTS.DEACTIVATE_CONSUMPTION_SEARCH, payload);
         if (!response.success || !response.data) return { success: false, error: response.error || "Failed to search consumption history." };
-        return { success: true, data: response.data.map(mapToConsumptionHistory) };
+        const rawList = getContent<any>(response.data);
+        return { success: true, data: rawList.map(mapToConsumptionHistory) };
     },
 
     deactivateTicket: async (ticketId: number | string): Promise<ApiResponse<void>> => {
@@ -536,6 +546,6 @@ export const itPoswfService = {
         
         const isAlreadyDeactivated = response.data?.message?.toLowerCase().includes('already deactivated');
         if (response.success || isAlreadyDeactivated) return { success: true, message: response.data?.message };
-        return { success: true }; 
+        return { success: true, message: response.data?.message };
     }
 };

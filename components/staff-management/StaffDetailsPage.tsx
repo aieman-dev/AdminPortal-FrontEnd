@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badg
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from "@/components/ui/breadcrumb"
+import { LoaderState } from "@/components/ui/loader-state"
 
 interface StaffAccount {
     id: string
@@ -79,7 +80,7 @@ export function StaffDetailsPage({ staffId }: StaffDetailsPageProps) {
     }
 
     if (loading) {
-        return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin" /></div>
+        return <Card><CardContent className="py-8 text-center text-muted-foreground">Staff account not found for ID: {staffId}</CardContent></Card>
     }
 
     if (!staffData) {

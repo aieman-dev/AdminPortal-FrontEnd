@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Loader2, UserPlus, User } from "lucide-react"
+import { Search, Loader2, UserPlus, User, Eye, EyeOff } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { STAFF_ROLES } from "@/lib/constants"
 import { staffService } from "@/services/staff-services"
@@ -27,7 +27,10 @@ export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAcco
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<SearchedUser[]>([])
   const [selectedUser, setSelectedUser] = useState<SearchedUser | null>(null)
+  
   const [selectedRole, setSelectedRole] = useState("")
+  const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   
   const [isSearching, setIsSearching] = useState(false)
   const [isAssigning, setIsAssigning] = useState(false)
@@ -53,14 +56,14 @@ export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAcco
   }
 
   const handleAssign = async () => {
-    if (!selectedUser || !selectedRole) {
-      toast({ title: "Incomplete", description: "Please select a user and a role.", variant: "destructive" })
+    if (!selectedUser || !selectedRole || !password) {
+      toast({ title: "Incomplete", description: "Please select a user, a role, and enter a password.", variant: "destructive" })
       return
     }
 
     setIsAssigning(true)
     try {
-      await staffService.assignRole(selectedUser.accId, selectedRole);
+      await staffService.assignRole(selectedUser.accId, selectedRole, password);
       
       toast({ 
         title: "Success", 
@@ -76,6 +79,7 @@ export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAcco
       setSearchResults([])
       setSelectedUser(null)
       setSelectedRole("")
+      setPassword("")
       
     } catch (error) {
       toast({ 
@@ -166,20 +170,46 @@ export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAcco
                  </Button>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="role">Assign Role <span className="text-destructive">*</span></Label>
-                <Select onValueChange={setSelectedRole} value={selectedRole}>
-                  <SelectTrigger id="role" className="h-11">
-                    <SelectValue placeholder="Select access level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STAFF_ROLES.map((role) => (
-                      <SelectItem key={role.value} value={role.value}>
-                        {role.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Role Select */}
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Assign Role <span className="text-destructive">*</span></Label>
+                    <Select onValueChange={setSelectedRole} value={selectedRole}>
+                      <SelectTrigger id="role" className="h-11">
+                        <SelectValue placeholder="Select access level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STAFF_ROLES.map((role) => (
+                          <SelectItem key={role.value} value={role.value}>
+                            {role.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Password Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Set Password <span className="text-destructive">*</span></Label>
+                    <div className="relative">
+                        <Input 
+                            id="password" 
+                            type={showPassword ? "text" : "password"} 
+                            placeholder="Create password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="h-11 pr-10"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            tabIndex={-1}
+                        >
+                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                    </div>
+                  </div>
               </div>
             </div>
           )}

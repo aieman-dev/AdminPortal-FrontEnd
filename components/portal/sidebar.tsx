@@ -72,7 +72,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
         return canViewPackageManagement(department);
     }
 
-    if (item.name === "Users") {
+    if (item.name === "Staff Management") {
       return department?.toUpperCase().includes("MIS");
   }
 

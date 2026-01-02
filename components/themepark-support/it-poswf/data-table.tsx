@@ -9,6 +9,7 @@ import type { ReactNode } from "react"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils" 
 import { PaginationControls } from "@/components/ui/pagination-controls"
+import { Card, CardContent } from "@/components/ui/card"
 
 export interface TableColumn<T> {
   header: string
@@ -46,6 +47,48 @@ interface DataTableProps<T> {
   onRowClick?: (row: T) => void;
 }
 
+// === 1. NEW: Mobile Card Component ===
+function MobileCard<T>({ 
+    row, 
+    columns, 
+    onClick 
+}: { 
+    row: T, 
+    columns: TableColumn<T>[], 
+    onClick?: () => void 
+}) {
+    return (
+        <Card className="mb-3 hover:shadow-md transition-shadow active:scale-[0.99] cursor-pointer" onClick={onClick}>
+            <CardContent className="p-4 space-y-3">
+                {columns.map((col, idx) => {
+                    // Extract value logic (Same as table)
+                    const value = typeof col.accessor === "function" 
+                        ? col.accessor(row) 
+                        : row[col.accessor as keyof T];
+                    const content = col.cell ? col.cell(value, row) : (value as ReactNode);
+
+                    // First column usually serves as the "Title" of the card
+                    if (idx === 0) {
+                        return (
+                            <div key={idx} className="font-semibold text-base border-b pb-2 mb-2">
+                                {content}
+                            </div>
+                        );
+                    }
+
+                    // Other columns are key-value pairs
+                    return (
+                        <div key={idx} className="flex justify-between items-start text-sm gap-4">
+                            <span className="text-muted-foreground shrink-0">{col.header}</span>
+                            <div className="text-right font-medium break-words">{content}</div>
+                        </div>
+                    );
+                })}
+            </CardContent>
+        </Card>
+    );
+}
+
 export function DataTable<T>({ 
   columns, 
   data, 
@@ -72,6 +115,7 @@ export function DataTable<T>({
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
+      {/* === 2. DESKTOP VIEW (Hidden on Mobile) === */}
       <div className="overflow-x-auto rounded-md border bg-card">
         <Table>
           <TableHeader className="bg-muted/50">
@@ -200,6 +244,43 @@ export function DataTable<T>({
         </Table>
       </div>
 
+      {/* === 3. MOBILE VIEW (Visible < md) === */}
+      <div className="md:hidden">
+          {isLoading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="mb-4 p-4 border rounded-lg bg-card space-y-3">
+                      <Skeleton className="h-6 w-1/2 mb-2" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                  </div>
+              ))
+          ) : data.length === 0 ? (
+              <div className="py-12 border border-dashed rounded-lg bg-muted/10">
+                  <EmptyState icon={emptyIcon} title={emptyTitle} description={emptyMessage} />
+              </div>
+          ) : (
+              data.map((row, index) => (
+                  <div key={keyExtractor(row, index)} className="relative">
+                      <MobileCard 
+                          row={row} 
+                          columns={columns} 
+                          onClick={() => {
+                              if (renderSubComponent) toggleRow(keyExtractor(row, index));
+                              if (onRowClick) onRowClick(row);
+                          }}
+                      />
+                      {/* Mobile Expansion (Accordion Style) */}
+                      {renderSubComponent && expandedRows.has(keyExtractor(row, index)) && (
+                          <div className="ml-4 pl-4 border-l-2 border-primary mb-6 animate-in slide-in-from-top-2">
+                              {renderSubComponent(row)}
+                          </div>
+                      )}
+                  </div>
+              ))
+          )}
+      </div>
+
+      {/* === 4. PAGINATION CONTROLS === */}
       {!isLoading && pagination && pagination.totalPages > 1 && (
         <PaginationControls 
             currentPage={pagination.currentPage}

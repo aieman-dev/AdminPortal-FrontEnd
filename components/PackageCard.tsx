@@ -1,12 +1,13 @@
 // components/PackageCard.tsx
 import React, { useState } from "react";
-import { Calendar, Globe, User, MoreHorizontal, Pencil, Copy, Trash2, Ticket, Layers } from "lucide-react";
+import { Calendar, Globe, User, MoreHorizontal, Pencil, Copy, Trash2, Ticket, Layers, Send } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton"; 
 import { cn } from "@/lib/utils"; 
 import { formatCurrency } from "@/lib/formatter";
+import { formatPackagePrice } from "@/lib/utils";
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge";
 
 interface PackageCardProps {
@@ -30,9 +31,11 @@ interface PackageCardProps {
   onDuplicate?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onSubmit?: () => void;
 }
 
-// DEFINE CUSTOM COLORS TO MATCH ORIGINAL CARD DESIGN
+{/* 
+  // DEFINE CUSTOM COLORS TO MATCH ORIGINAL CARD DESIGN
 const packageStatusMap: Record<string, string> = {
     active: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-transparent",
     pending: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-transparent",
@@ -41,6 +44,9 @@ const packageStatusMap: Record<string, string> = {
     expiring: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-transparent",
     default: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-transparent"
 };
+ */}
+
+
 
 export default function PackageCard({
   name,
@@ -60,13 +66,11 @@ export default function PackageCard({
   onDuplicate,
   onEdit,
   onDelete,
+  onSubmit
 }: PackageCardProps) {
 
   const [imageLoaded, setImageLoaded] = useState(false);
-  
-  const isPoint = packageType?.toLowerCase().includes('point') && !packageType?.toLowerCase().includes('reward');
-  const priceUnit = isPoint ? "Pts" : "RM";
-  //const displayPrice = isPoint ? `${price} ${priceUnit}` : `${priceUnit} ${price}`;
+  const numericPrice = parseFloat(price) || 0;
 
   const getNationalityLabel = (code: string) => {
     if (code === "L") return "Local"; 
@@ -139,6 +143,11 @@ export default function PackageCard({
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      {onSubmit && (
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSubmit(); }} className="text-indigo-600 focus:text-indigo-600 font-medium">
+                            <Send className="mr-2 h-4 w-4" /> Submit
+                        </DropdownMenuItem>
+                      )}
                       {onEdit && <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}><Pencil className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>}
                       {onDuplicate && <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDuplicate(); }}><Copy className="mr-2 h-4 w-4" /> Duplicate</DropdownMenuItem>}
                       {onDelete && <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-red-600 focus:text-red-600"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>}
@@ -159,7 +168,7 @@ export default function PackageCard({
         </h3>
 
         <div className="text-blue-600 dark:text-blue-400 font-extrabold text-sm mb-1">
-            formatCurrency(price, isPoint)
+           {formatPackagePrice(parseFloat(price), packageType)}
         </div>
 
         <div className="flex flex-wrap gap-1.5">
@@ -193,12 +202,9 @@ export default function PackageCard({
                 <span className="truncate">{dateDisplay}</span>
             </div>
 
-            {/* REPLACED WITH SHARED COMPONENT */}
-            {/* Added w-auto to override the default fixed width from status-badge */}
             <StatusBadge 
-                status={status === "ExpiringSoon" ? "Expiring" : status}
-                colorMap={packageStatusMap}
-                className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 w-auto h-auto rounded tracking-wide border-0"
+                status={status}
+                className="text-[10px] uppercase tracking-wider px-1.5 h-5"
             />
         </div>
       </div>
