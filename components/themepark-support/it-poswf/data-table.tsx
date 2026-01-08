@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { EmptyState } from "@/components/portal/empty-state"
 import { SearchX, ChevronRight, ChevronDown, ArrowUpDown } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { TableSkeleton } from "@/components/ui/table-skeleton"
 import type { ReactNode } from "react"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils" 
@@ -152,30 +153,11 @@ export function DataTable<T>({
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              // --- SKELETON LOADING STATE ---
-              Array.from({ length: 5 }).map((_, rowIndex) => (
-                <TableRow key={`skeleton-row-${rowIndex}`}>
-                    
-                    {renderSubComponent && (
-                        <TableCell className="w-[48px] min-w-[48px] px-2 text-center">
-                            <Skeleton className="h-4 w-4 rounded-full mx-auto" />
-                        </TableCell>
-                    )}
-                    
-                    {columns.map((column, colIndex) => (
-                      <TableCell key={`skeleton-cell-${colIndex}`} className={column.className}>
-                        <Skeleton 
-                            className={cn(
-                                "h-5 rounded-md opacity-70 animate-pulse",
-                                column.className?.includes("text-right") ? "ml-auto" : 
-                                column.className?.includes("text-center") ? "mx-auto" : ""
-                            )} 
-                            style={{ width: `${Math.random() * 30 + 60}%` }} 
-                        />
-                      </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              <TableSkeleton 
+                columnCount={columns.length} 
+                rowCount={5} 
+                showActionColumn={!!renderSubComponent}
+              />
             ) : data.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={columns.length + (renderSubComponent ? 1 : 0)} className="p-0 h-60">

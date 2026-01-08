@@ -22,12 +22,12 @@ export interface AuthResponse {
 const USER_DATA_KEY = "user_data";
 
 // Real API Login Function
-export async function login(email: string, password: string): Promise<AuthResponse> {
+export async function login(email: string, password: string, rememberMe: boolean = false): Promise<AuthResponse> {
   try {
     const response = await fetch("/api/proxy-login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, rememberMe }),
     });
 
     const data = await response.json();

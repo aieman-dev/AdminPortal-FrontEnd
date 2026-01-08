@@ -2,7 +2,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { SystemOffline } from "@/components/portal/system-offline" // <--- The UI component
+import { SystemOffline } from "@/components/portal/system-offline" 
 
 export default function PortalError({
   error,
@@ -16,10 +16,9 @@ export default function PortalError({
   }, [error])
 
   return (
-    <div className="h-full flex items-center justify-center p-6">
-      {/* This renders the standardized Offline UI */}
+    <div className="min-h-[80vh] flex items-center justify-center p-6">
       <SystemOffline 
-        message={error.message}
+        message={error.message || "An unexpected error occurred."}
         onRetry={() => reset()} 
       />
     </div>

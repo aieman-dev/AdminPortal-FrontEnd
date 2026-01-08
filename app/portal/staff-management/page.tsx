@@ -1,13 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { PageHeader } from "@/components/portal/page-header"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { UserPlus, Users, Activity, Shield } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
+import { usePagination } from "@/hooks/use-pagination"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PaginationControls } from "@/components/ui/pagination-controls"
 
@@ -57,28 +58,37 @@ const getActionStyle = (actionType: string) => {
     return "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"; 
 };
 
+interface StaffDirectoryProps {
+    onRowClick: (s: StaffMember) => void;
+    refreshTrigger: number; 
+}
+
 // --- STAFF DIRECTORY ---
-function StaffDirectoryTab({ onRowClick }: { onRowClick: (s: StaffMember) => void }) {
-    const { toast } = useToast()
+function StaffDirectoryTab({ onRowClick, refreshTrigger }: StaffDirectoryProps) {
+    const toast = useAppToast()
     const [query, setQuery] = useState("")
     const [staffList, setStaffList] = useState<StaffMember[]>([])
     const [isLoading, setIsLoading] = useState(false)
 
-    const fetchStaff = async () => {
+    const fetchStaff = useCallback(async () => {
         setIsLoading(true)
         try {
             const data = await staffService.getStaffList(query)
-            setStaffList(data)
+            const uniqueStaff = Array.from(new Map(data.map(item => [item.accId, item])).values());
+            setStaffList(uniqueStaff)
         } catch (error) {
-            toast({ title: "Error", description: "Failed to load staff list.", variant: "destructive" })
+            toast.error( "Error",  "Failed to load staff list.")
+            console.error("Fetch error", error);
         } finally {
             setIsLoading(false)
         }
-    }
+    }, [query]);
 
-    useEffect(() => { fetchStaff() }, [])
+    useEffect(() => { 
+        fetchStaff() 
+    }, [refreshTrigger, fetchStaff])
 
-    const columns: TableColumn<StaffMember>[] = [
+    const columns: TableColumn<StaffMember>[] = useMemo(() => [
         { header: "Staff ID", accessor: "accId", className: "font-medium pl-6" },
         { header: "Name", accessor: "fullName", className: "font-medium" },
         { header: "Email", accessor: "email" },
@@ -88,7 +98,19 @@ function StaffDirectoryTab({ onRowClick }: { onRowClick: (s: StaffMember) => voi
         },
         { header: "Status", accessor: "status", className: "text-center", cell: (val) => <StatusBadge status={val} /> },
         { header: "Joined Date", accessor: "createdDate", cell: (val) => <span className="text-muted-foreground text-sm">{formatDate(val as string)}</span> },
-    ];
+        { 
+            header: "Expiry Date", 
+            accessor: "id", 
+            cell: (_, row) => {
+                const expiry = (row as any).expiryDate;
+                return (
+                    <span className={`text-sm ${expiry ? "text-orange-600 font-medium" : "text-muted-foreground"}`}>
+                        {expiry ? formatDate(expiry) : "Permanent"}
+                    </span>
+                )
+            }
+        },
+    ], []);
 
     return (
         <Card>
@@ -106,11 +128,11 @@ function StaffDirectoryTab({ onRowClick }: { onRowClick: (s: StaffMember) => voi
                 <DataTable 
                     columns={columns} 
                     data={staffList} 
-                    keyExtractor={(row) => row.id} 
+                    keyExtractor={(row) => row.id}
                     isLoading={isLoading} 
                     emptyIcon={Users}
                     emptyTitle="No Staff Found"
-                    onRowClick={onRowClick} // Clickable Row
+                    onRowClick={onRowClick}
                 />
             </CardContent>
         </Card>
@@ -121,20 +143,18 @@ function StaffDirectoryTab({ onRowClick }: { onRowClick: (s: StaffMember) => voi
 function ActivityAuditTab({ onRowClick }: { onRowClick: (log: AuditLog) => void }) {
     const [logs, setLogs] = useState<AuditLog[]>([])
     const [isLoading, setIsLoading] = useState(false)
-    const [page, setPage] = useState(1)
-    const [totalPages, setTotalPages] = useState(1)
-    const [totalRecords, setTotalRecords] = useState(0)
-    const PAGE_SIZE = 15
+    const pager = usePagination({ pageSize: 15 });
 
     const fetchLogs = async (pageNum: number) => {
         setIsLoading(true)
-        setPage(pageNum)
+        if (pageNum !== pager.currentPage) pager.setCurrentPage(pageNum);
+
         try {
-            const data = await staffService.getAllAuditLogs(pageNum, PAGE_SIZE)
+            const data = await staffService.getAllAuditLogs(pageNum, pager.pageSize)
             if (data) {
                 setLogs(data.logs)
-                setTotalPages(Math.ceil(data.totalRecords / data.pageSize))
-                setTotalRecords(data.totalRecords)
+                const calcTotalPages = Math.ceil(data.totalRecords / data.pageSize);
+                pager.setMetaData(calcTotalPages, data.totalRecords);
             }
         } catch (e) { console.error(e) } 
         finally { setIsLoading(false) }
@@ -198,18 +218,18 @@ function ActivityAuditTab({ onRowClick }: { onRowClick: (log: AuditLog) => void 
                 <DataTable 
                     columns={columns} 
                     data={logs} 
-                    keyExtractor={(row, i) => `${row.id}-${i}`} 
+                    keyExtractor={(row, i) => `${row.id}-${i}`}
                     isLoading={isLoading} 
                     emptyIcon={Shield}
                     emptyTitle="No Activity Logs"
-                    onRowClick={onRowClick} // Clickable Row
+                    onRowClick={onRowClick}
                 />
                 <PaginationControls 
-                    currentPage={page} 
-                    totalPages={totalPages} 
+                    currentPage={pager.currentPage} 
+                    totalPages={pager.totalPages} 
                     onPageChange={fetchLogs} 
-                    totalRecords={totalRecords} 
-                    pageSize={PAGE_SIZE}
+                    totalRecords={pager.totalRecords} 
+                    pageSize={pager.pageSize}
                 />
             </CardContent>
         </Card>
@@ -226,6 +246,7 @@ export default function UsersStaffManagementPage() {
 
   const [isActivityDrawerOpen, setIsActivityDrawerOpen] = useState(false)
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0);
 
   return (
     <div className="space-y-6">
@@ -246,10 +267,12 @@ export default function UsersStaffManagementPage() {
         </TabsList>
 
         <TabsContent value="directory" className="animate-in fade-in-50 duration-300 mt-0">
-            <StaffDirectoryTab onRowClick={(staff) => {
-                setSelectedStaff(staff);
-                setIsDrawerOpen(true);
-            }} />
+            <StaffDirectoryTab 
+                refreshTrigger={refreshKey} 
+                onRowClick={(staff) => {
+                    setSelectedStaff(staff);
+                    setIsDrawerOpen(true);
+                }} />
         </TabsContent>
 
         <TabsContent value="audit" className="animate-in fade-in-50 duration-300 mt-0">
@@ -263,14 +286,15 @@ export default function UsersStaffManagementPage() {
       <StaffAccountModal 
           isOpen={isCreateModalOpen} 
           onOpenChange={setIsCreateModalOpen}
-          onSuccess={() => window.location.reload()} 
+          onSuccess={() => setRefreshKey(k => k + 1)}
           initialData={null} 
       />
 
       <StaffDrawer 
           isOpen={isDrawerOpen}
           staff={selectedStaff}
-          onClose={() => setIsDrawerOpen(false)}
+          onClose={() => setIsDrawerOpen(false)} 
+          onUpdate={() => setRefreshKey(k => k + 1)}
       />
 
       <ActivityDrawer

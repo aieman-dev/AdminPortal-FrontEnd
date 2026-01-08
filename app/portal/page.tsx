@@ -5,38 +5,47 @@ import { ROLES } from "@/lib/constants";
 import { getServerUserRole } from "@/lib/server-auth";
 
 export default async function DashboardPage() {
-  // 1. Get the role safely using our new utility
+  //  Get the role safely
   const userRole = await getServerUserRole();
 
-  // 2. Define Logic: Who is ALLOWED to see packages?
-  // Only MIS, TP, and Finance can view packages. IT_ADMIN cannot.
+  //  Define Logic: Who is ALLOWED to see packages?
   const canViewPackages = userRole !== ROLES.IT_ADMIN;
 
   let pendingPackages: Package[] = [];
 
-  // 3. Conditional Fetching
-  // If user is IT Admin, this block is SKIPPED. No API call = No 403 Error.
+  // Conditional Fetching
   if (canViewPackages) {
     try {
-      const packageResponse = await serverFetch<Package[]>("packageView/search", {
+      const payload = {
+        Status: "Pending",
+        PageNumber: 1,
+        PageSize: 5,
+        SearchQuery: "",
+        StartDate: null,
+        EndDate: null ,
+        PackageType: null 
+      };
+
+      const response = await serverFetch<any>("packageView/search", {
         method: "POST",
-        body: JSON.stringify({
-          Status: "Pending",
-          PageNumber: 1,
-          PageSize: 5
-        })
+        body: JSON.stringify(payload)
       });
       
-      pendingPackages = Array.isArray(packageResponse) 
-        ? packageResponse 
-        : (packageResponse as any)?.data || [];
+      // FIX: Handle the nested response structure: { content: { content: [...] } }
+      if (response) {
+          if (response?.content?.content && Array.isArray(response.content.content)) {
+              pendingPackages = response.content.content;
+          } else if (response?.content && Array.isArray(response.content)) {
+              pendingPackages = response.content;
+          } else if (Array.isArray(response)) {
+              pendingPackages = response;
+          }
+      }
         
     } catch (error) {
-      console.error("Failed to load dashboard packages:", error);
+      console.warn("Dashboard Package Load Warning:", error);
     }
   } 
 
-  // 4. Pass data to your EXISTING DashboardClient
-  // IT Admins receive [], so their dashboard renders without the package section.
   return <DashboardClient initialPendingPackages={pendingPackages} />;
 }

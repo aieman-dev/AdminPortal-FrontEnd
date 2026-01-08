@@ -11,7 +11,7 @@ interface SystemAnnouncementProps {
 }
 
 export function SystemAnnouncement({ broadcasts }: SystemAnnouncementProps) {
-  const [isVisible, setIsVisible] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
   const [activeAlert, setActiveAlert] = useState<BroadcastItem | null>(null);
 
   useEffect(() => {
@@ -21,9 +21,9 @@ export function SystemAnnouncement({ broadcasts }: SystemAnnouncementProps) {
         return;
     }
     const latestAlert = broadcasts[0];
-    const dismissedId = localStorage.getItem("last_dismissed_broadcast_id");
+    const lastDismissedId = Number(localStorage.getItem("last_dismissed_broadcast_id") || "0");
 
-    if (dismissedId !== String(latestAlert.id)) {
+    if (latestAlert.id > lastDismissedId) {
         setActiveAlert(latestAlert);
         setIsVisible(true);
     } else {
@@ -78,7 +78,7 @@ export function SystemAnnouncement({ broadcasts }: SystemAnnouncementProps) {
               variant="ghost" 
               size="icon" 
               className="h-6 w-6 hover:bg-black/5 dark:hover:bg-white/10 rounded-full"
-              onClick={() => setIsVisible(false)}
+              onClick={handleDismiss}
             >
               <X className="h-3.5 w-3.5" />
             </Button>

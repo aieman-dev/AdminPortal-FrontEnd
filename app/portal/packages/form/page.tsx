@@ -3,6 +3,10 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useForm } from "react-hook-form"; 
+import { Form } from "@/components/ui/form";
+import { zodResolver } from "@hookform/resolvers/zod"; 
+import { packageFormSchema, PackageFormValues } from "@/lib/schemas";
 
 // Components
 import StepIndicator from "@/components/StepIndicator";
@@ -12,12 +16,11 @@ import PackageFormStep3 from "@/components/PackageFormStep3";
 import { ConfirmationModal, DraftModal, SuccessModal } from '@/components/PackageModals';
 import { PackageFormData } from "@/type/packages";
 import { packageService } from "@/services/package-services"; 
-import { useToast } from "@/hooks/use-toast";
-import { LoaderState } from "@/components/ui/loader-state";
+import { useAppToast } from "@/hooks/use-app-toast";
 
 const PackageFormPage = () => {
   const router = useRouter();
-  const { toast } = useToast();
+  const toast = useAppToast();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -31,18 +34,23 @@ const PackageFormPage = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showDraft, setShowDraft] = useState(false);
 
-  const [form, setForm] = useState<PackageFormData>({
-    packageName: "",
-    packageType: "",
-    nationality: "",
-    ageCategory: "",
-    effectiveDate: "",
-    lastValidDate: "",
-    tpremark: "",
-    imageID: null,
-    packageitems: [],
-    dayPass: "",
-    totalPrice: 0,
+  // 1. INITIALIZE FORM
+  const form = useForm<PackageFormValues>({
+    resolver: zodResolver(packageFormSchema),
+    defaultValues: {
+      packageName: "",
+      packageType: "",
+      nationality: "",
+      ageCategory: "",
+      effectiveDate: "",
+      lastValidDate: "",
+      tpremark: "",
+      imageID: null,
+      packageitems: [],
+      dayPass: "",
+      totalPrice: 0,
+    },
+    mode: "onChange"
   });
 
   // Lock body scroll
@@ -59,12 +67,10 @@ const PackageFormPage = () => {
         try {
             let data = await packageService.getPackageById(Number(editId), "pending");
             
-            if (!data) {
-                 data = await packageService.getPackageById(Number(editId));
-            }
+            if (!data)  data = await packageService.getPackageById(Number(editId));
 
             if (data) {
-                setForm({
+                form.reset({
                     packageName: data.name,
                     packageType: data.packageType,
                     nationality: data.nationality,
@@ -79,12 +85,12 @@ const PackageFormPage = () => {
                     totalPrice: data.price || data.point || 0
                 });
             } else {
-                toast({ title: "Error", description: "Package not found.", variant: "destructive" });
+                toast.error( "Error",  "Package not found.")
                 router.push("/portal/packages");
             }
         } catch (error) {
             console.error("Fetch Error:", error);
-            toast({ title: "Error", description: "Failed to load package details.", variant: "destructive" });
+            toast.error("Error","Failed to load package details.");
         } finally {
             setIsLoadingData(false);
         }
@@ -94,19 +100,27 @@ const PackageFormPage = () => {
   }, [editId, router, toast]);
 
   // Navigation
-  const next = () => setStep((s) => Math.min(s + 1, 3));
+  const next = async () => {
+    if (step === 1) {
+          const valid = await form.trigger([
+              "packageName", "packageType", "nationality", "ageCategory", 
+              "effectiveDate", "lastValidDate", "dayPass", "tpremark", "imageID"
+          ]);
+          if (!valid) {
+              toast.error("Validation Error", "Please fix the errors before proceeding.");
+              return;
+          }
+      }
+      setStep((s) => Math.min(s + 1, 3));
+  };
+
   const back = () => setStep((s) => Math.max(s - 1, 1));
 
   // Handlers
   const handleCreateNew = () => {
     setShowSuccess(false);
     setShowDraft(false);
-    setForm({
-      packageName: "", packageType: "", nationality: "", ageCategory: "",
-      dayPass: "", effectiveDate: "", lastValidDate: "", tpremark: "",
-      imageID: null, packageitems: [],
-      totalPrice: 0,
-    });
+    form.reset(); 
     setStep(1);
   };
 
@@ -116,28 +130,30 @@ const PackageFormPage = () => {
   };
 
   const handleSaveDraft = async() => {
-    if (!form.packageName.trim()) {
-        toast({ title: "Input Required", 
-          description: "Package Name is required to save a draft.", 
-          variant: "default" });
+    const name = form.getValues("packageName");
+    if (!name.trim()) {
+        toast.info("Input Required",  "Package Name is required to save a draft.");
         return;
     }
       
     setIsSubmitting(true);
+    const formData = form.getValues();
     
     try {
         let finalImageID : string | null = null;
         
-        if (form.imageID instanceof File) {
-            finalImageID = await packageService.uploadImage(form.imageID);
-        } else if (typeof form.imageID === "string" && form.imageID) {
-            finalImageID = form.imageID;
+        if (formData.imageID instanceof File) {
+            finalImageID = await packageService.uploadImage(formData.imageID);
+        } else if (typeof formData.imageID === "string" && formData.imageID) {
+            finalImageID = formData.imageID;
         }
 
+        const servicePayload: any = { ...formData, imageID: finalImageID };
+
         if (editId) {
-          await packageService.saveDraft(form, finalImageID || "", Number(editId));
+          await packageService.saveDraft(servicePayload, finalImageID || "", Number(editId));
         } else {
-          await packageService.saveDraft(form, finalImageID || "");
+          await packageService.saveDraft(servicePayload, finalImageID || "");
         }
         
         console.log("Package saved as draft successfully");
@@ -145,11 +161,7 @@ const PackageFormPage = () => {
 
     } catch (err) {
         console.error("Save Draft error:", err);
-        toast({ 
-            title: "Save Failed", 
-            description: err instanceof Error ? err.message : "Failed to save draft package.",
-            variant: "destructive"
-        });
+        toast.error( "Save Failed", err instanceof Error ? err.message : "Failed to save draft package.");
     } finally {
         setIsSubmitting(false);
     }
@@ -158,22 +170,25 @@ const PackageFormPage = () => {
   const handleConfirmSubmit = async () => {
     setShowConfirmation(false);
     setIsSubmitting(true);
+    const formData = form.getValues();
 
     try {
       let finalImageID : string | null = null;
 
-      if (form.imageID instanceof File) {
+      if (formData.imageID instanceof File) {
         // Case 1: A new image was uploaded. Call API to upload, and store the returned string ID.
-        finalImageID = await packageService.uploadImage(form.imageID);
-      } else if (typeof form.imageID === "string" && form.imageID) {
+        finalImageID = await packageService.uploadImage(formData.imageID);
+      } else if (typeof formData.imageID === "string" && formData.imageID) {
         // Case 2: An existing string ID (from editing/duplicating) is present.
-        finalImageID = form.imageID;
+        finalImageID = formData.imageID;
       }
 
+      const servicePayload: any = { ...formData, imageID: finalImageID };
+
       if (editId) {
-        await packageService.updatePackage(Number(editId), form, finalImageID || "");
+        await packageService.updatePackage(Number(editId), servicePayload, finalImageID || "");
       } else {
-        await packageService.createPackage(form, finalImageID || "");
+        await packageService.createPackage(servicePayload, finalImageID || "");
       }
       
       console.log("Package created successfully");
@@ -190,12 +205,6 @@ const PackageFormPage = () => {
   return (
     <>
       <div className="h-[calc(100vh-120px)] flex items-center justify-center px-8 pb-8 pt-4">
-        {/* UPDATED CONTAINER STYLES:
-           - bg-white (Light Mode)
-           - dark:bg-slate-900/50 (Dark Mode): Deep semi-transparent background
-           - dark:backdrop-blur-md: Adds a modern glass effect
-           - dark:border-white/10: Adds a subtle border to define the card against the black page
-        */}
         <div 
           className="w-full max-w-[1300px] flex flex-col md:flex-row 
                      bg-white dark:bg-slate-900/50 dark:backdrop-blur-md 
@@ -212,16 +221,18 @@ const PackageFormPage = () => {
 
           {/* Main Form Area */}
           <main className="flex-1 overflow-y-auto scrollbar-hide p-6">
-            {step === 1 && <PackageFormStep1 form={form} setForm={setForm} onNext={next} />}
-            {step === 2 && <PackageFormStep2 form={form} setForm={setForm} onNext={next} onBack={back} />}
-            {step === 3 && (
-              <PackageFormStep3 
-                form={form} 
-                onBack={back} 
-                onSubmit={() => setShowConfirmation(true)} 
-                onSaveDraft={handleSaveDraft} 
-              />
-            )}
+            <Form {...form}>
+                {step === 1 && <PackageFormStep1 form={form} onNext={next} />}
+                    {step === 2 && <PackageFormStep2 form={form} onNext={next} onBack={back} />}
+                    {step === 3 && (
+                    <PackageFormStep3 
+                        form={form} 
+                        onBack={back} 
+                        onSubmit={() => setShowConfirmation(true)} 
+                        onSaveDraft={handleSaveDraft} 
+                    />
+                )}
+            </Form>
           </main>
         </div>
       </div>

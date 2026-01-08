@@ -22,6 +22,7 @@ function parseJwt(token: string) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const { rememberMe } = body;
     
     // 1. Target the NEW backend endpoint
     const BACKEND_URL = `${BACKEND_API_BASE}/api/auth/login`;
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Set Secure Cookies (HttpOnly)
     const cookieStore = await cookies();
+    const maxAge = rememberMe ? 60 * 60 * 24 * 7 : undefined;
     
     // Access Token (Short-lived)
     cookieStore.set("accessToken", token, {
@@ -65,6 +67,7 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       path: "/",
+      maxAge: maxAge,
     });
 
     // Refresh Token (Long-lived)

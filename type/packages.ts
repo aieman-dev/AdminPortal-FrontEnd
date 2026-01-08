@@ -29,8 +29,8 @@ export interface Package {
   reviewedBy?: string;
   
   // Remarks
-  remark: string;       // Submitter/TP Remark
-  remark2?: string;     // Finance/Approver Remark
+  remark: string;
+  remark2?: string;
   
   // Items
   items: PackageItem[];
@@ -84,55 +84,25 @@ export interface PackageDuplicateResponse {
 
 export interface BackendPackageDTO {
     id: number;
-    packageID?: number; // Sometimes backend sends this
-    
-    // Core Info
-    name?: string;           
-    PackageName?: string;    // Legacy/Alternate
-    packageName?: string;    // Legacy/Alternate
-    
-    packageType?: string;
-    PackageType?: string;
-    
-    price?: number;
-    totalPrice?: number;
-    point?: number;
-    
-    // Metadata
-    category?: string;       // Age Code
+    name: string;           
+    packageType: string;
+    price: number;
+    point: number;
     ageCategory?: string;
-    nationality?: string;
-    
-    // Images
-    imageUrl?: string; 
-    imageID?: string;
-    
-    // Status & Dates
-    status?: string;
-    recordStatus?: string;
+    nationality: string;
+    imageUrl: string; 
+    status: string;
     createdDate?: string;
-    dateCreated?: string;
     effectiveDate?: string;
     lastValidDate?: string;
     validDays?: number;
-    durationDays?: number;
-    dayPass?: string;
-    
-    // Remarks & People
-    remark?: string;         // TP Remark
-    tpremark?: string;
-    remark2?: string;        // Finance Remark
-    financeremark?: string;
-    
-    submittedBy?: string;
-    createdBy?: string;
-    createdUserEmail?: string;
-    approvedBy?: string;
+    dayPass?: number;
+    remark?: string;
+    remark2?: string;
+    submittedBy: string;
+    approvedBy: string;
     reviewedDate?: string;
-    
-    // Items
     items?: BackendPackageItemDTO[];
-    packageitems?: BackendPackageItemDTO[];
 }
 
 export interface BackendPackageItemDTO {

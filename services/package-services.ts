@@ -61,7 +61,6 @@ const getContent = <T>(data: any): T[] => {
     if (Array.isArray(data)) {
         return data;
     }
-
     return []
 };
 
@@ -104,8 +103,8 @@ const extractAgeCode = (ageCategory: string | undefined): string => {
 // --- TRANSFORMER: Backend DTO -> Frontend Interface ---
 
 const transformToFrontend = (pkg: BackendPackageDTO, ageMap: Record<string, AgeCategoryMapData> = {}): Package => {
-  const finalName = pkg.name || pkg.PackageName || pkg.packageName || "Untitled";
-  const pType = (pkg.packageType || pkg.PackageType || '').trim();
+  const finalName = pkg.name || "Untitled";
+  const pType = (pkg.packageType || '').trim();
   const isPointType = pType.toLowerCase().includes('point') && !pType.toLowerCase().includes('reward');
   
   // Price Logic: prefer 'point' field if point type, otherwise price/totalPrice
@@ -116,18 +115,18 @@ const transformToFrontend = (pkg: BackendPackageDTO, ageMap: Record<string, AgeC
       finalPoint = pkg.point ?? 0;
       finalPrice = 0; 
   } else {
-      finalPrice = pkg.price ?? pkg.totalPrice ?? 0;
+      finalPrice = pkg.price ?? 0;
       finalPoint = 0;
   }
 
   
-  const rawAgeCode = pkg.ageCategory || pkg.category || "";
+  const rawAgeCode = pkg.ageCategory || "";
   const mappedAge = ageMap[rawAgeCode];
 
   const displayAgeCat = mappedAge?.displayText || rawAgeCode || "N/A";
   const displayAgeDesc = mappedAge?.description || "";
 
-  const rawItems = pkg.items || pkg.packageitems || [];
+  const rawItems = pkg.items || [];
   const finalItems: PackageItem[] = rawItems.map(item => ({
       attractionId: item.attractionId,
       itemName: item.itemName || "Unknown Item",
@@ -139,8 +138,6 @@ const transformToFrontend = (pkg: BackendPackageDTO, ageMap: Record<string, AgeC
       itemType: item.itemType
   }));
 
-  const submitterName = pkg.submittedBy || pkg.createdBy || pkg.createdUserEmail || "System";
-
   return {
     id: pkg.id,
     name: finalName,
@@ -149,23 +146,23 @@ const transformToFrontend = (pkg: BackendPackageDTO, ageMap: Record<string, AgeC
     packageType: pType || "N/A",
     
     status: pkg.status || "Draft",
-    imageUrl: pkg.imageUrl || pkg.imageID || "",
+    imageUrl: pkg.imageUrl || "",
     nationality: pkg.nationality || "N/A",
     ageCategory: displayAgeCat,
     ageDescription: displayAgeDesc,
-    effectiveDate: pkg.effectiveDate || pkg.createdDate || "",
+    effectiveDate: pkg.effectiveDate ||  "",
     lastValidDate: pkg.lastValidDate || "",
-    createdDate: pkg.createdDate || pkg.dateCreated || "",
+    createdDate: pkg.createdDate || "",
     
-    submittedBy: submitterName,
+    submittedBy: pkg.submittedBy || "System",
     reviewedBy: pkg.approvedBy,
     reviewedDate: pkg.reviewedDate,
     
-    remark: pkg.remark || pkg.tpremark || "",
-    remark2: pkg.remark2 || pkg.financeremark || "",
+    remark: pkg.remark || "",
+    remark2: pkg.remark2 || "",
     
-    durationDays: pkg.validDays ?? pkg.durationDays ?? 0,
-    dayPass: pkg.dayPass,
+    durationDays: pkg.validDays ?? 0,
+    dayPass: pkg.dayPass ? String(pkg.dayPass) : undefined,
     items: finalItems
   };
 };

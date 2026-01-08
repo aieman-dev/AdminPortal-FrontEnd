@@ -46,6 +46,17 @@ export const STAFF_ROLES = [
   { label: "Theme Park", value: "TP_Admin" } 
 ] as const;
 
+export const PACKAGE_TYPE_LABELS: Record<string, string> = {
+  "Entry": "Entry",
+  "Point": "Point",
+  "RewardP": "Reward Point"
+};
+
+export const getPackageTypeLabel = (code: string | undefined) => {
+  if (!code) return "N/A";
+  return PACKAGE_TYPE_LABELS[code] || code; 
+};
+
 // Nationality Codes
 export const NATIONALITY_OPTIONS = [
   { label: "Malaysian", value: "L" },
@@ -58,3 +69,69 @@ export const getNationalityLabel = (code: string | undefined) => {
   const found = NATIONALITY_OPTIONS.find(n => n.value === code);
   return found ? found.label : code;
 };
+
+// --- STATUS COLORS ( Package Filter) ---
+export const STATUS_COLORS: Record<string, string> = {
+  Pending: "#eab308", // Yellow-500
+  Active: "#16a34a",  // Green-600
+  ExpiringSoon: "#f97316", // Orange-500
+  Expired: "#dc2626", // Red-600
+  Rejected: "#b91c1c", // Red-700
+  Draft: "#4f46e5",   // Indigo-600
+  "Show All": "#94a3b8" // Slate-400
+};
+
+// --- STATUS COLORS ( status badges) ---
+export const STATUS_STYLES: Record<string, string> = {
+    // Financial Statuses
+    paid: "bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-200",
+    pending: "bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 border-yellow-200",
+    failed: "bg-red-500/10 text-red-600 hover:bg-red-500/20 border-red-200",
+    refund: "bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 border-orange-200",
+    
+    // Transaction Types
+    credit: "bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 border-blue-200",
+    debit: "bg-gray-500/10 text-gray-600 hover:bg-gray-500/20 border-gray-200",
+    purchase: "bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200", 
+    consume: "bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200", 
+
+    // --- PACKAGE LIFECYCLE (Merged from PackageCard) ---
+    active: "bg-emerald-100 text-emerald-700 border-transparent dark:bg-emerald-500/15 dark:text-emerald-400",
+    draft: "bg-indigo-100 text-indigo-700 border-transparent dark:bg-indigo-500/15 dark:text-indigo-400",
+    rejected: "bg-red-100 text-red-700 border-transparent dark:bg-red-500/15 dark:text-red-400",
+    expiring: "bg-orange-100 text-orange-800 border-transparent dark:bg-orange-500/15 dark:text-orange-400",
+    
+    // Operational Statuses 
+    expired: "bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200", 
+    inactive: "bg-red-100 text-red-700 hover:bg-red-200 border-red-200",
+    voided: "bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-200 decoration-line-through",
+    unused: "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300",
+
+    // --- Sync Statuses (NEW) ---
+    synced: "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-emerald-200", 
+    error: "bg-rose-100 text-rose-700 hover:bg-rose-200 border-rose-200",
+  }
+
+
+
+export const CONSUME_TYPES = [
+  { label: "By Superapp", value: "superapp" },
+  { label: "By Receipt", value: "receipt" }
+] as const;
+
+export const TICKET_TYPES = [
+  { label: "Ticket", value: "ticket" },
+  { label: "Credit", value: "credit" },
+  { label: "Reward", value: "reward" }
+] as const;
+
+export const TICKET_STATUSES = [
+  { label: "Active", value: "active" },
+  { label: "Unused", value: "unused" }
+] as const;
+
+export const TERMINAL_GROUPS = [
+  { label: "1 (I-City)", value: "1" },
+  { label: "2 (JV Partner)", value: "2" },
+  { label: "3 (Photo Booth)", value: "3" }
+] as const;

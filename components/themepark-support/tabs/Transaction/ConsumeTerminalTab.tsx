@@ -9,15 +9,16 @@ import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badg
 import { TerminalSelector } from "@/components/themepark-support/it-poswf/terminal-selector"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
 import { itPoswfService } from "@/services/themepark-support"
 import { type TerminalTransaction } from "@/type/themepark-support"
 import { formatDateTime } from "@/lib/formatter";
 import { PaginationControls } from "@/components/ui/pagination-controls"
+import { usePagination } from "@/hooks/use-pagination"
 
 
 export default function ConsumeTerminalTab() {
-    const { toast } = useToast();
+    const toast = useAppToast();
     const [selectedTerminalId, setSelectedTerminalId] = useState<string>("")
     const [searchDate, setSearchDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [purchaseHistory, setPurchaseHistory] = useState<TerminalTransaction[]>([])
@@ -26,9 +27,8 @@ export default function ConsumeTerminalTab() {
     const [hasSearched, setHasSearched] = useState(false)
     
     // Pagination States
-    const [currentPagePurchase, setCurrentPagePurchase] = useState(1);
-    const [currentPageConsume, setCurrentPageConsume] = useState(1);
-    const ITEMS_PER_PAGE = 10;
+    const purchasePager = usePagination({ pageSize: 10 });
+    const consumePager = usePagination({ pageSize: 10 });
 
     const handleDateSelect = (date: Date | undefined) => {
         if (date) {
@@ -40,18 +40,22 @@ export default function ConsumeTerminalTab() {
         }
     };
 
-    const handleHistorySearch = async () => {
-        if (!selectedTerminalId) {
-            toast({ title: "Input Required", description: "Please select a valid Terminal ID.", variant: "default" });
+    const handleHistorySearch = async (query?: string) => {
+        const termId = query || selectedTerminalId;
+
+        if (!termId) {
+            if(!query) toast.info("Input Required", "Please select a valid Terminal ID.");
             return;
         }
+
+        if(query) setSelectedTerminalId(query);
 
         setIsHistorySearching(true);
         setHasSearched(true);
         setPurchaseHistory([]);
         setConsumeHistory([]);
-        setCurrentPagePurchase(1);
-        setCurrentPageConsume(1);
+        purchasePager.reset();
+        consumePager.reset();
 
         try {
             const response = await itPoswfService.searchTerminalHistory(selectedTerminalId, searchDate);
@@ -62,31 +66,31 @@ export default function ConsumeTerminalTab() {
                 
                 const hasData = response.data.purchaseHistory.length > 0 || response.data.consumeHistory.length > 0;
                 if (!hasData) {
-                      toast({ title: "Search Complete", description: `No history found for this terminal on ${searchDate}.` });
+                      toast.info("Search Complete", `No history found for this terminal on ${searchDate}.` );
                 } else {
-                      toast({ title: "Search Complete", description: "History data retrieved." });
+                      toast.info("Search Complete", "History data retrieved." );
                 }
             } else {
-                toast({ title: "Search Failed", description: response.error || "Could not retrieve history.", variant: "destructive" });
+                toast.error( "Search Failed", response.error || "Could not retrieve history.");
             }
         } catch (error) {
             console.error("History Search Error:", error);
-            toast({ title: "Network Error", description: "Failed to connect.", variant: "destructive" });
+            toast.error("Network Error", "Failed to connect.");
         } finally {
             setIsHistorySearching(false);
         }
     }
 
-    // --- Pagination Logic ---
+    // Updated Slicing Logic using Hook State
     const paginatedPurchase = useMemo(() => {
-        const start = (currentPagePurchase - 1) * ITEMS_PER_PAGE;
-        return purchaseHistory.slice(start, start + ITEMS_PER_PAGE);
-    }, [purchaseHistory, currentPagePurchase]);
+        const start = (purchasePager.currentPage - 1) * purchasePager.pageSize;
+        return purchaseHistory.slice(start, start + purchasePager.pageSize);
+    }, [purchaseHistory, purchasePager.currentPage, purchasePager.pageSize]);
 
     const paginatedConsume = useMemo(() => {
-        const start = (currentPageConsume - 1) * ITEMS_PER_PAGE;
-        return consumeHistory.slice(start, start + ITEMS_PER_PAGE);
-    }, [consumeHistory, currentPageConsume]);
+        const start = (consumePager.currentPage - 1) * consumePager.pageSize;
+        return consumeHistory.slice(start, start + consumePager.pageSize);
+    }, [consumeHistory, consumePager.currentPage, consumePager.pageSize]);
 
     const commonColumns: TableColumn<TerminalTransaction>[] = [
         { header: "Transaction ID", accessor: "trxID",className: "pl-6", cell: (value) => <span className="font-medium">{value}</span> },
@@ -121,7 +125,7 @@ export default function ConsumeTerminalTab() {
                             />
                         </div>
                         <div className="w-full lg:w-auto space-y-2">
-                            <Button onClick={handleHistorySearch} 
+                            <Button onClick={() => handleHistorySearch()}
                                     disabled={isHistorySearching || !selectedTerminalId}
                                     className="h-11 px-8 w-full lg:w-auto">
                                 <Search className="mr-2 h-4 w-4" />
@@ -155,11 +159,11 @@ export default function ConsumeTerminalTab() {
                                         isLoading={isHistorySearching}
                                     />
                                     <PaginationControls
-                                        currentPage={currentPagePurchase}
-                                        totalPages={Math.ceil(purchaseHistory.length / ITEMS_PER_PAGE)}
+                                        currentPage={purchasePager.currentPage}
+                                        totalPages={Math.ceil(purchaseHistory.length / purchasePager.pageSize)}
                                         totalRecords={purchaseHistory.length}
-                                        pageSize={ITEMS_PER_PAGE}
-                                        onPageChange={setCurrentPagePurchase}
+                                        pageSize={purchasePager.pageSize}
+                                        onPageChange={purchasePager.setCurrentPage}
                                     />
                                 </CardContent>
                             </Card>
@@ -176,11 +180,11 @@ export default function ConsumeTerminalTab() {
                                         isLoading={isHistorySearching}
                                     />
                                     <PaginationControls
-                                        currentPage={currentPageConsume}
-                                        totalPages={Math.ceil(consumeHistory.length / ITEMS_PER_PAGE)}
+                                        currentPage={consumePager.currentPage}
+                                        totalPages={Math.ceil(consumeHistory.length / consumePager.pageSize)}
                                         totalRecords={consumeHistory.length}
-                                        pageSize={ITEMS_PER_PAGE}
-                                        onPageChange={setCurrentPageConsume}
+                                        pageSize={consumePager.pageSize}
+                                        onPageChange={consumePager.setCurrentPage}
                                     />
                                 </CardContent>
                             </Card>

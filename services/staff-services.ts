@@ -16,6 +16,8 @@ import {
 const ENDPOINTS = {
   SEARCH_USER: "account/roles/search-user",
   ASSIGN_ROLE: "account/roles/assign",
+  UPDATE_ROLE: "account/roles/update",
+  RESET_PASSWORD: "account/roles/reset-portal-password",
   STAFF_LIST: "account/roles/list",
   GET_ME: "Account/me",
 
@@ -37,13 +39,14 @@ const getDataObject = <T>(data: any): T => {
 
 // MAPPERS: Normalize Data here
 const mapToStaff = (raw: BackendStaffDTO): StaffMember => ({
-  id: String(raw.accID), // Ensure unique ID string
+  id: String(raw.accID), 
   accId: raw.accID,
   fullName: raw.fullName || "Unknown",
   email: raw.email || "N/A",
   roleName: raw.roleName || "No Role",
   status: raw.recordStatus || "Active",
   createdDate: raw.createdDate,
+  expiryDate: raw.expiryDate || "",
   roleId: raw.roleID,
   receiveNotifications : raw.receiveNotifications
 });
@@ -75,10 +78,10 @@ export const staffService = {
         accId: data.userId,
         fullName: `${data.firstName || ""} ${data.lastName || ""}`.trim(),
         email: data.email,
-        // Join roles array into a single string for display
         roleName: Array.isArray(data.roles) ? data.roles.join(", ") : (data.roles || "User"),
         status: data.status || "Active",
-        createdDate: data.createdDate
+        createdDate: data.createdDate,
+        expiryDate : data.expiryDate
     };
   },
   
@@ -94,14 +97,34 @@ export const staffService = {
     return rawList.map(mapToSearchedUser);
   },
 
-  assignRole: async (accId: number, roles: string, password: string): Promise<{ message: string }> => {
-    const payload: AssignRolePayload = { accId, roles, password };
+  assignRole: async (accId: number, roles: string, password: string, expiryDate?: Date | null): Promise<{ message: string }> => {
+    const formattedDate = expiryDate ? expiryDate.toISOString() : null;
+    const payload: AssignRolePayload = { accId, roles, password, expiryDate: formattedDate };
     const response = await apiClient.post<{ message: string }>(ENDPOINTS.ASSIGN_ROLE, payload);
     
     if (!response.success) {
         throw new Error(response.error || "Failed to assign role");
     }
     return response.data!;
+  },
+
+  updateStaffRole: async (payload: { RoleID: number | string, RoleName: string, ExpiryDate: string | null, RecordStatus: string }) => {
+      const response = await apiClient.post<{ message: string }>(ENDPOINTS.UPDATE_ROLE, payload);
+      
+      if (!response.success) {
+          throw new Error(response.error || "Failed to update staff role");
+      }
+      return response.data;
+  },
+
+  resetStaffPassword: async (accId: number | string, newPassword: string) => {
+      const payload = { AccID: accId, NewPassword: newPassword };
+      const response = await apiClient.post<{ message: string }>(ENDPOINTS.RESET_PASSWORD, payload);
+      
+      if (!response.success) {
+          throw new Error(response.error || "Failed to reset password");
+      }
+      return response.data;
   },
 
   getStaffList: async (query: string = ""): Promise<StaffMember[]> => {

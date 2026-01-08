@@ -12,16 +12,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Pencil, Users } from "lucide-react"
 import { itPoswfService } from "@/services/themepark-support" 
 import { Account } from "@/type/themepark-support" 
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
+import { useAutoSearch } from "@/hooks/use-auto-search"
 
 const LOCAL_STORAGE_KEY = 'accountMasterEmailSearch';
 
 export default function AccountManagementTab() {
   const router = useRouter()
-  const { toast } = useToast()
-
-  const searchParams = useSearchParams()
-  const urlQuery = searchParams.get('search') 
+  const toast  = useAppToast()
 
   // 1. Initialize state by reading from localStorage on mount
   const [searchEmail, setSearchEmail] = useState(() => {
@@ -41,6 +39,7 @@ export default function AccountManagementTab() {
         return;
     }
 
+    setSearchEmail(query);
     setIsSearching(true)
 
     try {
@@ -49,37 +48,24 @@ export default function AccountManagementTab() {
       if (response.success && response.data) {
         setAccounts(response.data)
         if (response.data.length === 0) {
-          toast({ title: "Search Complete", description: "No accounts found matching the search criteria." })
+          toast.info("Search Complete", "No accounts found matching the search criteria." )
         }
       } else {
         setAccounts([])
-        toast({ title: "Search Failed", description: response.error || "Could not retrieve account list.", variant: "destructive" })
+        toast.error("Search Failed", response.error || "Could not retrieve account list.")
       }
     } catch (error) {
       console.error("Account Search Error:", error)
       setAccounts([])
-      toast({ title: "Network Error", description: "Failed to connect to the account search service.", variant: "destructive" })
+      toast.error("Network Error", "Failed to connect to the account search service.")
     } finally {
       setIsSearching(false)
     }
   }, [toast])
 
-  // 3. INITIALIZATION EFFECT (Handles URL & LocalStorage)
-  useEffect(() => {
-    // If URL param exists, it takes PRIORITY over LocalStorage
-    if (urlQuery) {
-        setSearchEmail(urlQuery);
-        executeSearch(urlQuery);
-        // Clean the URL so refreshing doesn't trigger it again
-        window.history.replaceState(null, '', window.location.pathname);
-    } 
-    // Otherwise, if we have a saved email, run that
-    else if (searchEmail) {
-        executeSearch(searchEmail);
-    }
-    // We only want this to run ONCE on mount (or when urlQuery changes)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlQuery, executeSearch]); 
+  
+  // 3. AUTO SEARCH HOOK (Replaces the complex useEffect)
+  useAutoSearch(executeSearch);
 
   // 4. PERSISTENCE EFFECT (Save to LocalStorage when user types)
   useEffect(() => {

@@ -1,53 +1,52 @@
 // components/PackageFormStep1.tsx
 import React, { useEffect, useState, useRef } from "react";
-import { Search, X, ChevronDown, Check, ImageIcon, Loader2, Eye, AlertCircle } from "lucide-react";
-import { PackageFormData } from "../type/packages";
+import { Search, X, ChevronDown, Check, Loader2, Eye } from "lucide-react";
+import { UseFormReturn } from "react-hook-form";
+import { PackageFormValues } from "@/lib/schemas";
 import { packageService } from "@/services/package-services"
 import { NATIONALITY_OPTIONS } from "@/lib/constants"; 
-import { getProxiedImageUrl, cn } from "@/lib/utils";
-import { getAuthToken } from "@/lib/auth";
-import { BACKEND_API_BASE } from "@/lib/config";
-import { useToast } from "@/hooks/use-toast";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { getProxiedImageUrl } from "@/lib/utils";
+import { useAppToast } from "@/hooks/use-app-toast";
+
+// UI Components
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input"; 
+import { Textarea } from "@/components/ui/textarea";
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 type Props = {
-  form: PackageFormData;
-  setForm: (f: PackageFormData | ((prev: PackageFormData) => PackageFormData)) => void;
+  form: UseFormReturn<PackageFormValues>; 
   onNext: () => void;
 };
 
-interface ImageOption{
-  id : string;
-  name : string;
-  url : string;
-}
+interface ImageOption{ id : string; name : string; url : string; }
 
 const convertDateForSubmission = (date: Date): string => {
-  if (!date) return "";
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
 
-
-const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
-  const { toast } = useToast();
+const PackageFormStep1: React.FC<Props> = ({ form, onNext }) => {
+  const toast = useAppToast();
+  
+  // Local UI State
   const [ageOptions, setAgeOptions] = useState<{ value: string; label: string }[]>([]);
   const [imageOptions, setImageOptions] = useState<ImageOption[]>([]);
+  
   const [loadingAges, setLoadingAges] = useState(false);
   const [loadingImages, setLoadingImages] = useState(false);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isImageDropdownOpen, setIsImageDropdownOpen] = useState(false);
   const [imageSearchQuery, setImageSearchQuery] = useState("");
+  
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [showErrors, setShowErrors] = useState(false);
 
-  // Fetch Age Categories using service
   useEffect(() => {
     const fetchCreationData = async () => {
       setLoadingAges(true);
@@ -58,337 +57,259 @@ const PackageFormStep1: React.FC<Props> = ({ form, setForm, onNext }) => {
             value: c.ageCode || c.displayText, 
             label: `${c.displayText}${c.description ? ` (${c.description})` : ""}`
         })));
-      } catch (err) { 
-        console.error("Failed to load age categories", err); 
-        toast({ title: "Error", description: "Failed to load form data", variant: "destructive" });
-      } finally { 
-        setLoadingAges(false); 
-      }
+      } catch (err) { console.error(err); } finally { setLoadingAges(false); }
     };
     fetchCreationData();
-  }, [toast]);
+  }, []);
 
-  // Fetch Images using Service
   useEffect(() => {
     const fetchImages = async () => {
       setLoadingImages(true);
       try {
-        const { images } = await packageService.searchImages(1, 100); // Fetch top 100
+        const { images } = await packageService.searchImages(1, 100); 
         const mappedImages = images.map((img: any) => ({
-             id: String(img.imageID), 
-             name: img.fileName || "Untitled Image",
-             url: getProxiedImageUrl(img.imgUrl) 
+             id: String(img.imageID), name: img.fileName || "Untitled", url: getProxiedImageUrl(img.imgUrl) 
         }));
         setImageOptions(mappedImages);
-      } catch (err) { 
-        console.error("Failed to load images", err); 
-      } finally { 
-        setLoadingImages(false); 
-      }
+      } catch (err) { console.error(err); } finally { setLoadingImages(false); }
     };
     fetchImages();
   }, []);
 
-  //  Handle Image Selection & Preview
+  const currentImageID = form.watch("imageID");
+
   useEffect(() => {
     let objectUrl: string | null = null;
-
-    if (form.imageID instanceof File) {
-        objectUrl = URL.createObjectURL(form.imageID);
+    if (currentImageID instanceof File) {
+        objectUrl = URL.createObjectURL(currentImageID);
         setImagePreviewUrl(objectUrl);
-        setImageSearchQuery(form.imageID.name);
-    } else if (typeof form.imageID === "string" && form.imageID) {
-      const selectedImg = imageOptions.find(i => i.id === form.imageID);
+        setImageSearchQuery(currentImageID.name);
+    } else if (typeof currentImageID === "string" && currentImageID) {
+      const selectedImg = imageOptions.find(i => i.id === currentImageID);
       if (selectedImg) {
         setImagePreviewUrl(selectedImg.url);
         if (!imageSearchQuery) setImageSearchQuery(selectedImg.name);
       } else {
-        setImagePreviewUrl(getProxiedImageUrl(form.imageID));
+        setImagePreviewUrl(getProxiedImageUrl(currentImageID));
       }
     } else {
       setImagePreviewUrl(null);
       setImageSearchQuery("");
     }
-    return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-  };
-  }, [form.imageID, imageOptions]);
-
-  // Click Outside for Image Dropdown
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsImageDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [currentImageID, imageOptions]);
 
   const handleSelectImage = (image: ImageOption) => {
-    setForm({ ...form, imageID: image.id, imageUrl: image.url }); 
+    form.setValue("imageID", image.id, { shouldValidate: true });
+    form.setValue("imageUrl", image.url); 
     setIsImageDropdownOpen(false);
   };
 
   const handleRemoveImage = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    setForm(prev => ({ ...prev, imageID: null, imageUrl: undefined }));
+    form.setValue("imageID", null, { shouldValidate: true });
+    form.setValue("imageUrl", undefined);
     setImagePreviewUrl(null);
-    setIsImageDropdownOpen(true);
   };
 
-  const filteredImages = imageOptions.filter(img => 
-    img.name.toLowerCase().includes(imageSearchQuery.toLowerCase())
-  );
-
-  const handleNextClick = () => {
-      setShowErrors(true);
-      const requiredFields = ["packageName", "packageType", "nationality", "ageCategory", "effectiveDate", "lastValidDate", "dayPass", "tpremark"];
-      const missing = requiredFields.some(field => !form[field as keyof PackageFormData]);
-
-      if (missing) {
-          toast({
-              title: "Missing Information",
-              description: `Please fill in all required fields marked with *.`,
-              variant: "destructive"
-          });
-          return;
-      }
-      const isPast = (dateStr: string) => {
-        if (!dateStr) return false;
-        const d = new Date(dateStr); d.setHours(0,0,0,0);
-        const today = new Date(); today.setHours(0,0,0,0);
-        return d < today;
-      };
-
-      if (isPast(form.effectiveDate) || isPast(form.lastValidDate)) {
-          toast({ title: "Invalid Date", description: "Dates cannot be in the past.", variant: "destructive" });
-          return;
-      }
-      onNext();
-  };
-
-  const handleDateChange = (field: "effectiveDate" | "lastValidDate", date: Date | undefined) => {
-    setForm((prev) => ({ ...prev, [field]: date ? convertDateForSubmission(date) : "" }));
-  };
-
-  // Helper for Input Styling with Validation State
-  const getInputClass = (value: string | null | undefined) => {
-    const isInvalid = showErrors && (!value || value.trim() === "");
-    return cn(
-        "h-9 transition-all",
-        isInvalid && "border-red-500 focus-visible:ring-red-500/50"
-    );
-  };
+  const filteredImages = imageOptions.filter(img => img.name.toLowerCase().includes(imageSearchQuery.toLowerCase()));
 
   return (
-    <div className="flex-1 text-foreground">
+    <div className="flex-1 text-foreground pb-20 md:pb-0">
       <h2 className="text-2xl font-bold mb-4 text-foreground dark:text-white">1. Package Details</h2>
       <div className="border-b border-border dark:border-white/10 mb-6" />
 
-      <div className="grid grid-cols-2 gap-8">
+      {/* MOBILE FIX: Changed grid-cols-2 to grid-cols-1 md:grid-cols-2 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
         
-        {/* PACKAGE NAME */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-foreground/80 dark:text-gray-300">Package Name <span className="text-red-500">*</span></label>
-          <input 
-            type="text" 
-            value={form.packageName} 
-            onChange={(e) => setForm({ ...form, packageName: e.target.value })} 
-            className={`w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm outline-none focus:ring-2 focus:ring-indigo-500 ${getInputClass(form.packageName)}`}
-            placeholder="Enter package name" 
-          />
-          {showErrors && !form.packageName && <p className="text-[10px] text-red-500 flex items-center gap-1"><AlertCircle size={10}/> Required</p>}
-        </div>
+        <FormField control={form.control} name="packageName" render={({ field }) => (
+            <FormItem>
+                <FormLabel>Package Name <span className="text-red-500">*</span></FormLabel>
+                <FormControl><Input {...field} placeholder="Enter package name" /></FormControl>
+                <FormMessage />
+            </FormItem>
+        )} />
 
-        {/* PACKAGE TYPE (SHADCN SELECT) */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-foreground/80 dark:text-gray-300">Package Type <span className="text-red-500">*</span></label>
-          <Select value={form.packageType} onValueChange={(val) => setForm({...form, packageType: val})}>
-            <SelectTrigger className={getInputClass(form.packageType)}>
-                <SelectValue placeholder="Select Type" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="Entry">Entry</SelectItem>
-                <SelectItem value="Point">Point</SelectItem>
-                <SelectItem value="RewardP">Reward Point</SelectItem>
-            </SelectContent>
-          </Select>
-          {showErrors && !form.packageType && <p className="text-[10px] text-red-500 flex items-center gap-1"><AlertCircle size={10}/> Required</p>}
-        </div>
+        <FormField control={form.control} name="packageType" render={({ field }) => (
+            <FormItem>
+                <FormLabel>Package Type <span className="text-red-500">*</span></FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Select Type" /></SelectTrigger></FormControl>
+                    <SelectContent>
+                        <SelectItem value="Entry">Entry</SelectItem>
+                        <SelectItem value="Point">Point</SelectItem>
+                        <SelectItem value="RewardP">Reward Point</SelectItem>
+                    </SelectContent>
+                </Select>
+                <FormMessage />
+            </FormItem>
+        )} />
 
-        {/* NATIONALITY (SHADCN SELECT) */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-foreground/80 dark:text-gray-300">Nationality <span className="text-red-500">*</span></label>
-          <Select value={form.nationality} onValueChange={(val) => setForm({...form, nationality: val})}>
-            <SelectTrigger className={getInputClass(form.nationality)}>
-                <SelectValue placeholder="Select Nationality" />
-            </SelectTrigger>
-            <SelectContent>
-                {NATIONALITY_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-          {showErrors && !form.nationality && <p className="text-[10px] text-red-500 flex items-center gap-1"><AlertCircle size={10}/> Required</p>}
-        </div>
+        <FormField control={form.control} name="nationality" render={({ field }) => (
+            <FormItem>
+                <FormLabel>Nationality <span className="text-red-500">*</span></FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Select Nationality" /></SelectTrigger></FormControl>
+                    <SelectContent>
+                        {NATIONALITY_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <FormMessage />
+            </FormItem>
+        )} />
 
-        {/* AGE CATEGORY (SHADCN SELECT) */}
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-foreground/80 dark:text-gray-300">Age Category <span className="text-red-500">*</span></label>
-            {loadingAges && <Loader2 className="h-3 w-3 animate-spin text-indigo-600" />}
-          </div>
-          <Select value={form.ageCategory} onValueChange={(val) => setForm({...form, ageCategory: val})} disabled={loadingAges}>
-            <SelectTrigger className={getInputClass(form.ageCategory)}>
-                <SelectValue placeholder={loadingAges ? "Loading..." : "Select Age Category"} />
-            </SelectTrigger>
-            <SelectContent>
-                {ageOptions.map((opt, idx) => (
-                    <SelectItem key={idx} value={opt.value}>{opt.label}</SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-          {showErrors && !form.ageCategory && <p className="text-[10px] text-red-500 flex items-center gap-1"><AlertCircle size={10}/> Required</p>}
-        </div>
+        <FormField control={form.control} name="ageCategory" render={({ field }) => (
+            <FormItem>
+                <div className="flex items-center gap-2">
+                    <FormLabel>Age Category <span className="text-red-500">*</span></FormLabel>
+                    {loadingAges && <Loader2 className="h-3 w-3 animate-spin" />}
+                </div>
+                <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value} disabled={loadingAges}>
+                    <FormControl><SelectTrigger><SelectValue placeholder={loadingAges ? "Loading..." : "Select Age Category"} /></SelectTrigger></FormControl>
+                    <SelectContent>
+                        {ageOptions.map((opt, idx) => (
+                            <SelectItem key={idx} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <FormMessage />
+            </FormItem>
+        )} />
 
-        {/* EFFECTIVE DATE */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-foreground/80 dark:text-gray-300">Effective Date <span className="text-red-500">*</span></label>
-          <DatePicker
-            date={form.effectiveDate ? new Date(form.effectiveDate) : undefined}
-            setDate={(date) => handleDateChange("effectiveDate", date)}
-            placeholder="Select Date"
-            minDate={new Date()}
-            className={getInputClass(form.effectiveDate)}
-          />
-          {showErrors && !form.effectiveDate && <p className="text-[10px] text-red-500 flex items-center gap-1"><AlertCircle size={10}/> Required</p>}
-        </div>
+        <FormField control={form.control} name="effectiveDate" render={({ field }) => (
+            <FormItem>
+                <FormLabel>Effective Date <span className="text-red-500">*</span></FormLabel>
+                <FormControl>
+                    <DatePicker 
+                        date={field.value ? new Date(field.value) : undefined} 
+                        setDate={(date) => field.onChange(date ? convertDateForSubmission(date) : "")} 
+                        placeholder="Select Date"
+                        minDate={new Date()}
+                    />
+                </FormControl>
+                <FormMessage />
+            </FormItem>
+        )} />
 
-        {/* LAST VALID DATE */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-foreground/80 dark:text-gray-300">Last Valid Date <span className="text-red-500">*</span></label>
-          <DatePicker
-            date={form.lastValidDate ? new Date(form.lastValidDate) : undefined}
-            setDate={(date) => handleDateChange("lastValidDate", date)}
-            placeholder="Select Date"
-            minDate={form.effectiveDate ? new Date(form.effectiveDate) : new Date()}
-            className={getInputClass(form.lastValidDate)}
-          />
-          {showErrors && !form.lastValidDate && <p className="text-[10px] text-red-500 flex items-center gap-1"><AlertCircle size={10}/> Required</p>}
-        </div>
+        <FormField control={form.control} name="lastValidDate" render={({ field }) => (
+            <FormItem>
+                <FormLabel>Last Valid Date <span className="text-red-500">*</span></FormLabel>
+                <FormControl>
+                    <DatePicker 
+                        date={field.value ? new Date(field.value) : undefined} 
+                        setDate={(date) => field.onChange(date ? convertDateForSubmission(date) : "")} 
+                        placeholder="Select Date"
+                        minDate={form.getValues("effectiveDate") ? new Date(form.getValues("effectiveDate")) : new Date()}
+                    />
+                </FormControl>
+                <FormMessage />
+            </FormItem>
+        )} />
 
-        {/* DAY PASS */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-foreground/80 dark:text-gray-300">Day Pass <span className="text-red-500">*</span></label>
-          <input 
-            type="text" 
-            value={form.dayPass || ""} 
-            onChange={(e) => setForm({ ...form, dayPass: e.target.value })} 
-            className={`w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm outline-none focus:ring-2 focus:ring-indigo-500 ${getInputClass(form.dayPass)}`} 
-            placeholder="e.g. 1 Day" 
-          />
-          {showErrors && !form.dayPass && <p className="text-[10px] text-red-500 flex items-center gap-1"><AlertCircle size={10}/> Required</p>}
-        </div>
+        <FormField control={form.control} name="dayPass" render={({ field }) => (
+            <FormItem>
+                <FormLabel>Day Pass</FormLabel>
+                <FormControl><Input {...field} placeholder="e.g. 1 Day" /></FormControl>
+                <FormMessage />
+            </FormItem>
+        )} />
 
-        {/* IMAGE DROPDOWN (Custom Searchable) */}
-        <div className="col-span-2 space-y-1" ref={dropdownRef}>
-          <label className="text-sm font-medium text-foreground/80 dark:text-gray-300">Package Image</label>
-          <div className="relative">
-             <div className="relative">
-                <input 
-                    type="text"
-                    value={imageSearchQuery}
-                    onChange={(e) => {
-                        setImageSearchQuery(e.target.value);
-                        setIsImageDropdownOpen(true);
-                    }}
-                    onFocus={() => setIsImageDropdownOpen(true)}
-                    placeholder="Search image database..."
-                    className="w-full rounded-md border border-input bg-background pl-10 pr-10 py-2 text-sm shadow-sm outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <Search className="absolute left-3 top-2.5 text-muted-foreground pointer-events-none" size={18} />
-                {loadingImages ? (
-                   <Loader2 className="absolute right-3 top-2.5 text-indigo-500 animate-spin" size={18} />
-                ) : (
-                   <ChevronDown className={`absolute right-3 top-2.5 text-muted-foreground pointer-events-none transition-transform ${isImageDropdownOpen ? "rotate-180" : ""}`} size={18} />
-                )}
-            </div>
-
-            {isImageDropdownOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+        {/* IMAGE DROPDOWN - Spans full width on mobile/desktop */}
+        <div className="md:col-span-2 space-y-2" ref={dropdownRef}>
+            <FormLabel>Package Image <span className="text-red-500">*</span></FormLabel>
+            <div className="relative">
+                <div className="relative">
+                    <Input 
+                        type="text"
+                        value={imageSearchQuery}
+                        onChange={(e) => {
+                            setImageSearchQuery(e.target.value);
+                            setIsImageDropdownOpen(true);
+                        }}
+                        onFocus={() => setIsImageDropdownOpen(true)}
+                        placeholder="Search image database..."
+                        className="pl-10"
+                    />
+                    <Search className="absolute left-3 top-2.5 text-muted-foreground pointer-events-none" size={18} />
                     {loadingImages ? (
-                        <div className="p-4 text-center text-sm text-muted-foreground flex flex-col items-center gap-2"><Loader2 className="h-5 w-5 animate-spin" /><span>Loading images...</span></div>
-                    ) : filteredImages.length === 0 ? (
-                        <div className="p-4 text-center text-sm text-muted-foreground">No images found.</div>
+                        <Loader2 className="absolute right-3 top-2.5 text-indigo-500 animate-spin" size={18} />
                     ) : (
-                        filteredImages.map((img) => (
-                            <div key={img.id} onClick={() => handleSelectImage(img)} className="flex items-center gap-3 p-2 hover:bg-accent cursor-pointer border-b last:border-0 transition-colors">
-                                <HoverCard openDelay={200} closeDelay={100}>
-                                    <HoverCardTrigger asChild>
-                                        <img src={img.url} alt={img.name} className="w-10 h-10 rounded object-cover border" />
-                                    </HoverCardTrigger>
-                                    <HoverCardContent className="w-64 p-0 border-none bg-transparent shadow-none" side="right" align="start" sideOffset={20}>
-                                        <div className="relative rounded-lg overflow-hidden shadow-2xl border-2 border-white dark:border-gray-600">
-                                            <img src={img.url} alt={img.name} className="w-full h-auto object-cover bg-black" />
-                                        </div>
-                                    </HoverCardContent>
-                                </HoverCard>
-                                <span className="text-sm flex-1 truncate">{img.name}</span>
-                                {form.imageID === img.id && <Check size={16} className="text-indigo-600" />}
-                            </div>
-                        ))
+                        <ChevronDown className={`absolute right-3 top-2.5 text-muted-foreground pointer-events-none transition-transform ${isImageDropdownOpen ? "rotate-180" : ""}`} size={18} />
                     )}
                 </div>
-            )}
-          </div>
-          {imagePreviewUrl && (
-             <div className="flex items-start gap-4 p-3 bg-muted/50 border rounded-lg mt-2">
-                <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-                    <DialogTrigger asChild>
-                        <div className="relative group cursor-zoom-in">
-                            <img src={imagePreviewUrl} alt="Selected" className="w-24 h-24 object-cover rounded-md border bg-background" />
-                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity rounded-md flex items-center justify-center">
-                                <Eye className="text-white w-6 h-6 drop-shadow-md" />
-                            </div>
-                        </div>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-3xl w-auto p-0 bg-transparent border-none shadow-none">
-                        <DialogTitle className="sr-only">Image Preview</DialogTitle>
-                        <img src={imagePreviewUrl} alt="Preview" className="w-full h-auto max-h-[80vh] object-contain rounded-lg shadow-2xl" />
-                    </DialogContent>
-                </Dialog>
-                <div className="flex flex-col justify-between h-24 py-1">
-                    <div>
-                        <p className="text-sm font-semibold">Selected Image</p>
-                        <p className="text-xs text-muted-foreground mt-1 truncate max-w-[200px]">
-                            {imageOptions.find(i => i.id === form.imageID)?.name || "Custom Image"}
-                        </p>
+
+                {isImageDropdownOpen && (
+                    <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+                        {loadingImages ? (
+                            <div className="p-4 text-center text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></div>
+                        ) : filteredImages.length === 0 ? (
+                            <div className="p-4 text-center text-sm text-muted-foreground">No images found.</div>
+                        ) : (
+                            filteredImages.map((img) => (
+                                <div key={img.id} onClick={() => handleSelectImage(img)} className="flex items-center gap-3 p-2 hover:bg-accent cursor-pointer border-b last:border-0">
+                                    <img src={img.url} alt={img.name} className="w-10 h-10 rounded object-cover border" />
+                                    <span className="text-sm flex-1 truncate">{img.name}</span>
+                                    {currentImageID === img.id && <Check size={16} className="text-indigo-600" />}
+                                </div>
+                            ))
+                        )}
                     </div>
-                    <button type="button" onClick={handleRemoveImage} className="text-xs flex items-center gap-1 text-red-600 hover:underline">
-                        <X size={14} /> Remove
-                    </button>
+                )}
+            </div>
+            
+            <FormField control={form.control} name="imageID" render={() => <FormMessage />} />
+
+            {imagePreviewUrl && (
+                <div className="flex items-start gap-4 p-3 bg-muted/50 border rounded-lg mt-2">
+                    <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+                        <DialogTrigger asChild>
+                            <div className="relative group cursor-zoom-in flex-shrink-0">
+                                <img src={imagePreviewUrl} alt="Selected" className="w-24 h-24 object-cover rounded-md border bg-background" />
+                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity rounded-md flex items-center justify-center">
+                                    <Eye className="text-white w-6 h-6" />
+                                </div>
+                            </div>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-3xl w-auto p-0 bg-transparent border-none">
+                            <DialogTitle className="sr-only">Image Preview</DialogTitle> 
+                            <img src={imagePreviewUrl} alt="Preview" className="w-full h-auto max-h-[80vh] rounded-lg shadow-2xl" />
+                        </DialogContent>
+                    </Dialog>
+                    <div className="flex flex-col justify-between h-24 py-1 min-w-0">
+                        <div>
+                            <p className="text-sm font-semibold">Selected Image</p>
+                            <p className="text-xs text-muted-foreground mt-1 truncate">
+                                {imageOptions.find(i => i.id === currentImageID)?.name || "Custom Upload"}
+                            </p>
+                        </div>
+                        <button type="button" onClick={handleRemoveImage} className="text-xs flex items-center gap-1 text-red-600 hover:underline">
+                            <X size={14} /> Remove
+                        </button>
+                    </div>
                 </div>
-             </div>
-          )}
+            )}
         </div>
 
-        {/* REMARK */}
-        <div className="col-span-2 space-y-1">
-          <label className="text-sm font-medium text-foreground/80 dark:text-gray-300">Remark <span className="text-red-500">*</span></label>
-          <textarea 
-            value={form.tpremark || ""} 
-            onChange={(e) => setForm({ ...form, tpremark: e.target.value })} 
-            className={`w-full rounded-md border bg-background px-3 py-2 text-sm shadow-sm outline-none focus:ring-2 focus:ring-indigo-500 resize-none ${getInputClass(form.tpremark)}`} 
-            rows={3} 
-            placeholder="Add remarks" 
-          />
-          {showErrors && !form.tpremark && <p className="text-[10px] text-red-500 flex items-center gap-1"><AlertCircle size={10}/> Required</p>}
+        {/* REMARK - Full Width */}
+        <div className="md:col-span-2">
+            <FormField control={form.control} name="tpremark" render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Remark <span className="text-red-500">*</span></FormLabel>
+                    <FormControl>
+                        <Textarea {...field} className="resize-none" rows={3} placeholder="Add remarks" />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            )} />
         </div>
       </div>
 
       <div className="mt-8 flex justify-end">
-        <button onClick={handleNextClick} className="px-6 py-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-700 transition shadow-md font-medium">Next</button>
+        <button onClick={onNext} className="w-full md:w-auto px-6 py-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-700 transition shadow-md font-medium">
+            Next
+        </button>
       </div>
     </div>
   );

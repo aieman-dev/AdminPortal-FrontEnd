@@ -7,12 +7,14 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, Loader2, UserPlus, User, Eye, EyeOff } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
 import { STAFF_ROLES } from "@/lib/constants"
 import { staffService } from "@/services/staff-services"
 import { type SearchedUser } from "@/type/staff"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { DatePicker } from "@/components/ui/date-picker" 
+import { addMonths, addYears } from "date-fns"
 
 interface StaffAccountModalProps {
   isOpen: boolean
@@ -22,7 +24,7 @@ interface StaffAccountModalProps {
 }
 
 export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAccountModalProps) {
-  const { toast } = useToast()
+  const toast = useAppToast()
   
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<SearchedUser[]>([])
@@ -35,6 +37,9 @@ export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAcco
   const [isSearching, setIsSearching] = useState(false)
   const [isAssigning, setIsAssigning] = useState(false)
 
+  const [durationMode, setDurationMode] = useState("permanent")
+  const [expiryDate, setExpiryDate] = useState<Date | undefined>(undefined)
+
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     
@@ -46,30 +51,45 @@ export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAcco
       const results = await staffService.searchUsers(searchQuery);
       setSearchResults(results);
       if (results.length === 0) {
-        toast({ description: "No users found matching your query." })
+        toast.info( "No users found matching your query." )
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to search users.", variant: "destructive" })
+      toast.error("Error", "Failed to search users.")
     } finally {
       setIsSearching(false)
     }
   }
 
+  const handleDurationChange = (value: string) => {
+      setDurationMode(value);
+      const today = new Date();
+
+      switch (value) {
+          case "3_months": setExpiryDate(addMonths(today, 3)); break;
+          case "6_months": setExpiryDate(addMonths(today, 6)); break;
+          case "1_year": setExpiryDate(addYears(today, 1)); break;
+          case "2_years": setExpiryDate(addYears(today, 2)); break;
+          case "permanent": setExpiryDate(undefined); break; 
+          case "custom": setExpiryDate(undefined); break; 
+      }
+  };
+
   const handleAssign = async () => {
     if (!selectedUser || !selectedRole || !password) {
-      toast({ title: "Incomplete", description: "Please select a user, a role, and enter a password.", variant: "destructive" })
+      toast.error("Incomplete", "Please select a user, a role, and enter a password.")
       return
+    }
+
+    if (durationMode === 'custom' && !expiryDate) {
+        toast.error("Date Required", "Please select an expiry date.")
+        return
     }
 
     setIsAssigning(true)
     try {
-      await staffService.assignRole(selectedUser.accId, selectedRole, password);
+      await staffService.assignRole(selectedUser.accId, selectedRole, password, expiryDate);
       
-      toast({ 
-        title: "Success", 
-        description: `Role assigned to ${selectedUser.fullName || selectedUser.email}.`,
-        variant: "success"
-      })
+      toast.success( "Success", `Role assigned to ${selectedUser.fullName || selectedUser.email}.`)
       
       onSuccess()
       onOpenChange(false)
@@ -80,13 +100,11 @@ export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAcco
       setSelectedUser(null)
       setSelectedRole("")
       setPassword("")
+      setDurationMode("permanent") 
+      setExpiryDate(undefined)
       
     } catch (error) {
-      toast({ 
-        title: "Assignment Failed", 
-        description: error instanceof Error ? error.message : "Could not assign role.", 
-        variant: "destructive" 
-      })
+      toast.error( "Assignment Failed",  error instanceof Error ? error.message : "Could not assign role.")
     } finally {
       setIsAssigning(false)
     }
@@ -210,10 +228,39 @@ export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAcco
                         </button>
                     </div>
                   </div>
+
+                  {/* DURATION SELECTOR (NEW) */}
+                  <div className="space-y-2">
+                    <Label>Employment Duration</Label>
+                    <Select onValueChange={handleDurationChange} value={durationMode}>
+                      <SelectTrigger className="h-10"><SelectValue placeholder="Select Duration" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="permanent">Permanent (No Expiry)</SelectItem>
+                        <SelectItem value="3_months">3 Months (Internship)</SelectItem>
+                        <SelectItem value="6_months">6 Months (Probation)</SelectItem>
+                        <SelectItem value="1_year">1 Year (Contract)</SelectItem>
+                        <SelectItem value="2_years">2 Years (Contract)</SelectItem>
+                        <SelectItem value="custom">Custom Date...</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* EXPIRY DATE PICKER (Shows calculated date or allows custom pick) */}
+                  <div className="space-y-2">
+                    <Label>Expiry Date {durationMode === 'permanent' && <span className="text-muted-foreground font-normal text-xs">(Optional)</span>}</Label>
+                    <DatePicker 
+                        date={expiryDate} 
+                        setDate={setExpiryDate} 
+                        disabled={durationMode !== 'custom'} // Disable unless custom mode
+                        placeholder={durationMode === 'permanent' ? "Indefinite" : "Pick date"}
+                        className="h-10 w-full"
+                    />
+                  </div>
               </div>
             </div>
           )}
         </div>
+              
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isAssigning}>

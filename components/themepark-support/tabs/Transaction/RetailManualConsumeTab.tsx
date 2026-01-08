@@ -18,16 +18,18 @@ import {
   type RetailItem,
 } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
 import { TerminalSelector } from "@/components/themepark-support/it-poswf/terminal-selector"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
 import { formatCurrency } from "@/lib/formatter"
-import { PaginationControls } from "@/components/ui/pagination-controls" // Import Pagination
+import { CONSUME_TYPES, TERMINAL_GROUPS } from "@/lib/constants"
+import { PaginationControls } from "@/components/ui/pagination-controls" 
+import { usePagination } from "@/hooks/use-pagination"
 
 type Step = 'selection' | 'confirmation';
 
 export default function RetailManualConsumeTab() {
-  const { toast } = useToast()
+  const toast = useAppToast()
   const [currentStep, setCurrentStep] = useState<Step>('selection');
 
   // Search State
@@ -44,8 +46,7 @@ export default function RetailManualConsumeTab() {
   const [quantities, setQuantities] = useState<Record<string, number>>({}) 
   
   // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const pager = usePagination({ pageSize: 10 });
 
   const [isConsumeSearching, setIsConsumeSearching] = useState(false)
   const [isExecuting, setIsExecuting] = useState(false)
@@ -68,14 +69,14 @@ export default function RetailManualConsumeTab() {
     if (isReceipt && !invoiceNo.trim()) missingFields.push("Invoice No");
 
     if (missingFields.length > 0) {
-        toast({ title: "Input Required", description: `Missing: ${missingFields.join(", ")}`, variant: "default" });
+        toast.info("Input Required",`Missing: ${missingFields.join(", ")}`);
         return;
     }
     
     setIsConsumeSearching(true);
     setConsumeSearchResult(null);
     setQuantities({}); 
-    setCurrentPage(1); 
+    pager.reset(); 
     setCurrentStep('selection');
 
     const searchPayload: RetailManualConsumeSearchPayload = {
@@ -97,19 +98,19 @@ export default function RetailManualConsumeTab() {
                  return;
             }
             if (isSuperApp && !response.data.accID) {
-                 toast({ title: "Account Data Missing", description: "Account ID missing.", variant: "destructive" });
+                 toast.error("Account Data Missing", "Account ID missing.");
                 setConsumeSearchResult(null);
                 return;
             }
             setConsumeSearchResult(response.data);
-            toast({ title: "Items Loaded", description: `Found ${response.data.items.length} items.` });
+            toast.success("Items Loaded", `Found ${response.data.items.length} items.`);
         } else {
             setConsumeSearchResult(null);
-            toast({ title: "Search Failed", description: response.error || "No items found.", variant: "destructive" });
+            toast.error("Search Failed", response.error || "No items found.");
         }
     } catch (error) {
         console.error("Search Error:", error);
-        toast({ title: "Error", description: "Search failed.", variant: "destructive" });
+        toast.error("Error", "Search failed.");
     } finally {
         setIsConsumeSearching(false);
     }
@@ -127,7 +128,7 @@ export default function RetailManualConsumeTab() {
   const handleNextStep = () => {
       const totalSelected = Object.values(quantities).reduce((a, b) => a + b, 0);
       if (totalSelected === 0) {
-          toast({ title: "Cart Empty", description: "Select at least one item.", variant: "default" });
+          toast.info("Cart Empty","Select at least one item.");
           return;
       }
       setCurrentStep('confirmation');
@@ -153,7 +154,7 @@ export default function RetailManualConsumeTab() {
     const totalAmount = mappedItems.reduce((sum, item) => sum + item.amount, 0);
 
     if (consumeSearchResult.creditBalance < totalAmount) {
-         toast({ title: "Insufficient Balance", description: "Credit balance too low.", variant: "destructive" });
+         toast.error("Insufficient Balance", "Credit balance too low.");
         return;
     }
 
@@ -181,12 +182,12 @@ export default function RetailManualConsumeTab() {
             setEmail("");
             setInvoiceNo("");
             setCurrentStep('selection');
-            toast({ title: "Success", description: `Invoice: ${response.data?.invoiceNo}`, variant: "default" });
+            toast.success("Success", `Invoice: ${response.data?.invoiceNo}`);
         } else {
             throw new Error(response.error || "Consumption failed.");
         }
     } catch (error) {
-        toast({ title: "Failed", description: error instanceof Error ? error.message : "Error.", variant: "destructive" });
+        toast.error("Failed", error instanceof Error ? error.message : "Error.");
     } finally {
         setIsExecuting(false);
     }
@@ -199,14 +200,14 @@ export default function RetailManualConsumeTab() {
 
   const paginatedItems = useMemo(() => {
       if (!consumeSearchResult) return [];
-      const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-      return consumeSearchResult.items.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [consumeSearchResult, currentPage]);
+      const startIndex = (pager.currentPage - 1) * pager.pageSize;
+      return consumeSearchResult.items.slice(startIndex, startIndex + pager.pageSize);
+  }, [consumeSearchResult, pager.currentPage]);
 
-  const totalPages = consumeSearchResult ? Math.ceil(consumeSearchResult.items.length / ITEMS_PER_PAGE) : 0;
+  const totalPages = consumeSearchResult ? Math.ceil(consumeSearchResult.items.length / pager.pageSize) : 0;
 
   const retailItemColumns: TableColumn<RetailItem>[] = [
-    { header: "Item Details", accessor: "itemName", className: "pl-6 w-[40%]", cell: (value: any, row: RetailItem) => (
+    { header: "Item Details", accessor: "itemName", className: "pl-6 w-[40%]", cell: (value, row: RetailItem) => (
         <div className="flex flex-col gap-1">
             <span className="font-medium text-foreground">{value}</span>
             <div className="flex gap-2 text-xs text-muted-foreground mt-0.5">
@@ -215,10 +216,10 @@ export default function RetailManualConsumeTab() {
             </div>
         </div>
     )},
-    { header: "Category", accessor: "categoryCode", cell: (value: any) => (
+    { header: "Category", accessor: "categoryCode", cell: (value) => (
         <Badge variant="outline" className="text-[10px] h-5 w-24 justify-center truncate">{value}</Badge>
     )},
-    { header: "Unit Price", accessor: "unitPrice", className: "text-right font-medium", cell: (value: any) => formatCurrency(value) },
+    { header: "Unit Price", accessor: "unitPrice", className: "text-right font-medium", cell: (value) => formatCurrency(value) },
     { header: "Quantity", accessor: "id", className: "text-center", cell: (_: any, row: RetailItem) => {
         const qty = quantities[row.id] || 0;
         return (
@@ -288,11 +289,11 @@ export default function RetailManualConsumeTab() {
                     {totalPages > 1 && (
                         <div className="px-6 pb-4">
                             <PaginationControls 
-                                currentPage={currentPage}
+                                currentPage={pager.currentPage}
                                 totalPages={totalPages}
                                 totalRecords={consumeSearchResult?.items.length}
-                                pageSize={ITEMS_PER_PAGE}
-                                onPageChange={setCurrentPage}
+                                pageSize={pager.pageSize}
+                                onPageChange={pager.setCurrentPage}
                             />
                         </div>
                     )}
@@ -403,8 +404,9 @@ export default function RetailManualConsumeTab() {
                     <Select value={consumeType} onValueChange={setConsumeType}>
                         <SelectTrigger id="consumeType" className="!h-11"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="superapp">By Superapp</SelectItem>
-                            <SelectItem value="receipt">By Receipt</SelectItem>
+                            {CONSUME_TYPES.map((type) => (
+                                <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -431,9 +433,9 @@ export default function RetailManualConsumeTab() {
                      <Select value={tGroupId} onValueChange={setTGroupId}>
                          <SelectTrigger id="tGroupId" className="!h-11"><SelectValue placeholder="Select Group" /></SelectTrigger>
                          <SelectContent>
-                             <SelectItem value="1">1 (I-City)</SelectItem>
-                             <SelectItem value="2">2 (JV Partner)</SelectItem>
-                             <SelectItem value="3">3 (Photo Booth)</SelectItem>
+                             {TERMINAL_GROUPS.map((group) => (
+                                 <SelectItem key={group.value} value={group.value}>{group.label}</SelectItem>
+                             ))}
                          </SelectContent>
                      </Select>
                 </div>

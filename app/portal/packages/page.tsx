@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Search, PackageX, Send, Loader2 } from "lucide-react"; // Removed AlertTriangle
+import { Plus, Trash2, Search, PackageX, Send, Loader2 } from "lucide-react"; 
 import PackageFilters from "@/components/PackageFilters";
-import { ConfirmationModal } from '@/components/PackageModals'; // We only need this one
+import { ConfirmationModal } from '@/components/PackageModals';
 import PackageCard from "@/components/PackageCard";
 import { packageService } from "@/services/package-services"; 
 import { Package } from "@/type/packages"; 
@@ -12,10 +12,11 @@ import { useAuth } from "@/hooks/use-auth";
 import { canCreatePackage } from "@/lib/auth"; 
 import { getProxiedImageUrl } from "@/lib/utils"; 
 import { formatDate } from "@/lib/formatter";
-import { useToast } from "@/hooks/use-toast";
+import { useAppToast } from "@/hooks/use-app-toast";
+import { useDebounce } from "@/hooks/use-debounce";
 import { Button } from "@/components/ui/button"; 
 import { EmptyState } from "@/components/portal/empty-state";
-import { LoaderState } from "@/components/ui/loader-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 
 interface PackageListItem {
@@ -36,9 +37,31 @@ interface PackageListItem {
 // 1. Define types for our dynamic action state
 type ActionType = 'SUBMIT' | 'DELETE' | null;
 
+const PackageSkeletons = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 mt-4">
+      {Array.from({ length: 12 }).map((_, i) => (
+        <div key={i} className="flex flex-col bg-card rounded-xl border p-0 overflow-hidden h-[300px]">
+          <Skeleton className="h-32 w-full rounded-none" />
+          <div className="p-3 flex-1 flex flex-col gap-2">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-6 w-1/2" />
+            <div className="flex gap-2 mt-2">
+              <Skeleton className="h-5 w-16 rounded-full" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+            <div className="mt-auto border-t pt-2 flex justify-between">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-12" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
 export default function PackagesPage() {
   const { user } = useAuth();
-  const { toast } = useToast();
+  const toast = useAppToast();
   const router = useRouter();
 
   const defaultFilter = "Pending";
@@ -47,6 +70,9 @@ export default function PackagesPage() {
   
   const [activeFilter, setActiveFilter] = useState(defaultFilter);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const debouncedSearch = useDebounce(searchQuery, 500);
+
   const [packageTypeFilter, setPackageTypeFilter] = useState("All"); 
   const [packages, setPackages] = useState<PackageListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,8 +103,9 @@ export default function PackagesPage() {
     setSelectedPackageIds(new Set());
   }, [activeFilter]);
 
-  const fetchPackages = async () => {
+  const fetchPackages = useCallback(async () => {
       setIsLoading(true);
+      setPackages([]);
       try {
         const startStr = dateRange.start ? dateRange.start.toISOString() : undefined;
         const endStr = dateRange.end ? dateRange.end.toISOString() : undefined;
@@ -112,16 +139,15 @@ export default function PackagesPage() {
         setTotalPages(total);
         setTotalRecords(records);
       } catch (error) {
-        toast({ title: "Error", description: "Failed to load packages.", variant: "destructive" })
+        toast.error("Error", "Failed to load packages.")
       } finally {
         setIsLoading(false);
       }
-  };
+  }, [activeFilter, currentPage, debouncedSearch, dateRange, packageTypeFilter]);
 
   useEffect(() => {
-    const timer = setTimeout(() => { fetchPackages(); }, 500);
-    return () => clearTimeout(timer);
-  }, [activeFilter, currentPage, searchQuery, dateRange, packageTypeFilter]); 
+    fetchPackages();
+  }, [fetchPackages]);
 
   const handleFilterChange = (filter: string) => { setActiveFilter(filter); setCurrentPage(1); };
   const handleSearchChange = (query: string) => { setSearchQuery(query); setCurrentPage(1); };
@@ -148,10 +174,10 @@ export default function PackagesPage() {
     try {
       setIsLoading(true);
       const response = await packageService.duplicatePackage(id);
-      toast({ title: "Package Duplicated", description: `New ID: ${response.newPackageId}. Status: Draft.` });
+      toast.info("Package Duplicated", `New ID: ${response.newPackageId}. Status: Draft.` );
       setActiveFilter("Draft");
     } catch (error) {
-      toast({ title: "Duplication Failed", description: "Failed to duplicate.", variant: "destructive" });
+      toast.error( "Duplication Failed", "Failed to duplicate.");
     } finally {
       setIsLoading(false);
     }
@@ -188,49 +214,30 @@ export default function PackagesPage() {
     try {
         if (type === 'SUBMIT') {
             await packageService.submitDraft(ids);
-            toast({ title: "Submitted", description: `${count} package(s) submitted successfully.`, variant: "success" });
+            toast.success( "Submitted", `${count} package(s) submitted successfully.`);
         } 
         else if (type === 'DELETE') {
             await packageService.bulkDeletePackages(ids);
-            toast({ title: "Deleted", description: `${count} package(s) deleted successfully.` });
+            toast.info( "Deleted", `${count} package(s) deleted successfully.`);
         }
 
-        // Cleanup
         fetchPackages();
-        // Only clear selection if it was a BULK action
         if (!targetId) setSelectedPackageIds(new Set());
         
     } catch (error : any) {
-        console.log("Submit Error Debug:", error); // Keep this to see the structure in console
-
-      // 1. EXTRACT THE MESSAGE SAFELY
-      // We check multiple places where the backend message might be hiding
-      const backendMessage = 
-          error?.response?.data?.content?.message || // Common Axios pattern
-          error?.content?.message ||                 // Your raw JSON pattern
-          error?.message ||                          // Standard Error object
-          "Unknown error occurred"; 
-
-      // 2. CHECK FOR KEYWORDS
-      // We convert to lowercase to make the check case-insensitive
-      const lowerCaseError = String(backendMessage).toLowerCase();
+        console.log("Submit Error Debug:", error); 
+        const cleanMessage = error.message || "An unexpected error occurred.";
+        const lowerCaseError = cleanMessage.toLowerCase();
 
         if (
             lowerCaseError.includes("expired") || 
-            lowerCaseError.includes("Last Valid Date") || 
-            lowerCaseError.includes("not 'Draft'")
+            lowerCaseError.includes("last valid date") || 
+            lowerCaseError.includes("not 'draft'")
         ) {
-            toast({ 
-                title: "Unable to Submit", 
-                description: "Some packages could not be submitted because their 'Last Valid Date' has passed. Please update the dates to a future time and try again.", 
-                variant: "destructive" 
-            });
+            toast.error( "Unable to Submit", 
+                 "Some packages could not be submitted because their 'Last Valid Date' has passed. Please update the dates to a future time and try again.");
         } else {
-            toast({ 
-                title: "Operation Failed", 
-                description: error?.response?.data?.error || "An unexpected error occurred. Please try again.",
-                variant: "destructive" 
-            });
+            toast.error( "Operation Failed", cleanMessage);
         }
         
         console.error("Action Error:", error);
@@ -366,7 +373,7 @@ export default function PackagesPage() {
           )}
 
           {isLoading ? (
-            <LoaderState message="Loading packages..." className="h-auto py-24 border-dashed" />
+            <PackageSkeletons />
           ) : packages.length > 0 ? (
             <>
               <div className="text-sm text-muted-foreground mt-4 mb-2">
@@ -393,7 +400,6 @@ export default function PackagesPage() {
                     onClick={() => handlePackageClick(pkg.id)}
                     onDuplicate={() => handleDuplicate(pkg.id)}
                     onEdit={() => handleEdit(pkg.id)}
-                    // 6. Connect PackageCard Actions
                     onDelete={() => openSingleDelete(pkg.id)}
                     onSubmit={() => openSingleSubmit(pkg.id)}
                   />

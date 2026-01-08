@@ -2,8 +2,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { DivideCircle, Search, Copy } from "lucide-react"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
@@ -11,7 +9,7 @@ import { DataTable, type TableColumn } from "@/components/themepark-support/it-p
 import { formatCurrency } from "@/lib/formatter";
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
 import { packageService } from "@/services/package-services" 
 
 interface SelectableItPoswfPackage {
@@ -26,7 +24,7 @@ interface SelectableItPoswfPackage {
 }
 
 export default function BComparePackageTab() {
-    const { toast } = useToast();
+    const toast = useAppToast();
     const [searchQuery, setSearchQuery] = useState("");
     const [packageType, setPackageType] = useState("all"); 
     const [results, setResults] = useState<SelectableItPoswfPackage[]>([]);
@@ -55,15 +53,15 @@ export default function BComparePackageTab() {
             if (response.success && response.data) {
                 setResults(response.data);
                 if (response.data.length === 0) {
-                    toast({ title: "Search Complete", description: "No unsynced packages found matching the criteria." });
+                    toast.info("Search Complete",  "No unsynced packages found matching the criteria." );
                 }
             } else {
                 setResults([]);
-                toast({ title: "Search Failed", description: response.error || "Could not retrieve packages.", variant: "destructive" });
+                toast.error("Search Failed", response.error || "Could not retrieve packages.");
             }
         } catch (error) {
             console.error("API Search Error:", error);
-            toast({ title: "Network Error", description: "Failed to connect to the package service.", variant: "destructive" });
+            toast.error("Network Error", "Failed to connect to the package service.");
         } finally {
             setIsSearching(false);
         }
@@ -99,7 +97,7 @@ export default function BComparePackageTab() {
 
     const handleSync = async () => {
         if (packagesToSyncCount === 0) {
-            toast({ title: "No Packages Selected", description: "Please select packages to sync.", variant: "default" });
+            toast.info("No Packages Selected", "Please select packages to sync.");
             return;
         }
 
@@ -113,11 +111,7 @@ export default function BComparePackageTab() {
             if (response.success && response.data) {
                 setSelectedIds(new Set());
                 
-                toast({ 
-                    title: "Sync Complete", 
-                    description: response.data.message,
-                    duration: 5000, 
-                });
+                toast.success("Sync Complete", response.data.message);
 
                 await fetchUnsyncedPackages();
             } else {
@@ -125,13 +119,11 @@ export default function BComparePackageTab() {
             }
         } catch (error) {
             console.error("Sync Execute Error:", error);
-            toast({ 
-                title: "Sync Failed", 
-                description: error instanceof Error 
+            toast.error("Sync Failed", 
+                 error instanceof Error 
                     ? error.message.includes("500") ? "Internal Server Error during sync execution." : error.message
                     : "An unexpected error occurred during sync. Check console for details.",
-                variant: "destructive"
-            });
+               );
         } finally {
             setIsSyncing(false);
         }

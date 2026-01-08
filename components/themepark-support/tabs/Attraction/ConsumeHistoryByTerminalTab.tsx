@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
 import { itPoswfService } from "@/services/themepark-support"
 import { type TerminalTransaction} from "@/type/themepark-support"
 import { formatDateTime } from "@/lib/formatter";
@@ -16,7 +16,7 @@ import { DatePicker } from "@/components/ui/date-picker"
 
 
 export default function ConsumeHistoryByTerminalTab() {
-    const { toast } = useToast();
+    const toast= useAppToast();
     
     // -- SIMPLIFIED STATE --
     const [selectedTerminalId, setSelectedTerminalId] = useState<string>("")
@@ -38,11 +38,7 @@ export default function ConsumeHistoryByTerminalTab() {
 
     const handleHistorySearch = async () => {
         if (!selectedTerminalId) {
-            toast({ 
-                title: "Input Required", 
-                description: "Please select a Terminal.", 
-                variant: "default" 
-            });
+            toast.info("Input Required", "Please select a Terminal.");
             return;
         }
 
@@ -57,16 +53,16 @@ export default function ConsumeHistoryByTerminalTab() {
                 setConsumeHistory(response.data.consumeHistory);
                 
                 if (response.data.consumeHistory.length === 0) {
-                     toast({ title: "Search Complete", description: `No consumption history found for this terminal on ${searchDate}.` });
+                     toast.info("Search Complete", `No consumption history found for this terminal on ${searchDate}.`);
                 } else {
-                     toast({ title: "Search Complete", description: "History data retrieved." });
+                     toast.info("Search Complete",  "History data retrieved." );
                 }
             } else {
-                toast({ title: "Search Failed", description: response.error || "Could not retrieve history.", variant: "destructive" });
+                toast.error("Search Failed", response.error || "Could not retrieve history.");
             }
         } catch (error) {
             console.error("History Search Error:", error);
-            toast({ title: "Network Error", description: "Failed to connect to the history service.", variant: "destructive" });
+            toast.error( "Network Error", "Failed to connect to the history service.");
         } finally {
             setIsHistorySearching(false);
         }

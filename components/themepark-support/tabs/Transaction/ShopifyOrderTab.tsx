@@ -10,15 +10,16 @@ import { Label } from "@/components/ui/label"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
 import { ShopifyOrder } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
 import { InputGroup, InputGroupAddon, InputGroupText, InputGroupInput } from "@/components/ui/input-group"
+import { useAutoSearch } from "@/hooks/use-auto-search"
 
 interface ShopifyTableData extends ShopifyOrder {
     orderName?: string;
 }
 
 export default function ShopifyOrderTab() {
-  const { toast } = useToast()
+  const toast = useAppToast()
   const searchParams = useSearchParams() 
   const urlQuery = searchParams.get('search')
   const [orderName, setOrderName] = useState("")
@@ -26,24 +27,13 @@ export default function ShopifyOrderTab() {
   const [isSearching, setIsSearching] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (urlQuery) {
-        setOrderName(urlQuery);
-        performSearch(urlQuery);
-        window.history.replaceState(null, '', window.location.pathname);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlQuery]);
-
   // 3. CORE SEARCH LOGIC
   const performSearch = async (query: string) => {
     const rawInput = query.trim().replace(/#/g, '');
     
-    if (!rawInput) {
-      setSearchResult(null)
-      setErrorMessage("Please enter an Order Name (e.g., 29174).")
-      return
-    }
+    if (!rawInput) return;
+
+    setOrderName(rawInput);
 
     const formattedQuery = `#${rawInput}`;
 
@@ -57,35 +47,25 @@ export default function ShopifyOrderTab() {
       if (response.success) {
         if (response.data) {
           setSearchResult({ ...response.data, orderName: formattedQuery })
-          toast({
-              title: "Search Complete",
-              description: "Transaction details retrieved successfully.",
-              variant: "default",
-          })
+          toast.success("Search Complete", "Transaction details retrieved successfully.");
         } else {
           setSearchResult(null)
           setErrorMessage(response.message || `No transaction found for order ${formattedQuery}.`)
         }
       } else {
         setErrorMessage(response.error || "Server error occurred during search.")
-        toast({
-            title: "Search Failed",
-            description: response.error || "Server error occurred.",
-            variant: "destructive",
-        });
+        toast.error("Search Failed", response.error || "Server error occurred.");
       }
     } catch (error) {
         console.error("Search Error:", error)
         setErrorMessage("An unexpected network error occurred.")
-        toast({
-            title: "Error",
-            description: "A network error occurred during the search.",
-            variant: "destructive",
-        });
+        toast.error("Error", "A network error occurred during the search.");
     } finally {
       setIsSearching(false)
     }
   }
+
+  useAutoSearch(performSearch);
 
   // 4. MANUAL BUTTON HANDLER
   const handleSearch = () => {
@@ -114,7 +94,6 @@ export default function ShopifyOrderTab() {
                 Shopify Order Name
               </Label>
               
-              {/* REPLACED: Input Group implementation */}
               <InputGroup className="h-11">
                 <InputGroupAddon>
                     <InputGroupText>#</InputGroupText>

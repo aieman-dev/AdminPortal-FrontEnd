@@ -1,11 +1,13 @@
 // src/app/api/proxy-upload/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { BACKEND_API_BASE } from "@/lib/config";
+import { cookies } from "next/headers";
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
-    const authHeader = request.headers.get("authorization"); // Get the token
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get("accessToken")?.value;
 
     const apiResponse = await fetch(
       `${BACKEND_API_BASE}/api/Package/upload`, 
@@ -13,7 +15,7 @@ export async function POST(request: NextRequest) {
         method: "POST",
         headers: { 
             "ngrok-skip-browser-warning": "true",
-            "Authorization": authHeader || "" 
+            "Authorization": accessToken ? `Bearer ${accessToken}` : ""
         },
         body: formData, 
       }

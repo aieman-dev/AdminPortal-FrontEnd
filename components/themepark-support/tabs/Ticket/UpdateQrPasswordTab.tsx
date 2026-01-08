@@ -7,12 +7,11 @@ import { SearchField } from "@/components/themepark-support/it-poswf/search-fiel
 import { PasswordDisplay } from "@/components/themepark-support/it-poswf/password-display"
 import { type PasswordData } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
+import { useAutoSearch } from "@/hooks/use-auto-search"
 
 export default function UpdateQrPasswordTab() {
-  const { toast } = useToast()
-  const searchParams = useSearchParams() 
-  const urlQuery = searchParams.get('search')
+  const toast = useAppToast()
 
   const [qrInvoiceNo, setQrInvoiceNo] = useState("")
   const [qrSearchResult, setQrSearchResult] = useState<PasswordData | null>(null)
@@ -20,10 +19,11 @@ export default function UpdateQrPasswordTab() {
   const [isResetting, setIsResetting] = useState(false)
   const [resetSuccess, setResetSuccess] = useState(false)
 
-  const handleQrSearch = async (queryOverride?: string) => {
-    const term = queryOverride !== undefined ? queryOverride : qrInvoiceNo;
+  const handleQrSearch = async (query?: string) => {
+    const term = query !== undefined ? query : qrInvoiceNo;
 
     if (!term) return
+    if (query !== undefined) setQrInvoiceNo(query);
 
     setIsQrSearching(true)
     setResetSuccess(false)
@@ -34,27 +34,20 @@ export default function UpdateQrPasswordTab() {
         
         if (response.success && response.data) {
             setQrSearchResult(response.data);
-            toast({ title: "Success", description: "QR Password retrieved." });
+            toast.success("Success", "QR Password retrieved.");
         } else {
             setQrSearchResult(null);
-            toast({ title: "Search Failed", description: response.error || "No password found.", variant: "destructive" });
+            toast.error("Search Failed", response.error || "No password found.");
         }
     } catch (error) {
         console.error("QR Search Error:", error);
-        toast({ title: "Network Error", description: "Failed to connect to the search service.", variant: "destructive" });
+        toast.error("Network Error", "Failed to connect to the search service.");
     } finally {
       setIsQrSearching(false);
     }
   }
 
-  useEffect(() => {
-    if (urlQuery) {
-        setQrInvoiceNo(urlQuery);
-        handleQrSearch(urlQuery); // Trigger immediately
-        window.history.replaceState(null, '', window.location.pathname);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlQuery]);
+  useAutoSearch(handleQrSearch);
 
   const handleResetPassword = async () => {
     if (!qrInvoiceNo) return
@@ -67,14 +60,14 @@ export default function UpdateQrPasswordTab() {
         if (response.success && response.data) {
             setQrSearchResult(response.data);
             setResetSuccess(true);
-            toast({ title: "Success", description: "QR Password has been reset." });
+            toast.success("Success", "QR Password has been reset.");
         } else {
             setResetSuccess(false);
-            toast({ title: "Reset Failed", description: response.error || "Could not reset password.", variant: "destructive" });
+            toast.error("Reset Failed", response.error || "Could not reset password.");
         }
     } catch (error) {
         console.error("QR Reset Error:", error);
-        toast({ title: "Network Error", description: "Failed to connect to the reset service.", variant: "destructive" });
+        toast.error("Network Error", "Failed to connect to the reset service.");
     } finally {
       setIsResetting(false);
     }

@@ -13,21 +13,20 @@ import { type TableColumn, DataTable } from "@/components/themepark-support/it-p
 import { ItPoswfPackage } from "@/type/themepark-support"
 import { packageService } from "@/services/package-services"
 import { formatCurrency, formatDateTime } from "@/lib/formatter";
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
+import { useAutoSearch } from "@/hooks/use-auto-search"
+import { usePagination } from "@/hooks/use-pagination"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 
 export default function PackageListingTab() {
-  const { toast } = useToast()
+  const toast = useAppToast()
 
   const [packageSearchTerm, setPackageSearchTerm] = useState("")
   const [packages, setPackages] = useState<ItPoswfPackage[]>([])
   const [isPackageSearching, setIsPackageSearching] = useState(false)
   
   // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalRecords, setTotalRecords] = useState(0);
-  const PAGE_SIZE = 30; // Matches service call
+  const pagination = usePagination({ pageSize: 30 });
 
   // Edit State
   const [editingPackage, setEditingPackage] = useState<ItPoswfPackage | null>(null)
@@ -36,39 +35,40 @@ export default function PackageListingTab() {
   const [packageRemark, setPackageRemark] = useState("")
 
 
-  const handlePackageSearch = async () => {
-    fetchData(1);
+  const handlePackageSearch = (query?: string) => {
+      const term = query !== undefined ? query : packageSearchTerm;
+      if(query !== undefined) setPackageSearchTerm(query);
+      pagination.setCurrentPage(1); 
+      fetchData(1, term);
   }
 
-  const fetchData = async (page: number) => {
+  useAutoSearch(handlePackageSearch);
+
+  const fetchData = async (page: number, term: string = packageSearchTerm) => {
     setIsPackageSearching(true)
-    setCurrentPage(page);
+
+    if (page !== pagination.currentPage) pagination.setCurrentPage(page);
 
     try {
-        const { packages: livePackages, totalPages: apiTotalPages, totalRecords: apiTotalRecords } = await packageService.getItPoswfPackages(
-            packageSearchTerm.trim(),
+        const { packages: livePackages, totalPages, totalRecords } = await packageService.getItPoswfPackages(
+            term.trim(),
             page 
         );
         
         setPackages(livePackages);
-        setTotalPages(apiTotalPages);
-        setTotalRecords(apiTotalRecords);
+        pagination.setMetaData(totalPages, totalRecords);
         
         if (page === 1 && livePackages.length > 0) {
-            toast({ title: "Search Complete", description: `Found ${apiTotalRecords} packages.` });
+            toast.info( "Search Complete", `Found ${totalRecords} packages.` );
         }
     } catch (error) {
         console.error("Package Search Error:", error);
-        toast({ title: "Error", description: "Failed to fetch package data.", variant: "destructive" });
+        toast.error("Error",  "Failed to fetch package data.");
         setPackages([]);
     } finally {
         setIsPackageSearching(false)
     }
   };
-
-  const handlePageChange = (newPage: number) => {
-      fetchData(newPage);
-  }
 
   const handlePackageEdit = (pkg: ItPoswfPackage) => {
     setEditingPackage({ ...pkg })
@@ -95,9 +95,9 @@ export default function PackageListingTab() {
         setIsPackageDialogOpen(false)
         setEditingPackage(null)
         
-        toast({ title: "Success", description: "Package updated successfully." });
+        toast.success( "Success",  "Package updated successfully.");
     } catch (error) {
-        toast({ title: "Update Failed", description: "An error occurred.", variant: "destructive" });
+        toast.error( "Update Failed", "An error occurred.");
     } finally {
         setIsPackageUpdating(false);
     }
@@ -105,13 +105,13 @@ export default function PackageListingTab() {
 
   // FIXED: Explicitly typed 'value' and 'row'
   const packageColumns: TableColumn<ItPoswfPackage>[] = [
-    { header: "Package ID", accessor: "packageId", className: "pl-6", cell: (value: any) => <span className="font-medium">{value}</span> },
+    { header: "Package ID", accessor: "packageId", className: "pl-6", cell: (value) => <span className="font-medium">{value}</span> },
     { header: "Package Name", accessor: "packageName" },
-    { header: "Type", accessor: "packageType", cell: (value: any) => <StatusBadge status={value} /> },
-    { header: "Price", accessor: "price", cell: (value: any) => formatCurrency(value) },
-    { header: "Last Valid Date", accessor: "lastValidDate", cell: (value: any) => formatDateTime(value as string) },
-    { header: "Description", accessor: "description", cell: (value: any) => <div className="max-w-xs truncate" title={value as string}>{value}</div> },
-    { header: "Status", accessor: "status", cell: (value: any) => <StatusBadge status={value as string} /> },
+    { header: "Type", accessor: "packageType", cell: (value) => <StatusBadge status={value} /> },
+    { header: "Price", accessor: "price", cell: (value) => formatCurrency(value) },
+    { header: "Last Valid Date", accessor: "lastValidDate", cell: (value) => formatDateTime(value as string) },
+    { header: "Description", accessor: "description", cell: (value) => <div className="max-w-xs truncate" title={value as string}>{value}</div> },
+    { header: "Status", accessor: "status", cell: (value) => <StatusBadge status={value as string} /> },
     {
       header: "Action",
       accessor: "id",
@@ -157,11 +157,8 @@ export default function PackageListingTab() {
                     : "Enter a package name to search."
             }
             pagination={{
-                currentPage: currentPage,
-                totalPages: totalPages,
-                onPageChange: handlePageChange,
-                totalRecords: totalRecords,
-                pageSize: PAGE_SIZE
+                ...pagination.paginationProps,
+                onPageChange: (newPage) => fetchData(newPage) 
             }}
           />
         </CardContent>

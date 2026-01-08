@@ -9,29 +9,23 @@ import { logout } from "@/lib/auth" // We use the direct logout function
 // For Testing: Change this to 10000 (10 seconds)
 export function useAutoLogout(timeoutMs = 10 * 60 * 1000) {
   const router = useRouter()
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const lastActivity = useRef(Date.now())
+  
 
-  const handleLogout = useCallback(async () => {
-    // 1. Clear any pending timers
-    if (timerRef.current) clearTimeout(timerRef.current)
-    
-    console.log("Auto-logout triggered due to inactivity.")
-    
-    // 2. Perform Logout
-    await logout()
-    
-    // 3. Force redirect (just in case logout() doesn't)
-    router.push("/login")
-  }, [router])
+  const checkActivity = useCallback(() => {
+    const now = Date.now()
+    // Check if time elapsed since last activity > limit
+    if (now - lastActivity.current > timeoutMs) {
+      console.log("Auto-logout triggered: Session timed out.");
+      logout() 
+      router.push("/login")
+    }
+  }, [timeoutMs, router])
 
   useEffect(() => {
     // Function to reset the timer whenever user is active
-    const resetTimer = () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-      
-      timerRef.current = setTimeout(() => {
-        handleLogout()
-      }, timeoutMs)
+    const updateActivity = () => {
+      lastActivity.current = Date.now()
     }
 
     // Events that count as "Activity"
@@ -47,18 +41,18 @@ export function useAutoLogout(timeoutMs = 10 * 60 * 1000) {
     // Attach Listeners
     // Use { passive: true } for better performance on scroll/touch
     events.forEach(event => 
-      document.addEventListener(event, resetTimer, { passive: true })
+      document.addEventListener(event, updateActivity, { passive: true })
     )
     
-    // Initialize timer immediately on mount
-    resetTimer()
+    // 2. Interval Check
+    // We check every 10 seconds. If the user tabs out for 20 mins,
+    // the NEXT check (when the tab wakes up or the interval fires) will catch it immediately.
+    const intervalId = setInterval(checkActivity, 10000)
 
     // Cleanup Listeners on Unmount
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-      events.forEach(event => 
-        document.removeEventListener(event, resetTimer)
-      )
+      events.forEach(e => document.removeEventListener(e, updateActivity))
+      clearInterval(intervalId)
     }
-  }, [handleLogout, timeoutMs])
+  }, [checkActivity])
 }

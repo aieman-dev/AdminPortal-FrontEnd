@@ -7,7 +7,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Skeleton } from "@/components/ui/skeleton"; 
 import { cn } from "@/lib/utils"; 
 import { formatCurrency } from "@/lib/formatter";
-import { formatPackagePrice } from "@/lib/utils";
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge";
 
 interface PackageCardProps {
@@ -168,7 +167,7 @@ export default function PackageCard({
         </h3>
 
         <div className="text-blue-600 dark:text-blue-400 font-extrabold text-sm mb-1">
-           {formatPackagePrice(parseFloat(price), packageType)}
+           {formatCurrency(parseFloat(price), packageType)}
         </div>
 
         <div className="flex flex-wrap gap-1.5">

@@ -1,22 +1,24 @@
 "use client"
 
-import { useState, useEffect, use } from "react"
-import { useSearchParams } from "next/navigation"
+import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Calendar, SearchX } from "lucide-react"
+import { Calendar, SearchX, Clock, Save } from "lucide-react"
 import { type ExtendTicketData } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
+import { useAutoSearch } from "@/hooks/use-auto-search"
 import { DatePicker } from "@/components/ui/date-picker"
 import { TimePicker } from "@/components/ui/time-picker"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet"
+import { Label } from "@/components/ui/label"
 
 export default function ExtendExpiryTab() {
-  const { toast } = useToast()
-  const searchParams = useSearchParams()
-  const urlQuery = searchParams.get('search')
+  const toast = useAppToast()
+  const isMobile = useIsMobile()
 
   const [extendSearchQuery, setExtendSearchQuery] = useState("")
   const [extendSearchResult, setExtendSearchResult] = useState<ExtendTicketData[]>([])
@@ -26,10 +28,16 @@ export default function ExtendExpiryTab() {
   const [editedDates, setEditedDates] = useState<Record<string, Date>>({})
   const [isUpdatingTicketNo, setIsUpdatingTicketNo] = useState<string | null>(null);
 
-  const handleExtendSearch = async (queryOverride?: string) => {
-    const term = queryOverride !== undefined ? queryOverride : extendSearchQuery;
+  // Mobile Sheet State
+  const [selectedTicket, setSelectedTicket] = useState<ExtendTicketData | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+  const handleExtendSearch = async (query?: string) => {
+    const term = query !== undefined ? query : extendSearchQuery;
 
     if (!term) return
+
+    if (query !== undefined) setExtendSearchQuery(query);
 
     setIsExtendSearching(true)
     setExtendSearchResult([]) 
@@ -50,27 +58,20 @@ export default function ExtendExpiryTab() {
         setEditedDates(initialDates)
         
         if (liveTickets.length === 0) {
-             toast({ title: "Search Complete", description: "No extendable tickets found." });
+             toast.info("Search Complete", "No extendable tickets found.");
         }
       } else {
-        toast({ title: "Search Failed", description: response.error || "Could not retrieve ticket list.", variant: "destructive" });
+        toast.error("Search Failed", response.error || "Could not retrieve ticket list.");
       }
     } catch (error) {
       console.error("Extend Search Error:", error);
-      toast({ title: "Network Error", description: "Failed to connect.", variant: "destructive" });
+      toast.error("Network Error", "Failed to connect.");
     } finally {
       setIsExtendSearching(false)
     }
   }
 
-  useEffect(() => {
-    if (urlQuery) {
-      setExtendSearchQuery(urlQuery)
-      handleExtendSearch(urlQuery) 
-      window.history.replaceState(null, '', window.location.pathname);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlQuery]);
+  useAutoSearch(handleExtendSearch);
 
   const handleDateTimeChange = (ticketNo: string, newDate: Date | undefined) => {
       if (newDate) {
@@ -87,7 +88,7 @@ export default function ExtendExpiryTab() {
     // Format to ISO string for API (adjust for local timezone to preserve user selection)
     const offset = newExpiryDateObj.getTimezoneOffset()
     const localDate = new Date(newExpiryDateObj.getTime() - (offset * 60 * 1000))
-    const isoString = localDate.toISOString().slice(0, 19); // YYYY-MM-DDTHH:mm:ss
+    const isoString = localDate.toISOString().slice(0, 19); 
 
     setIsUpdatingTicketNo(ticketNo);
 
@@ -109,47 +110,41 @@ export default function ExtendExpiryTab() {
             setExtendSearchResult(prev => prev.map(t => 
                 t.ticketNo === ticketNo ? { ...t, expiryDate: isoString } : t
             ));
-            toast({ title: "Success", description: `Expiry date updated for ticket ${ticketNo}.` });
+            toast.success("Success", `Expiry date updated for ticket ${ticketNo}.`);
         } else {
             throw new Error(response.error || "Update failed.");
         }
     } catch (error) {
-        toast({ title: "Update Failed", description: error instanceof Error ? error.message : "Error.", variant: "destructive" });
+        toast.error("Update Failed", error instanceof Error ? error.message : "Error.");
     } finally {
         setIsUpdatingTicketNo(null);
     }
+  }
+
+  const openMobileSheet = (ticket: ExtendTicketData) => {
+      setSelectedTicket(ticket);
+      setIsSheetOpen(true);
   }
 
   // Define columns
   const columns: TableColumn<ExtendTicketData>[] = [
       { header: "Ticket No", accessor: "ticketNo", className: "font-medium pl-6" },
       { header: "Ticket Name", accessor: "ticketName" },
-      { header: "Effective Date", accessor: "effectiveDate", cell: (val) => (val as string).split('T')[0] },
+      { header: "Effective Date", accessor: "effectiveDate", cell: (val) => (val as string).split('T')[0], className: isMobile ? "hidden" : "" },
       { 
           header: "New Expiry Date", 
           accessor: "ticketNo", 
-          className: "min-w-[320px]",
+          className: isMobile ? "hidden" : "min-w-[320px]",
           cell: (ticketNo, row) => {
               const isTicketUpdating = isUpdatingTicketNo === ticketNo;
               const dateObj = editedDates[ticketNo as string];
-              
               return (
                   <div className="flex items-center gap-3">
-                      {/* Date Picker */}
                       <div className="w-[140px]">
-                          <DatePicker 
-                            date={dateObj} 
-                            setDate={(d) => handleDateTimeChange(ticketNo as string, d)} 
-                            disabled={isTicketUpdating}
-                          />
+                          <DatePicker date={dateObj} setDate={(d) => handleDateTimeChange(ticketNo as string, d)} disabled={isTicketUpdating}/>
                       </div>
-                      {/* Time Picker */}
                       <div>
-                          <TimePicker 
-                            date={dateObj} 
-                            setDate={(d) => handleDateTimeChange(ticketNo as string, d)} 
-                            disabled={isTicketUpdating}
-                          />
+                          <TimePicker date={dateObj} setDate={(d) => handleDateTimeChange(ticketNo as string, d)} disabled={isTicketUpdating}/>
                       </div>
                   </div>
               )
@@ -159,8 +154,16 @@ export default function ExtendExpiryTab() {
           header: "Action",
           accessor: "ticketNo",
           className: "text-right",
-          cell: (ticketNo) => {
+          cell: (ticketNo, row) => {
               const isTicketUpdating = isUpdatingTicketNo === ticketNo;
+              if (isMobile) {
+                  return (
+                      <Button size="sm" onClick={() => openMobileSheet(row)} variant="outline">
+                          Edit Expiry
+                      </Button>
+                  )
+              }
+
               return (
                   <Button size="sm" onClick={() => handleUpdate(ticketNo as string)} disabled={isTicketUpdating}>
                     {isTicketUpdating ? "Updating..." : "Update"}
@@ -205,6 +208,52 @@ export default function ExtendExpiryTab() {
           />
         </CardContent>
       </Card>
+    
+    {/* MOBILE EDIT SHEET */}
+      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+        <SheetContent side="bottom" className="h-auto max-h-[85vh] rounded-t-xl px-0">
+            {selectedTicket && (
+                <div className="p-6 space-y-6">
+                    <SheetHeader className="text-left">
+                        <SheetTitle>Update Expiry Date</SheetTitle>
+                        <SheetDescription>
+                            Editing ticket <span className="font-mono text-foreground font-medium">{selectedTicket.ticketNo}</span>
+                        </SheetDescription>
+                    </SheetHeader>
+
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>New Expiry Date</Label>
+                            <DatePicker 
+                                date={editedDates[selectedTicket.ticketNo]} 
+                                setDate={(d) => handleDateTimeChange(selectedTicket.ticketNo, d)} 
+                                className="w-full h-12"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>New Expiry Time</Label>
+                            <div className="p-2 border rounded-lg flex justify-center bg-muted/20">
+                                <TimePicker 
+                                    date={editedDates[selectedTicket.ticketNo]} 
+                                    setDate={(d) => handleDateTimeChange(selectedTicket.ticketNo, d)} 
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <SheetFooter className="pt-4">
+                        <Button 
+                            className="w-full h-12 text-base" 
+                            onClick={() => handleUpdate(selectedTicket.ticketNo)}
+                            disabled={isUpdatingTicketNo === selectedTicket.ticketNo}
+                        >
+                            {isUpdatingTicketNo === selectedTicket.ticketNo ? "Updating..." : "Confirm Update"}
+                        </Button>
+                    </SheetFooter>
+                </div>
+            )}
+        </SheetContent>
+      </Sheet>
     </>
   )
 }

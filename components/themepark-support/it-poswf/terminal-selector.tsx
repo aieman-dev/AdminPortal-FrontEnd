@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/popover"
 import { itPoswfService } from "@/services/themepark-support"
 import { Terminal } from "@/type/themepark-support"
+import { useDebounce } from "@/hooks/use-debounce"
 
 interface TerminalSelectorProps {
   value: string
@@ -38,26 +39,28 @@ export function TerminalSelector({
   disabled = false,
   className
 }: TerminalSelectorProps) {
+
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
+
+  const debouncedQuery = useDebounce(query, 300)
+
   const [terminals, setTerminals] = useState<Terminal[]>([])
   const [loading, setLoading] = useState(false)
   
-  // Persist the selected terminal object so the label doesn't disappear
-  // when the search results change.
   const [selectedTerminal, setSelectedTerminal] = useState<Terminal | null>(null)
 
   // 1. Debounced Search Effect
   useEffect(() => {
     const fetchTerminals = async () => {
-      if (!query.trim()) {
+      if (!debouncedQuery.trim()) {
         if (terminals.length === 0) setTerminals([])
         return
       }
 
       setLoading(true)
       try {
-        const response = await itPoswfService.searchTerminals(query)
+        const response = await itPoswfService.searchTerminals(debouncedQuery)
         if (response.success && response.data) {
           setTerminals(response.data.slice(0, 30))
         } else {
@@ -71,9 +74,9 @@ export function TerminalSelector({
       }
     }
 
-    const timer = setTimeout(fetchTerminals, 300)
-    return () => clearTimeout(timer)
-  }, [query])
+    fetchTerminals()
+    }, [debouncedQuery])
+
 
   // 2. Handle Selection
   const handleSelect = (terminal: Terminal) => {

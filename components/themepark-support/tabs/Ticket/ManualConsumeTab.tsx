@@ -21,15 +21,17 @@ import {
   type AvailableTicket
 } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
+import { useAutoSearch } from "@/hooks/use-auto-search"
 import { cn } from "@/lib/utils"
+import { CONSUME_TYPES, TICKET_TYPES, TICKET_STATUSES } from "@/lib/constants"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
 import { PaginationControls } from "@/components/ui/pagination-controls"
 
 type Step = 'selection' | 'confirmation';
 
 export default function ManualConsumeTab() {
-  const { toast } = useToast()
+  const toast = useAppToast()
   const [currentStep, setCurrentStep] = useState<Step>('selection');
 
   // -- Form State --
@@ -60,22 +62,32 @@ export default function ManualConsumeTab() {
   const isReceipt = consumeType === "receipt";
 
   // --- 1. Main Search Logic ---
-  const handleConsumeSearch = async () => {
+  const handleConsumeSearch = async (query?: string) => {
+    if (query) {
+        if (query.includes("@")) {
+            setConsumeType("superapp");
+            setEmail(query);
+        } else {
+            setConsumeType("receipt");
+            setInvoiceNo(query);
+        }
+    }
+
     let missingFields: string[] = [];
 
-    if (!consumeType) missingFields.push("Consume Type");
-    if (!terminalId) missingFields.push("Terminal");
-    
-    if (isSuperApp && !email.trim()) missingFields.push("Email Address");
-    if (isReceipt && !invoiceNo.trim()) missingFields.push("Invoice No");
+    if (!query) {
+        if (!consumeType) missingFields.push("Consume Type");
+        if (!terminalId) missingFields.push("Terminal");
+        
+        if (isSuperApp && !email.trim()) missingFields.push("Email Address");
+        if (isReceipt && !invoiceNo.trim()) missingFields.push("Invoice No");
 
-    if (missingFields.length > 0) {
-        toast({
-            title: "Input Required",
-            description: `Missing: ${missingFields.join(", ")}`,
-            variant: "default",
-        });
-        return;
+        if (missingFields.length > 0) {
+            toast.info("Input Required", `Missing: ${missingFields.join(", ")}`);
+            return;
+        }
+    } else {
+        if (!terminalId) return;
     }
     
     setIsConsumeSearching(true);
@@ -108,32 +120,25 @@ export default function ManualConsumeTab() {
             }
 
             if (isSuperApp && !response.data.accID) {
-                 toast({ 
-                    title: "Account Data Missing", 
-                    description: "Account ID is missing.", 
-                    variant: "destructive" 
-                });
+                 toast.error("Account Data Missing", "Account ID is missing.");
                 return;
             }
             
             setConsumeSearchResult(response.data);
-            toast({ title: "Search Complete", description: `Found ${response.data.tickets.length} tickets.` });
+            toast.success("Search Complete", `Found ${response.data.tickets.length} tickets.`);
 
         } else {
-            setConsumeSearchResult(null);
-            toast({
-                title: "Search Failed",
-                description: response.error || "No data found.",
-                variant: "destructive"
-            });
+            if (!query) toast.error("Search Failed", response.error || "No data found.");
         }
     } catch (error) {
         console.error("Manual Consume Search Error:", error);
-        toast({ title: "Network Error", description: "Failed to connect to service.", variant: "destructive" });
+        if(!query) toast.error("Network Error", "Failed to connect to service.");
     } finally {
         setIsConsumeSearching(false);
     }
   }
+
+  useAutoSearch(handleConsumeSearch);
 
   // --- 3. Quantity Handlers ---
   const updateQuantity = (itemId: string, val: number, maxQty: number) => {
@@ -149,7 +154,7 @@ export default function ManualConsumeTab() {
   const handleNextStep = () => {
       const totalSelected = Object.values(quantities).reduce((a, b) => a + b, 0);
       if (totalSelected === 0) {
-          toast({ title: "Cart Empty", description: "Please select quantity for at least one ticket.", variant: "default" });
+          toast.info("Cart Empty", "Please select quantity for at least one ticket.");
           return;
       }
       setCurrentStep('confirmation');
@@ -169,11 +174,7 @@ export default function ManualConsumeTab() {
         const totalPoints = selectedTickets.reduce((sum, item) => sum + (item.itemPoint * quantities[item.id]), 0);
 
         if (consumeSearchResult.creditBalance < totalPoints) {
-            toast({ 
-                title: "Insufficient Balance", 
-                description: `Credit Balance (RM ${consumeSearchResult.creditBalance}) is less than Total (RM ${totalPoints}).`, 
-                variant: "destructive" 
-            });
+            toast.error("Insufficient Balance", `Credit Balance (RM ${consumeSearchResult.creditBalance}) is less than Total (RM ${totalPoints}).`);
             return;
         }
 
@@ -213,21 +214,13 @@ export default function ManualConsumeTab() {
                 setEmail("");
                 setInvoiceNo("");
                 setCurrentStep('selection');
-                toast({ 
-                    title: "Consumption Success", 
-                    description: response.data?.message || "Tickets consumed successfully.",
-                    variant: "success"
-                });
+                toast.success("Consumption Success", response.data?.message || "Tickets consumed successfully.");
             } else {
                 throw new Error(response.error || "Consumption failed.");
             }
         } catch (error) {
             console.error("Consume Execute Error:", error);
-            toast({
-                title: "Consumption Failed",
-                description: error instanceof Error ? error.message : "An unexpected error occurred.",
-                variant: "destructive"
-            });
+            toast.error("Consumption Failed", error instanceof Error ? error.message : "An unexpected error occurred.");
         } finally {
             setIsExecuting(false);
         }
@@ -504,8 +497,9 @@ export default function ManualConsumeTab() {
                         {/* Standardized h-11 */}
                         <SelectTrigger id="consumeType" className="h-11"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="superapp">By Superapp</SelectItem>
-                            <SelectItem value="receipt">By Receipt</SelectItem>
+                            {CONSUME_TYPES.map((type) => (
+                            <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                        ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -553,9 +547,9 @@ export default function ManualConsumeTab() {
                     <Select value={ticketType} onValueChange={setTicketType}>
                         <SelectTrigger id="ticketType" className="!h-11"><SelectValue placeholder="Select type" /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="ticket">Ticket</SelectItem>
-                            <SelectItem value="credit">Credit</SelectItem>
-                            <SelectItem value="reward">Reward</SelectItem>
+                            {TICKET_TYPES.map((type) => (
+                            <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                        ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -566,8 +560,9 @@ export default function ManualConsumeTab() {
                     <Select value={ticketStatus} onValueChange={setTicketStatus}>
                         <SelectTrigger id="ticketStatus" className="!h-11"><SelectValue placeholder="Select status" /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="unused">Unused</SelectItem>
+                            {TICKET_STATUSES.map((status) => (
+                            <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>
+                        ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -576,7 +571,7 @@ export default function ManualConsumeTab() {
                 <div></div>
 
                 <div className="flex justify-end pt-2"> 
-                    <Button onClick={handleConsumeSearch} disabled={isConsumeSearching} className="w-full h-11">
+                    <Button onClick={() => handleConsumeSearch()} disabled={isConsumeSearching} className="w-full h-11">
                         <Search className="mr-2 h-4 w-4" />
                         {isConsumeSearching ? "Searching..." : "Search"}
                     </Button>

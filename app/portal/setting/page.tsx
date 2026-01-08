@@ -14,9 +14,9 @@ import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badg
 import { 
     User, Mail, Building, Shield, Bell, Info, 
     AlertTriangle, CheckCircle2, XCircle, Calendar, 
-    Activity, Loader2, Megaphone, Send, Server
+    Activity, Loader2, Megaphone, Send
 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
 import { useAuth } from "@/hooks/use-auth"
 import { canViewPackageManagement, canViewThemeParkSupport, canCreatePackage, isFinanceApprover } from "@/lib/auth"
 import { staffService } from "@/services/staff-services" 
@@ -27,7 +27,7 @@ import { ROLES } from "@/lib/constants"
 import ExpirySelector, { ExpiryData } from "@/components/portal/ExpirySelector"
 
 export default function SettingsPage() {
-  const { toast } = useToast()
+  const  toast = useAppToast()
   const { user } = useAuth()
 
   // --- PROFILE STATE ---
@@ -50,6 +50,7 @@ export default function SettingsPage() {
       type: "", 
       expiryDate: undefined
   });
+
   
   const [isPosting, setIsPosting] = useState(false);
 
@@ -87,42 +88,35 @@ export default function SettingsPage() {
       try {
               await settingService.toggleGlobalNotifications(checked);
           
-          toast({ 
-              title: "Saved", 
-              description: `Global notifications turned ${checked ? 'ON' : 'OFF'}.` 
-          });
+          toast.info( "Saved", `Global notifications turned ${checked ? 'ON' : 'OFF'}.` );
       } catch (error) {
           setPreferences({
               packageUpdates: !checked,
               systemAnnouncements: !checked
           });
-          toast({ 
-              title: "Save Failed", 
-              description: "Could not save your preference. Please try again.", 
-              variant: "destructive" 
-          });
+          toast.error( "Save Failed", "Could not save your preference. Please try again.");
       }
   }
 
   const handlePostBroadcast = async () => {
       if (!broadcastForm.title.trim()) {
-          toast({ title: "Missing Title", description: "Please enter a title.", variant: "destructive" });
+          toast.error("Missing Title", "Please enter a title.");
           return;
       }
       if (!broadcastForm.type) {
-          toast({ title: "Missing Type", description: "Please select a severity type.", variant: "destructive" });
+          toast.error( "Missing Type", "Please select a severity type.");
           return;
       }
       if (!broadcastForm.message.trim()) {
-          toast({ title: "Missing Message", description: "Please enter message content.", variant: "destructive" });
+          toast.error( "Missing Message",  "Please enter message content.");
           return;
       }
       if (!broadcastForm.expiryDate) {
-          toast({ title: "Missing Expiry", description: "Please select an expiry date.", variant: "destructive" });
+          toast.error( "Missing Expiry", "Please select an expiry date.");
           return;
       }
       if (broadcastForm.expiryDate < new Date()) {
-           toast({ title: "Invalid Date", description: "Expiry date must be in the future.", variant: "destructive" });
+           toast.error("Invalid Date",  "Expiry date must be in the future.");
            return;
       }
 
@@ -140,11 +134,7 @@ export default function SettingsPage() {
 
           await settingService.createBroadcast(payload);
           
-          toast({ 
-              title: "Broadcast Sent", 
-              description: "System announcement created successfully.",
-              variant: "success"
-          });
+          toast.success("Broadcast Sent",  "System announcement created successfully.");
           
           setBroadcastForm({
               title: "",
@@ -154,11 +144,7 @@ export default function SettingsPage() {
           });
 
       } catch (error) {
-          toast({ 
-              title: "Post Failed", 
-              description: error instanceof Error ? error.message : "Could not send broadcast.", 
-              variant: "destructive" 
-          });
+          toast.error( "Post Failed", error instanceof Error ? error.message : "Could not send broadcast.");
       } finally {
           setIsPosting(false);
       }
@@ -185,6 +171,13 @@ export default function SettingsPage() {
           case 'info': return "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300";
           default: return "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800/50 dark:text-gray-300";
       }
+  };
+
+  const getBroadcastIcon = (type: string) => {
+      const t = type.toLowerCase();
+      if (t === 'critical') return <XCircle className="h-4 w-4" />;
+      if (t === 'warning') return <AlertTriangle className="h-4 w-4" />;
+      return <Info className="h-4 w-4" />; // Default to Info
   };
 
   const handleExpiryUpdate = useCallback((data: ExpiryData) => {
@@ -218,7 +211,7 @@ export default function SettingsPage() {
           
           {isSuperAdmin && (
             <TabsTrigger value="system" className="flex items-center gap-2">
-                <Server className="h-4 w-4" /> System Control
+                <Megaphone className="h-4 w-4" /> System Announcement
             </TabsTrigger>
           )}
         </TabsList>
@@ -394,7 +387,7 @@ export default function SettingsPage() {
                             <CardContent className="space-y-4">
                                 <div className={`text-sm p-3 rounded-lg border ${getPreviewStyles(broadcastForm.type)}`}>
                                     <div className="font-bold flex items-center gap-2 mb-1">
-                                        <AlertTriangle className="h-4 w-4" />
+                                        {getBroadcastIcon(broadcastForm.type)}
                                         {broadcastForm.title || "Announcement Title"}
                                     </div>
                                     <p className="opacity-90">{broadcastForm.message || "Message content will appear here..."}</p>

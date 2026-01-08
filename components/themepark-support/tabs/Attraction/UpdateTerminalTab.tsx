@@ -14,16 +14,15 @@ import { Badge } from "@/components/ui/badge"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { type Terminal } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
+import { useAutoSearch } from "@/hooks/use-auto-search"
 import { formatDate } from "@/lib/formatter";
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
-import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table" // Import DataTable
+import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table" 
 
 
 export default function UpdateTerminalTab() {
-  const { toast } = useToast()
-  const searchParams = useSearchParams()
-  const urlQuery = searchParams.get('search')
+  const toast = useAppToast()
 
   const [terminalSearchTerm, setTerminalSearchTerm] = useState("")
   const [terminals, setTerminals] = useState<Terminal[]>([]);
@@ -32,9 +31,12 @@ export default function UpdateTerminalTab() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
 
-  const handleTerminalSearch = async (queryOverride?: string) => {
-      const term = queryOverride !== undefined ? queryOverride : terminalSearchTerm;
-      if (!term) return
+  const handleTerminalSearch = async (query?: string) => {
+      // Use the passed query (from AutoSearch) or the state (from Button click)
+      const term = query !== undefined ? query : terminalSearchTerm;
+      
+      if (!term) return;
+      if (query !== undefined) setTerminalSearchTerm(query);
 
     setIsTerminalSearching(true)
     setTerminals([]) 
@@ -45,32 +47,21 @@ export default function UpdateTerminalTab() {
         if (response.success && response.data) {
             setTerminals(response.data);
             if (response.data.length === 0) {
-                toast({ title: "Search Complete", description: "No terminals found." });
+                toast.info( "Search Complete", "No terminals found." );
             }
         } else {
             setTerminals([]);
-            toast({
-                title: "Search Failed",
-                description: response.error || "Could not retrieve terminals.",
-                variant: "destructive"
-            });
+            toast.error("Search Failed", response.error || "Could not retrieve terminals.");
         }
     } catch (error) {
         console.error("Terminal Search Error:", error);
-        toast({ title: "Network Error", description: "Failed to connect to search service.", variant: "destructive" });
+        toast.error("Network Error", "Failed to connect to search service.");
     } finally {
         setIsTerminalSearching(false)
     }
   }
 
-  useEffect(() => {
-    if (urlQuery) {
-        setTerminalSearchTerm(urlQuery);
-        handleTerminalSearch(urlQuery); 
-        window.history.replaceState(null, '', window.location.pathname);
-    } 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlQuery]);
+  useAutoSearch(handleTerminalSearch);
 
   const handleEdit = (terminal: Terminal) => {
     setEditingTerminal({ ...terminal })
@@ -79,7 +70,7 @@ export default function UpdateTerminalTab() {
 
   const handleTerminalUpdate = async () => {
     if (!editingTerminal || !editingTerminal.uuid.trim()) {
-        toast({ title: "Validation Error", description: "UUID cannot be empty.", variant: "destructive" });
+        toast.error("Validation Error", "UUID cannot be empty.");
         return;
     }
 
@@ -106,20 +97,14 @@ export default function UpdateTerminalTab() {
             setIsDialogOpen(false);
             setEditingTerminal(null);
 
-            toast({
-                title: "Success",
-                description: response.data?.message || "Terminal UUID updated successfully",
-            });
+            toast.success("Success", response.data?.message || "Terminal UUID updated successfully",
+            );
         } else {
             throw new Error(response.error || "API returned an error during update.");
         }
     } catch (error) {
         console.error("Terminal Update Error:", error);
-        toast({
-            title: "Update Failed",
-            description: error instanceof Error ? error.message : "An unexpected network error occurred.",
-            variant: "destructive",
-        });
+        toast.error( "Update Failed", error instanceof Error ? error.message : "An unexpected network error occurred.");
     } finally {
         setIsUpdating(false);
     }

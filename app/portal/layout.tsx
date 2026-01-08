@@ -33,7 +33,12 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         if (response) {
             const data = response.content || response;
             
-            if (data.broadcasts) setBroadcasts(data.broadcasts);
+            if (data.broadcasts) {
+                const sortedBroadcasts = [...data.broadcasts].sort((a: any, b: any) => 
+                    new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime()
+                );
+                setBroadcasts(sortedBroadcasts);
+            }
             if (data.personalNotifications) setPersonalNotifications(data.personalNotifications);
             if (typeof data.unreadCount === 'number') setUnreadCount(data.unreadCount);
         }

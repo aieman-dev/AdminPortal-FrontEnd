@@ -5,14 +5,13 @@ import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle2 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
+import { useAutoSearch } from "@/hooks/use-auto-search"
 import { itPoswfService } from "@/services/themepark-support"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field" // <--- Import Standard Component
 
 export default function ResyncTransactionTab() {
-  const { toast } = useToast()
-  const searchParams = useSearchParams() 
-  const urlQuery = searchParams.get('search')
+  const toast = useAppToast()
   
   const [transactionId, setTransactionId] = useState("")
   const [isExecuting, setIsExecuting] = useState(false)
@@ -23,9 +22,10 @@ export default function ResyncTransactionTab() {
     const targetId = idOverride !== undefined ? idOverride : transactionId;
 
     if (!targetId.trim()) {
-        toast({ title: "Input Required", description: "Please enter a Transaction ID.", variant: "destructive" });
-        return;
+      toast.info("Input Required", "Please enter a Transaction ID.");
+      return;
     }
+    if (idOverride !== undefined) setTransactionId(idOverride);
 
     setIsExecuting(true)
     setShowResyncSuccess(false)
@@ -38,7 +38,7 @@ export default function ResyncTransactionTab() {
             const msg = response.data?.message || "Transaction migrated/resynced successfully.";
             setSuccessMessage(msg);
             setShowResyncSuccess(true);
-            toast({ title: "Success", description: msg });
+            toast.success("Success", msg);
             
             setTimeout(() => setShowResyncSuccess(false), 5000);
         } else {
@@ -48,35 +48,20 @@ export default function ResyncTransactionTab() {
                 errorMsg.includes("already resync") ||
                 errorMsg.includes("InternalServerError") 
             ) {
-                toast({ 
-                    title: "Notice", 
-                    description: `Transaction ${transactionId} is already synced. (Server: ${errorMsg})`,
-                    variant: "notice"
-                });
+                toast.info("Notice", `Transaction ${targetId} is already synced.`);
             } else {
                 throw new Error(errorMsg || "Resync failed.");
             }
         }
     } catch (error) {
         console.error("Resync Error:", error);
-        toast({
-            title: "Resync Failed",
-            description: error instanceof Error ? error.message : "An unexpected error occurred.",
-            variant: "destructive"
-        });
+        toast.error("Resync Failed", error instanceof Error ? error.message : "An unexpected error occurred.");
     } finally {
         setIsExecuting(false);
     }
   }
 
-  useEffect(() => {
-    if (urlQuery) {
-      setTransactionId(urlQuery);
-      handleExecute(urlQuery); // Trigger immediately
-      window.history.replaceState(null, '', window.location.pathname);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlQuery]);
+  useAutoSearch(handleExecute);
 
   return (
     <>

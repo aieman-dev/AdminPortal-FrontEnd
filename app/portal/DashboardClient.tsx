@@ -26,7 +26,9 @@ import { DASHBOARD_CONFIG, DashboardRole } from "@/config/dashboard";
 import { ROLES } from "@/lib/constants";
 import { AppError } from "@/lib/errors";
 import { SystemOffline } from "@/components/portal/system-offline";
+import { SystemDiagnostics } from "@/components/portal/system-diagnostics";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAppToast } from "@/hooks/use-app-toast";
 
 interface DashboardClientProps {
   initialPendingPackages: Package[]; 
@@ -35,6 +37,7 @@ interface DashboardClientProps {
 export default function DashboardClient({ initialPendingPackages }: DashboardClientProps) {
   const router = useRouter();
   const { user } = useAuth();
+  const toast = useAppToast();
   
   const [pendingPackages, setPendingPackages] = useState<Package[]>(initialPendingPackages);
   const [summary, setSummary] = useState<DashboardSummaryDTO | null>(null);
@@ -69,23 +72,19 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
     const fetchDashboardData = async () => {
         setLoading(true); 
         try {
-            // Fetch raw response
             const response: any = await packageService.getDashboardSummary(dashboardFilter);
-            
-            // FIX: Unwrap 'content' if it exists (handles wrapped JSON response)
             const actualData = response.content ? response.content : response;
             
-            console.log("Unwrapped Dashboard Data:", actualData); // Debug log
+            console.log("Unwrapped Dashboard Data:", actualData); 
             setSummary(actualData);
             setSystemStatus("200 OK");
 
-            // Fetch other data (Pending List, etc.)
             if (viewMode !== ROLES.IT_ADMIN) {
                 try {
                     const { packages } = await packageService.getPackages(
                         "Pending", undefined, undefined, 1, "", "All"
                     );
-                    setPendingPackages(packages.slice(0, 5)); 
+                    setPendingPackages(packages.slice(0, 8)); 
                 } catch (pkgError) { console.error(pkgError); }
             }
             
@@ -102,6 +101,7 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
         } catch (error) {
             console.error("Dashboard Error:", error);
             setSystemStatus("Connection Failed");
+            toast.error("Connection Error", "Failed to load live dashboard data.");
         } finally {
             setLoading(false);
         }
@@ -187,7 +187,7 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
         <CardContent className="pl-0">
             <div className="h-[300px] w-full">
                 {loading && !summary ? (
-                    <LoaderState message="Loading chart data..." className="h-full border-none bg-transparent" />
+                    <LoaderState message="Loading chart data..." className="h-full min-h-[300px] border-none bg-transparent" />
                 ) : chartData.length === 0 ? (
                     <div className="h-full flex items-center justify-center">
                         <EmptyState icon={BarChart3} title="No data available" description="Sales trends will appear here." />
@@ -388,6 +388,13 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
         <motion.div variants={itemVariants} className="col-span-7 lg:col-span-4 flex flex-col gap-6">
             <PerformanceChart />
             <TopPackagesCard />
+
+            {/* ===ADD DIAGNOSTICS FOR MIS SUPERADMIN === */}
+            {viewMode === ROLES.MIS_SUPER && (
+                <div className="mt-2">
+                    <SystemDiagnostics />
+                </div>
+            )}
         </motion.div>
         
         <motion.div variants={itemVariants} className="col-span-7 lg:col-span-3 flex flex-col gap-6 justify-between h-full">

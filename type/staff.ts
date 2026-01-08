@@ -11,6 +11,7 @@ export interface StaffMember {
   roleName: string;
   status: string; 
   createdDate: string;
+  expiryDate : string;
   roleId?: number;
   receiveNotifications?: boolean;
 }
@@ -62,6 +63,7 @@ export interface BackendStaffDTO {
   email: string;
   fullName: string;
   createdDate: string;
+  expiryDate?: string;
   roleID?: number;
   receiveNotifications?: boolean;
 }
@@ -79,6 +81,7 @@ export interface AssignRolePayload {
   accId: number;
   roles: string; 
   password: string;
+  expiryDate?: string | null;
 }
 
 export interface StaffListPayload {

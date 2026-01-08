@@ -12,14 +12,13 @@ import { SearchField } from "@/components/themepark-support/it-poswf/search-fiel
 import { type VoidTransaction } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
 import { formatCurrency, formatDate } from "@/lib/formatter";
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
 import { Badge } from "@/components/ui/badge" 
+import { useAutoSearch } from "@/hooks/use-auto-search"
 
 
 export default function VoidTransactionTab() {
-  const { toast } = useToast()
-  const searchParams = useSearchParams()
-  const urlQuery = searchParams.get('search')
+  const toast = useAppToast()
 
   const [voidInvoiceNo, setVoidInvoiceNo] = useState("")
   const [voidSearchResult, setVoidSearchResult] = useState<VoidTransaction[]>([])
@@ -28,11 +27,11 @@ export default function VoidTransactionTab() {
   const [voidingTransaction, setVoidingTransaction] = useState<VoidTransaction | null>(null)
   const [isVoiding, setIsVoiding] = useState(false)
 
-  const handleVoidSearch = async (queryOverride?: string) => {
-    const term = queryOverride !== undefined ? queryOverride : voidInvoiceNo;
-
-    if (!term) return
+  const handleVoidSearch = async (query: string) => {
+    if (!query) return
     
+    // Sync input state if triggered via URL
+    setVoidInvoiceNo(query);
     setIsVoidSearching(true)
     setVoidSearchResult([])
 
@@ -42,29 +41,22 @@ export default function VoidTransactionTab() {
       if (response.success && response.data) {
         setVoidSearchResult(response.data);
         if (response.data.length === 0) {
-          toast({ title: "Search Complete", description: "No voidable transactions found for this invoice." });
+          toast.info("Search Complete", "No voidable transactions found for this invoice." );
         }
       } else {
         setVoidSearchResult([]);
-        toast({ title: "Search Failed", description: response.error || "Could not retrieve transactions.", variant: "destructive" });
+        toast.error("Search Failed",  response.error || "Could not retrieve transactions.");
       }
     } catch (error) {
       console.error("Void Search Error:", error);
       setVoidSearchResult([]);
-      toast({ title: "Network Error", description: "Failed to connect to the transaction search service.", variant: "destructive" });
+      toast.error("Network Error", "Failed to connect to the transaction search service.");
     } finally {
       setIsVoidSearching(false)
     }
   }
 
-  useEffect(() => {
-    if (urlQuery) {
-      setVoidInvoiceNo(urlQuery)
-      handleVoidSearch(urlQuery) 
-      window.history.replaceState(null, '', window.location.pathname);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlQuery]);
+  useAutoSearch(handleVoidSearch);
 
   const handleVoidClick = (transaction: VoidTransaction) => {
     setVoidingTransaction(transaction)
@@ -96,11 +88,11 @@ export default function VoidTransactionTab() {
       )
       
       const responseMessage = response.data?.messaged || "Void request processed successfully.";
-      toast({ title: "Success", description: `Transaction ${voidingTransaction.trxID} voided. ${responseMessage}` })
+      toast.success("Success", `Transaction ${voidingTransaction.trxID} voided. ${responseMessage}` )
 
     } catch (error) {
       console.error("Void Error:", error);
-      toast({ title: "Void Failed", description: error instanceof Error ? error.message : "An unexpected error occurred.", variant: "destructive" });
+      toast.error( "Void Failed", error instanceof Error ? error.message : "An unexpected error occurred.");
     } finally {
       setIsVoidConfirmOpen(false)
       setVoidingTransaction(null)
@@ -152,7 +144,7 @@ export default function VoidTransactionTab() {
             placeholder="Enter invoice number"
             value={voidInvoiceNo}
             onChange={setVoidInvoiceNo}
-            onSearch={() => handleVoidSearch()}
+            onSearch={() => handleVoidSearch(voidInvoiceNo)}
             isSearching={isVoidSearching}
           />
         </CardContent>

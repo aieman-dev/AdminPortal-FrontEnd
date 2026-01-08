@@ -3,9 +3,7 @@ import {
   ShoppingCart, Clock, Ticket, Users, Monitor, 
   Settings, PlusCircle, ShieldAlert, ClipboardList, Database, 
   RefreshCw, TrendingUp, Activity, FileText, Server, Wallet,
-  LucideIcon, AppWindow,
-  CreditCard,
-  UserCog,
+  LucideIcon, AppWindow, FileClock, User, CreditCard, UserCog,
   Search
 } from "lucide-react";
 import { ROLES } from "@/lib/constants";
@@ -48,7 +46,8 @@ export const DASHBOARD_CONFIG: Record<string, RoleConfig> = {
     quickActions: [
       { label: "User Mgmt", icon: Users, path: "/portal/staff-management", color: "text-blue-600" },
       { label: "Create Pkg", icon: PlusCircle, path: "/portal/packages/form", color: "text-indigo-600" },
-      // Placeholders for future software integration
+      { label: "Activity Audit", icon: FileClock, path: "/portal/staff-management?tab=audit", color: "text-amber-600" },
+      { label: "My Profile", icon: User, path: "/portal/setting", color: "text-slate-500" },
       { label: "Software A", icon: AppWindow, path: "#", color: "text-slate-400" },
       { label: "Software B", icon: AppWindow, path: "#", color: "text-slate-400" },
     ]

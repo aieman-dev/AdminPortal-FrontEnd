@@ -1,225 +1,227 @@
-// components/PackageFormStep3.tsx
 "use client";
 import React, { useState, useEffect } from "react";
-import { PackageFormData } from "../type/packages";
-import { useAuth } from "@/hooks/use-auth"; 
-import { canDraftPackage, getAuthToken } from "@/lib/auth";
-import { BACKEND_API_BASE } from "@/lib/config";
-import { formatDate } from "@/lib/formatter";
-import { Loader2 } from "lucide-react";
+import { UseFormReturn } from "react-hook-form";
+import { PackageFormValues } from "@/lib/schemas";
+import { canDraftPackage } from "@/lib/auth";
+import { useAuth } from "@/hooks/use-auth";
+import { getProxiedImageUrl } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { formatCurrency, isPointPackage } from "@/lib/formatter";
 
 type Props = {
-  form: PackageFormData;
+  form: UseFormReturn<PackageFormValues>; 
   onBack: () => void;
   onSubmit?: () => void;
   onSaveDraft?: () => void;
 };
 
-// Helper: Calculate Valid Days
-function calculateValidDays(effectiveDate: string, lastValidDate: string): number {
-  if (!effectiveDate || !lastValidDate) return 0;
-  const start = new Date(effectiveDate).getTime();
-  const end = new Date(lastValidDate).getTime();
-  const diffTime = end - start;
-  const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return days > 0 ? days : 1; 
-}
-
-const DEFAULT_FALLBACK_IMAGE = "/packages/DefaultPackageImage.png";
-const IMAGE_ASSET_API_PATH = "api/Package/image-asset?id=";
-
 const PackageFormStep3: React.FC<Props> = ({ form, onBack, onSubmit, onSaveDraft }) => {
-  const [activeTab, setActiveTab] = useState<"overview" | "items">("overview");
   const { user } = useAuth();
   const canDraft = canDraftPackage(user?.department);
   
-  // 1. Initialize with Default Image so it's never empty
-  const [secureImageUrl, setSecureImageUrl] = useState<string>(DEFAULT_FALLBACK_IMAGE);
-  const [loadingImage, setLoadingImage] = useState(false);
-
-  const typeLower = form.packageType.toLowerCase();
-  const isPointMode = typeLower === "point"; 
+  const values = form.watch();
+  const packageItems = values.packageitems || [];
+  
+  const [secureImageUrl, setSecureImageUrl] = useState<string>("/packages/DefaultPackageImage.png");
+  const isPointMode = isPointPackage(values.packageType);
   const priceUnit = isPointMode ? "Pts" : "RM";
 
-  const formatValue = (val: number | undefined) => {
-    const num = val || 0;
-    return num.toLocaleString('en-US', {
-        minimumFractionDigits: isPointMode ? 0 : 2,
-        maximumFractionDigits: isPointMode ? 0 : 2
-    });
-  };
+  const totalEntryQty = packageItems.reduce((acc, item) => acc + (item.entryQty || 0), 0);
 
-  const displayTotal = formatValue(form.totalPrice);
-  const validDays = calculateValidDays(form.effectiveDate, form.lastValidDate);
-  const packageTypeLabel = form.packageType === "RewardP" ? "Reward Point" : form.packageType;
-
-  // --- EFFECT: Load Image ---
   useEffect(() => {
     const loadSecureImage = async () => {
-      // 1. If we have the working URL from Step 1, USE IT.
-      if (form.imageUrl) {
-          setSecureImageUrl(form.imageUrl);
-          return;
-      }
-
-      const imgId = form.imageID;
-
-      // 2. If it's a File (new upload), create object URL locally
-      if (imgId instanceof File) {
-        setSecureImageUrl(URL.createObjectURL(imgId));
+      if (values.imageUrl) { setSecureImageUrl(values.imageUrl); return; }
+      if (values.imageID instanceof File) {
+        setSecureImageUrl(URL.createObjectURL(values.imageID));
         return;
       }
-
-      // 3. If ID is missing, USE DEFAULT IMAGE (Matches Backend Behavior)
-      if (!imgId) {
-        setSecureImageUrl(DEFAULT_FALLBACK_IMAGE); 
-        return;
-      }
-
-      // 4. Fallback: If we ONLY have an ID string but NO URL
-      if (typeof imgId === "string") {
-        if (imgId.startsWith("http") || imgId.startsWith("blob:") || imgId.startsWith("/")) {
-           setSecureImageUrl(imgId);
-           return;
-        }
-
-        setLoadingImage(true);
-        try {
-          const token = getAuthToken();
-          const backendTargetUrl = `${BACKEND_API_BASE}/${IMAGE_ASSET_API_PATH}${imgId}`;
-          const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(backendTargetUrl)}`;
-
-          const res = await fetch(proxyUrl, {
-            headers: { "Authorization": `Bearer ${token}` }
-          });
-
-          if (res.ok) {
-            const blob = await res.blob();
-            const objectUrl = URL.createObjectURL(blob);
-            setSecureImageUrl(objectUrl);
-          } else {
-            console.warn("Failed to fetch image via proxy. Using default.");
-            setSecureImageUrl(DEFAULT_FALLBACK_IMAGE);
-          }
-        } catch (error) {
-          console.error("Error fetching secure image:", error);
-          setSecureImageUrl(DEFAULT_FALLBACK_IMAGE);
-        } finally {
-          setLoadingImage(false);
-        }
+      if (typeof values.imageID === "string" && values.imageID) {
+         setSecureImageUrl(getProxiedImageUrl(values.imageID));
       }
     };
-
     loadSecureImage();
-  }, [form.imageID, form.imageUrl]); 
-
-
+  }, [values.imageID, values.imageUrl]); 
+  
   return (
-    <div className="px-4 md:px-8 py-6">
-      <h2 className="text-2xl font-semibold text-foreground mb-6">3. Package Summary</h2>
-
-      <div className="flex gap-2 mb-8">
-        {["overview", "items"].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab as any)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-              activeTab === tab 
-              ? "bg-indigo-600 text-white" 
-              : "bg-muted text-muted-foreground hover:bg-muted/80"
-            }`}
-          >
-            {tab === "overview" ? "Package Overview" : "Package Items"}
-          </button>
-        ))}
+    <div className="px-4 md:px-8 py-6 h-full flex flex-col overflow-hidden">
+      
+      {/* HEADER WITH SEPARATOR */}
+      <div className="border-b border-border pb-4 mb-4 flex-shrink-0">
+        <h2 className="text-2xl font-semibold text-foreground">3. Package Summary</h2>
       </div>
+      
+      {/* TABS & CONTENT */}
+      <Tabs defaultValue="overview" className="w-full flex-1 flex flex-col min-h-0">
+        
+        {/* Tab Header - Removed border-b */}
+        <div className="flex-shrink-0 px-4 py-2 bg-muted/10 flex justify-between items-center mb-4 rounded-t-lg">
+            <TabsList className="bg-muted/50 p-1 h-9 border shadow-sm">
+                <TabsTrigger 
+                    value="overview" 
+                    className="px-4 text-xs font-medium data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-all"
+                >
+                    Package Overview 
+                </TabsTrigger>
+                <TabsTrigger 
+                    value="items" 
+                    className="px-4 text-xs font-medium data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-all"
+                >
+                    Package Items 
+                    <Badge variant="secondary" className="ml-2 h-4 px-1 bg-background/50 border text-current text-[10px]">{packageItems.length}</Badge>
+                </TabsTrigger>
+            </TabsList>
+        </div>
 
-      {activeTab === "overview" && (
-        <div className="flex flex-col lg:flex-row gap-6 mb-6">
-          <div className="flex-shrink-0 relative">
-            {loadingImage ? (
-                <div className="w-60 h-60 rounded-xl bg-muted flex items-center justify-center shadow-md">
-                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-                </div>
-            ) : (
-                <div className="w-60 h-60 rounded-xl bg-muted shadow-md overflow-hidden relative group">
-                    <img
-                      src={secureImageUrl}
-                      alt={form.packageName}
-                      onError={(e) => (e.currentTarget.src = DEFAULT_FALLBACK_IMAGE)}
-                      className="w-full h-full object-cover"
-                    />
-                    
-                    {/* Optional: Add a label if it is the default image so user knows it's auto-assigned */}
-                    {secureImageUrl === DEFAULT_FALLBACK_IMAGE && (
-                        <div className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] py-1 text-center font-medium">
-                            Default System Image
-                        </div>
-                    )}
-                </div>
-            )}
-          </div>
-
-          <div className="flex-1 flex flex-col space-y-4">
+        <div className="flex-1 overflow-y-auto scrollbar-hide pb-4">
             
-            {/* Price/Point Display */}
-            <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
-              {isPointMode ? `${displayTotal} ${priceUnit}` : `${priceUnit} ${displayTotal}`}
-            </p>
+            {/* TAB 1: OVERVIEW */}
+            <TabsContent value="overview" className="mt-0 h-full">
+                {/* items-stretch ensures left (image) and right (content) are same height */}
+                <div className="flex flex-col lg:flex-row gap-6 items-stretch h-full lg:h-auto">
+                    
+                    {/* LEFT: IMAGE (Stretches to match content height) */}
+                    <div className="w-full lg:w-1/3 xl:w-1/4 relative min-h-[250px] lg:min-h-0">
+                        <img 
+                            src={secureImageUrl} 
+                            className="absolute inset-0 w-full h-full object-cover rounded-xl shadow-md border bg-muted" 
+                            alt="Package Preview"
+                        />
+                    </div>
 
-            {/* Detail Grid */}
-            <div className="grid grid-cols-2 gap-x-12 gap-y-4 text-muted-foreground">
-              {/* Column 1: Package Info */}
-              <div>
-                <h4 className="font-semibold mb-3 text-foreground border-b border-border pb-1">Package Info</h4>
-                <p className="mb-2"><b className="text-foreground inline-block w-[150px] text-left">Package Name:</b> {form.packageName || "-"}</p>
-                <p className="mb-2"><b className="text-foreground inline-block w-[150px] text-left">Type:</b> {packageTypeLabel || "-"}</p>
-                <p className="mb-2"><b className="text-foreground inline-block w-[150px] text-left">Nationality:</b> {form.nationality || "-"}</p>
-                <p className="mb-2"><b className="text-foreground inline-block w-[150px] text-left">Category:</b> {form.ageCategory || "-"}</p>
-                <p className="mt-4"><b className="text-foreground inline-block w-[150px] text-left">Remark:</b> {form.tpremark || "-"}</p>
-              </div>
-              
-              {/* Column 2: Validity */}
-              <div>
-                <h4 className="font-semibold mb-3 text-foreground border-b border-border pb-1">Validity</h4>
-                <p className="mb-2"><b className="text-foreground inline-block w-[100px]">Effective:</b> {formatDate(form.effectiveDate)}</p>
-                <p className="mb-2"><b className="text-foreground inline-block w-[100px]">Expires:</b> {formatDate(form.lastValidDate)}</p>
-                <p className="mb-2"><b className="text-foreground inline-block w-[100px]">Duration:</b> {validDays} Days</p>
-                <p className="mb-2"><b className="text-foreground inline-block w-[100px]">Day Pass:</b> {form.dayPass || "-"}</p>
-              </div>
-            </div>
-          </div>
+                    {/* RIGHT: CONTENT */}
+                    <div className="flex-1 flex flex-col space-y-4">
+                        <div className="flex items-end justify-between">
+                            <div>
+                                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Total Value</p>
+                                <p className="text-3xl font-extrabold text-indigo-600 leading-none">
+                                    {formatCurrency(values.totalPrice || 0, values.packageType)}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        {/* COMPACT INFO GRID */}
+                        <div className="bg-muted/30 p-4 rounded-lg border text-sm space-y-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                                
+                                {/* Col 1: Details */}
+                                <div>
+                                    <h4 className="font-bold text-sm mb-2 border-b pb-1">Package Info</h4>
+                                    <div className="space-y-1.5 text-xs sm:text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground font-medium">Package Name:</span>
+                                            <span className="font-semibold text-right truncate max-w-[150px]">{values.packageName}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground font-medium">Entry Quantity:</span>
+                                            <span>{totalEntryQty}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground font-medium">Price:</span>
+                                            <span>{formatCurrency(values.totalPrice || 0, values.packageType)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground font-medium">Entry Type:</span>
+                                            <span>{values.packageType}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground font-medium">Nationality:</span>
+                                            <span>{values.nationality === 'L' ? 'Malaysian' : values.nationality === 'F' ? 'International' : 'All'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground font-medium">Age Category:</span>
+                                            <span>{values.ageCategory}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Col 2: Validity */}
+                                <div>
+                                    <h4 className="font-bold text-sm mb-2 border-b pb-1">Validity</h4>
+                                    <div className="space-y-1.5 text-xs sm:text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground font-medium">Effective Date:</span>
+                                            <span>{values.effectiveDate}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground font-medium">Last Valid Date:</span>
+                                            <span>{values.lastValidDate}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground font-medium">Day Pass:</span>
+                                            <span>{values.dayPass || "-"}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center pt-1">
+                                            <span className="text-muted-foreground font-medium">Status:</span>
+                                            <Badge variant="outline" className="font-normal text-[10px] bg-indigo-50 text-indigo-700 border-indigo-200 h-5">Draft (New)</Badge>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* REMARK - Pushed to fill remaining space if needed */}
+                        <div className="flex-1">
+                            <p className="text-xs font-bold text-muted-foreground mb-1">Internal Remark:</p>
+                            <div className="p-3 bg-card border rounded-md text-sm whitespace-pre-wrap text-muted-foreground h-full min-h-[60px]">
+                                {values.tpremark || "No remarks provided."}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </TabsContent>
+
+            {/* TAB 2: ITEMS */}
+            <TabsContent value="items" className="mt-0">
+                {packageItems.length === 0 ? (
+                    <div className="text-center py-12 border-2 border-dashed rounded-xl bg-muted/10">
+                        <p className="text-muted-foreground text-sm">No items added to this package.</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {packageItems.map((item, index) => {
+                            const itemVal = isPointMode ? (item.point || 0) : (item.price || 0);
+                            return (
+                                <div key={index} className="flex items-center justify-between p-3 rounded-lg border bg-card shadow-sm">
+                                    <div className="flex items-center gap-3 overflow-hidden">
+                                        <div className="h-9 w-9 rounded-md bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs shrink-0 border border-indigo-100">
+                                            {item.entryQty || 1}x
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="font-semibold text-sm text-foreground truncate" title={item.itemName}>
+                                                {item.itemName}
+                                            </div>
+                                            <div className="text-[10px] text-muted-foreground flex gap-2">
+                                                <span className="font-mono">ID: {item.attractionId}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right shrink-0 pl-2">
+                                        <div className="font-bold text-sm">
+                                            {formatCurrency(itemVal, isPointMode)}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </TabsContent>
         </div>
-      )}
-
-      {/* Package Items tab content... */}
-      {activeTab === "items" && (
-        <div className="rounded-lg bg-muted/30 p-4 border border-border">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {form.packageitems.map((item, idx) => {
-              const val = isPointMode ? (item.point || 0) : (item.price || 0);
-              const formattedItemVal = formatValue(val);
-              return (
-                  <div key={idx} className="flex justify-between items-center p-3 bg-card border border-border rounded shadow-sm">
-                    <span className="font-medium text-sm text-foreground">{item.itemName}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {isPointMode ? `${formattedItemVal} Pts` : `RM ${formattedItemVal}`} x {item.entryQty}
-                    </span>
-                  </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      <div className="flex justify-between mt-10">
-        <div className="flex gap-2">
-          <button onClick={onBack} className="px-6 py-2 border border-border rounded-md text-foreground hover:bg-muted transition">Back</button>
+      </Tabs>
+      
+      {/* Footer Actions */}
+      <div className="flex flex-col-reverse sm:flex-row justify-between gap-4 mt-auto pt-4 border-t flex-shrink-0">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button variant="outline" onClick={onBack} className="w-full sm:w-auto">Back</Button>
           {canDraft && (
-            <button onClick={onSaveDraft} className="px-6 py-2 bg-gray-400 dark:bg-gray-600 text-white rounded-md hover:bg-gray-500 dark:hover:bg-gray-500 transition">Save Draft</button>
+            <Button variant="secondary" onClick={onSaveDraft} className="w-full sm:w-auto">Save Draft</Button>
           )}
-          </div>
-        <button onClick={onSubmit} className="px-8 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition">Proceed</button>
+        </div>
+        <Button onClick={onSubmit} className="bg-indigo-600 hover:bg-indigo-700 w-full sm:w-auto px-8">
+            Confirm & Proceed
+        </Button>
       </div>
     </div>
   );

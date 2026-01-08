@@ -6,6 +6,8 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { canDraftPackage } from "@/lib/auth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input"; 
+import { STATUS_COLORS } from "@/lib/constants";
 
 interface PackageFiltersProps {
   activeFilter: string;
@@ -32,13 +34,13 @@ export default function PackageFilters({
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
   const filters = [
-    { label: "Pending", value: "Pending", color: "#9C6500", hover: "#C27C00" },
-    { label: "Active", value: "Active", color: "#006100", hover: "#008000" },
-    { label: "Expiring Soon", value: "ExpiringSoon", color: "#FF9800", hover: "#FFB84D" },
-    { label: "Expired", value: "Expired", color: "#B91C1C", hover: "#991B1B" },
-    { label: "Rejected", value: "Rejected", color: "#9C0005", hover: "#C40007" },
-    { label: "Draft", value: "Draft", color: "#4F46E5", hover: "#080087" },
-    { label: "Show All", value: "Show All", color: "#9CA3AF", hover: "#B0B6BD" },
+    { label: "Pending", value: "Pending", color: STATUS_COLORS["Pending"] },
+    { label: "Active", value: "Active", color: STATUS_COLORS["Active"] },
+    { label: "Expiring Soon", value: "ExpiringSoon", color: STATUS_COLORS["ExpiringSoon"] },
+    { label: "Expired", value: "Expired", color: STATUS_COLORS["Expired"] },
+    { label: "Rejected", value: "Rejected", color: STATUS_COLORS["Rejected"] },
+    { label: "Draft", value: "Draft", color: STATUS_COLORS["Draft"] },
+    { label: "Show All", value: "Show All", color: STATUS_COLORS["Show All"] },
   ];
 
   const visibleFilters = filters.filter(f => {
@@ -123,12 +125,12 @@ export default function PackageFilters({
 
         {/* Search Box */}
         <div className="relative w-64">
-           <input
+           <Input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search packages..."
-            className="w-full h-9 pl-9 pr-4 rounded-md border border-transparent bg-muted/50 text-sm outline-none focus:bg-background focus:border-indigo-500 transition-all placeholder:text-muted-foreground"
+            className="w-full h-9 pl-9 pr-4 bg-muted/50 border-transparent focus:bg-background"
           />
           <Search size={14} className="absolute left-3 top-2.5 text-muted-foreground" />
         </div>

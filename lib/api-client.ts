@@ -44,14 +44,32 @@ class ApiClient {
         }
 
         // 2. "How to know": Check Response.ok and Status Code
-        if (!response.ok) {
+          if (!response.ok) {
+          // A. Handle 403/401 (Session Expired) -> Stop the loop by redirecting
+          if (response.status === 403 || response.status === 401) {
+            if (typeof window !== "undefined") {
+               // Optional: clear storage if you store user data there
+               // localStorage.removeItem("user_data"); 
+               window.location.href = "/login?error=session_expired";
+            }
+            return { success: false, error: "Session expired. Redirecting..." };
+          }
+
           if (response.status === 503 || response.status === 502) {
              //triggerOfflineState();  //--- TRIGGER OFFLINE UI, comment for disable
           }
-          const errorMessage = data?.error || data?.message || response.statusText;
+
+          let errorMessage = data?.content?.message || data?.message || data?.error;
+          
+          // Fallback: If errorMessage is that weird string format "{ message = ... }"
+          if (!errorMessage && data?.errorMessage) {
+             errorMessage = data.errorMessage.replace("{ message = ", "").replace(" }", "");
+          }
+
+          const finalMessage = errorMessage || response.statusText;
           
           // Throw an AppError so the Service knows EXACTLY what happened
-          throw AppError.fromStatusCode(response.status, errorMessage);
+          throw AppError.fromStatusCode(response.status, finalMessage);
         }
 
         return { success: true, data: data };
@@ -94,7 +112,7 @@ class ApiClient {
     return this.request<T>(endpoint, {
       method: "POST",
       body: isFormData ? body : JSON.stringify(body),
-      headers: headers, // Pass custom headers (like our hardcoded token)
+      headers: headers, 
     })
   }
 
