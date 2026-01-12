@@ -19,7 +19,7 @@ import { ActivityDrawer } from "@/components/staff-management/ActivityDrawer"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
 
 // Config & Services
-import { formatDate } from "@/lib/formatter";
+import { formatDate, formatDateTime } from "@/lib/formatter";
 import { staffService } from "@/services/staff-services"
 import { type StaffMember, type AuditLog } from "@/type/staff"
 
@@ -199,7 +199,7 @@ function ActivityAuditTab({ onRowClick }: { onRowClick: (log: AuditLog) => void 
             header: "Timestamp", accessor: "timestamp", className: "text-right pr-6",
             cell: (val) => (
                 <div className="flex flex-col items-end">
-                    <span className="text-xs font-medium">{new Date(val as string).toLocaleDateString()}</span>
+                    <span className="text-xs font-medium">{formatDate(val as string)}</span>
                     <span className="text-[10px] text-muted-foreground font-mono">{new Date(val as string).toLocaleTimeString()}</span>
                 </div>
             )

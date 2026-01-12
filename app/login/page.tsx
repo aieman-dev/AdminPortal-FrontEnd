@@ -4,7 +4,7 @@ import { APP_VERSION } from "@/lib/constants"
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="h-[100dvh] w-full overflow-hidden flex items-center justify-center bg-background p-4">
 
       {/* Background image layer */}
       <div className="absolute inset-0 bg-[url('/bg/theme-park.png')] bg-cover bg-center opacity-15 z-0"></div>

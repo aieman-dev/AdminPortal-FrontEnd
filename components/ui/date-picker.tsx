@@ -20,7 +20,7 @@ interface DatePickerProps {
   className?: string
   disabled?: boolean
   fromDate?: Date
-  minDate?: Date // alias for fromDate to match generic props
+  minDate?: Date 
 }
 
 export function DatePicker({
@@ -32,8 +32,9 @@ export function DatePicker({
   fromDate,
   minDate
 }: DatePickerProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button
           variant={"outline"}
@@ -52,7 +53,10 @@ export function DatePicker({
         <Calendar
           mode="single"
           selected={date}
-          onSelect={setDate}
+          onSelect={(d) => {
+             setDate(d);
+             setIsOpen(false); 
+          }}
           disabled={(date) => (minDate || fromDate) ? date < (minDate || fromDate!) : false}
           initialFocus
         />

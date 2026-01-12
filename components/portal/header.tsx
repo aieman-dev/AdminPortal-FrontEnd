@@ -40,9 +40,13 @@ export function Header({
             <ChevronRight className="h-5 w-5" />
           </Button>
         )}
-        <div>
-          <h2 className="text-lg font-semibold">Welcome back, {user?.name?.split(" ")[0] || "User"}</h2>
-          <p className="text-sm text-muted-foreground">Manage your workspace and projects</p>
+        <div className="flex flex-col justify-center min-w-0">
+          <h2 className="text-sm md:text-lg font-semibold truncate">
+            Welcome back, {user?.name?.split(" ")[0] || "User"}
+          </h2>
+          <p className="text-xs text-muted-foreground truncate hidden sm:block">
+            Manage your workspace
+          </p>
         </div>
       </div>
 

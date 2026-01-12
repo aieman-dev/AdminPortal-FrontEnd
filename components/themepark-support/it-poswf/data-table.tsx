@@ -11,6 +11,7 @@ import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils" 
 import { PaginationControls } from "@/components/ui/pagination-controls"
 import { Card, CardContent } from "@/components/ui/card"
+import { MobileCard } from "@/components/ui/mobile-card"
 
 export interface TableColumn<T> {
   header: string
@@ -46,48 +47,6 @@ interface DataTableProps<T> {
   onSort?: (key: string) => void;
   sortConfig?: SortConfig | null;
   onRowClick?: (row: T) => void;
-}
-
-// === 1. NEW: Mobile Card Component ===
-function MobileCard<T>({ 
-    row, 
-    columns, 
-    onClick 
-}: { 
-    row: T, 
-    columns: TableColumn<T>[], 
-    onClick?: () => void 
-}) {
-    return (
-        <Card className="mb-3 hover:shadow-md transition-shadow active:scale-[0.99] cursor-pointer" onClick={onClick}>
-            <CardContent className="p-4 space-y-3">
-                {columns.map((col, idx) => {
-                    // Extract value logic (Same as table)
-                    const value = typeof col.accessor === "function" 
-                        ? col.accessor(row) 
-                        : row[col.accessor as keyof T];
-                    const content = col.cell ? col.cell(value, row) : (value as ReactNode);
-
-                    // First column usually serves as the "Title" of the card
-                    if (idx === 0) {
-                        return (
-                            <div key={idx} className="font-semibold text-base border-b pb-2 mb-2">
-                                {content}
-                            </div>
-                        );
-                    }
-
-                    // Other columns are key-value pairs
-                    return (
-                        <div key={idx} className="flex justify-between items-start text-sm gap-4">
-                            <span className="text-muted-foreground shrink-0">{col.header}</span>
-                            <div className="text-right font-medium break-words">{content}</div>
-                        </div>
-                    );
-                })}
-            </CardContent>
-        </Card>
-    );
 }
 
 export function DataTable<T>({ 

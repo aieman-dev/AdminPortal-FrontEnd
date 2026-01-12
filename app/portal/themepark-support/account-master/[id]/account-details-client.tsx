@@ -253,7 +253,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
 
   // Column definitions for the DataTable
   const transactionColumns: TableColumn<any>[] = [
-      { header: "Invoice No", accessor: "invoiceNo", className: "font-medium" },
+      { header: "Invoice No", accessor: "invoiceNo", className: "font-medium pl-8" },
       { header: "Name", accessor: "name" },
       { header: "Amount", accessor: "amount", cell: (val) => `RM ${Number(val).toFixed(2)}` },
       { header: "Type", accessor: "trxType", cell: (val) => <StatusBadge status={val} /> },
@@ -338,14 +338,16 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
              <FileText className="h-5 w-5 text-muted-foreground" />
              <h3 className="text-lg font-semibold">Transaction Details</h3>
           </div>
-          <DataTable 
-            columns={transactionColumns}
-            data={account.transactions}
-            keyExtractor={(row, idx) => `${row.invoiceNo}-${idx}`}
-            emptyIcon={SearchX}
-            emptyTitle="No Transactions"
-            emptyMessage="This account has no transaction history."
-          />
+          <div className="rounded-lg border max-h-[500px] overflow-y-auto scrollbar-hide bg-card">
+              <DataTable 
+                columns={transactionColumns}
+                data={account.transactions}
+                keyExtractor={(row, idx) => `${row.invoiceNo}-${idx}`}
+                emptyIcon={SearchX}
+                emptyTitle="No Transactions"
+                emptyMessage="This account has no transaction history."
+              />
+            </div>
         </CardContent>
       </Card>
 

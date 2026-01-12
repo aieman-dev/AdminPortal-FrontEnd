@@ -3,26 +3,27 @@
 import { useState } from "react"
 import { 
   Bell, Check, Clock, AlertTriangle, 
-  Info, XCircle, Mail, Megaphone, Inbox 
+  Info, XCircle, Inbox 
 } from "lucide-react"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { Drawer, DrawerContent, DrawerTrigger, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { getRelativeTime } from "@/lib/formatter" // Assuming this exists from your other files
+import { getRelativeTime } from "@/lib/formatter"
+import { useIsMobile } from "@/hooks/use-mobile"
 
-// Define types based on your JSON structure
 export interface NotificationItem {
   id: number
   title: string
   message: string
-  type: string // "warning" | "Info" | "critical"
+  type: string
   isRead: boolean
   createdDate: string
   source: "broadcast" | "personal"
@@ -44,9 +45,10 @@ export function NotificationPopover({
   onMarkAllRead
 }: NotificationPopoverProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const isMobile = useIsMobile()
   const [activeTab, setActiveTab] = useState("all")
 
-  // Combine and Sort by Date (Newest First)
+  // Combine and Sort by Date
   const allNotifications: NotificationItem[] = [
     ...broadcasts.map(b => ({ ...b, source: "broadcast" } as NotificationItem)),
     ...personal.map(p => ({ ...p, source: "personal" } as NotificationItem))
@@ -55,7 +57,6 @@ export function NotificationPopover({
   const systemNotifications = allNotifications.filter(n => n.source === "broadcast")
   const personalNotifications = allNotifications.filter(n => n.source === "personal")
 
-  // Helper to render icon based on type
   const getIcon = (type: string) => {
     const t = type.toLowerCase()
     if (t === 'critical') return <XCircle className="h-4 w-4 text-red-500" />
@@ -63,7 +64,8 @@ export function NotificationPopover({
     return <Info className="h-4 w-4 text-blue-500" />
   }
 
-  const NotificationList = ({ items }: { items: NotificationItem[] }) => {
+  // REFACTOR: Accept className to allow dynamic height on mobile vs fixed on desktop
+  const NotificationList = ({ items, className }: { items: NotificationItem[], className?: string }) => {
     if (items.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground">
@@ -74,14 +76,14 @@ export function NotificationPopover({
     }
 
     return (
-      <ScrollArea className="h-[350px]">
+      <ScrollArea className={cn("h-[350px]", className)}>
         <div className="flex flex-col">
           {items.map((item) => (
             <button
               key={`${item.source}-${item.id}`}
               onClick={() => onMarkAsRead?.(item.id, item.source)}
               className={cn(
-                "flex items-start gap-3 p-4 text-left border-b transition-colors hover:bg-muted/50",
+                "flex items-start gap-3 p-4 text-left border-b transition-colors hover:bg-muted/50 w-full",
                 !item.isRead ? "bg-muted/30" : "bg-transparent"
               )}
             >
@@ -90,9 +92,9 @@ export function NotificationPopover({
                 !item.isRead ? "bg-blue-600" : "bg-transparent"
               )} />
               
-              <div className="flex-1 space-y-1">
+              <div className="flex-1 space-y-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className={cn("text-sm font-medium leading-none", !item.isRead && "font-bold")}>
+                  <span className={cn("text-sm font-medium leading-none truncate", !item.isRead && "font-bold")}>
                     {item.title}
                   </span>
                   {getIcon(item.type)}
@@ -104,11 +106,11 @@ export function NotificationPopover({
                   <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                     <Clock className="h-3 w-3" /> {getRelativeTime(item.createdDate)}
                   </span>
-                  {item.source === 'broadcast' ? (
-                    <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-amber-200 text-amber-700 bg-amber-50">System</Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-blue-200 text-blue-700 bg-blue-50">Personal</Badge>
-                  )}
+                  <Badge variant="outline" className={cn("text-[9px] px-1 py-0 h-4", 
+                    item.source === 'broadcast' ? "border-amber-200 text-amber-700 bg-amber-50" : "border-blue-200 text-blue-700 bg-blue-50"
+                  )}>
+                    {item.source === 'broadcast' ? "System" : "Personal"}
+                  </Badge>
                 </div>
               </div>
             </button>
@@ -118,24 +120,24 @@ export function NotificationPopover({
     )
   }
 
-  return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
-          {/* THE BELL ICON WITH BADGE */}
-          <div className="relative">
-            <Bell className="h-5 w-5" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-600 text-[9px] font-bold text-white ring-2 ring-card animate-in zoom-in duration-300">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-          </div>
-        </Button>
-      </PopoverTrigger>
-      
-      <PopoverContent className="w-[380px] p-0" align="end" sideOffset={5}>
-        <div className="flex items-center justify-between p-4 border-b">
+  const TriggerButton = (
+    <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
+        <div className="relative">
+        <Bell className="h-5 w-5" />
+        {unreadCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-600 text-[9px] font-bold text-white ring-2 ring-card animate-in zoom-in duration-300">
+            {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+        )}
+        </div>
+    </Button>
+  )
+
+  // REFACTOR: Unified Content Variable used by both Drawer and Popover
+  const contentBody = (
+      <div className="flex flex-col h-full w-full">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b shrink-0">
           <div className="font-semibold text-sm">Notifications</div>
           {unreadCount > 0 && (
             <Button 
@@ -149,36 +151,58 @@ export function NotificationPopover({
           )}
         </div>
 
-        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="px-4 pt-2">
+        {/* Tabs */}
+        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 w-full">
+          <div className="px-4 pt-2 shrink-0">
             <TabsList className="grid w-full grid-cols-3 h-9">
               <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
-              <TabsTrigger value="system" className="text-xs gap-1">
-                 System
-              </TabsTrigger>
-              <TabsTrigger value="personal" className="text-xs gap-1">
-                 Personal
-              </TabsTrigger>
+              <TabsTrigger value="system" className="text-xs">System</TabsTrigger>
+              <TabsTrigger value="personal" className="text-xs">Personal</TabsTrigger>
             </TabsList>
           </div>
 
-          <TabsContent value="all" className="mt-2 border-t">
-            <NotificationList items={allNotifications} />
-          </TabsContent>
-          <TabsContent value="system" className="mt-2 border-t">
-            <NotificationList items={systemNotifications} />
-          </TabsContent>
-          <TabsContent value="personal" className="mt-2 border-t">
-            <NotificationList items={personalNotifications} />
-          </TabsContent>
+          <div className="flex-1 min-h-0 mt-2">
+             {/* Pass h-full to scroll area on mobile to fill drawer space */}
+             <TabsContent value="all" className="h-full m-0 data-[state=inactive]:hidden">
+                <NotificationList items={allNotifications} className={isMobile ? "h-[60vh]" : "h-[350px]"} />
+             </TabsContent>
+             <TabsContent value="system" className="h-full m-0 data-[state=inactive]:hidden">
+                <NotificationList items={systemNotifications} className={isMobile ? "h-[60vh]" : "h-[350px]"} />
+             </TabsContent>
+             <TabsContent value="personal" className="h-full m-0 data-[state=inactive]:hidden">
+                <NotificationList items={personalNotifications} className={isMobile ? "h-[60vh]" : "h-[350px]"} />
+             </TabsContent>
+          </div>
         </Tabs>
         
         {/* Footer */}
-        <div className="p-2 border-t bg-muted/30 text-center">
+        <div className="p-2 border-t bg-muted/30 text-center shrink-0">
             <Button variant="link" size="sm" className="text-xs h-auto py-1 text-muted-foreground" onClick={() => setIsOpen(false)}>
                 Close
             </Button>
         </div>
+      </div>
+  )
+
+  if (isMobile) {
+      return (
+          <Drawer open={isOpen} onOpenChange={setIsOpen}>
+              <DrawerTrigger asChild>{TriggerButton}</DrawerTrigger>
+              <DrawerContent className="px-0 max-h-[85vh]">
+                  <DrawerHeader className="sr-only">
+                      <DrawerTitle>Notifications</DrawerTitle>
+                  </DrawerHeader>
+                  {contentBody}
+              </DrawerContent>
+          </Drawer>
+      )
+  }
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>{TriggerButton}</PopoverTrigger>
+      <PopoverContent className="w-[380px] p-0" align="end" sideOffset={5}>
+        {contentBody}
       </PopoverContent>
     </Popover>
   )

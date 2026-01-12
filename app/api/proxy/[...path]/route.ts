@@ -25,16 +25,16 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
   }
 
   try {
-    // 1. Parse Body (Safely)
     let body: any = undefined;
     if (request.method === "POST" || request.method === "PUT") {
         try {
-            // Attempt to parse JSON. 
-            // If body is empty, this throws, and we catch it.
-            // If body is 'false', this returns false.
-            body = await request.json();
+            const text = await request.text();
+            // Only parse if string is not empty to avoid JSON parse error
+            if (text) {
+                body = JSON.parse(text);
+            }
         } catch (e) {
-            // Body is likely empty or invalid
+            console.warn("Failed to parse request body, proceeding with undefined body.");
             body = undefined;
         }
     }

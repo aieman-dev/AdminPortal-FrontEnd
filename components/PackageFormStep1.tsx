@@ -76,6 +76,19 @@ const PackageFormStep1: React.FC<Props> = ({ form, onNext }) => {
     fetchImages();
   }, []);
 
+  // --- NEW: Click Outside Listener ---
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsImageDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [dropdownRef]);
+
   const currentImageID = form.watch("imageID");
 
   useEffect(() => {
@@ -88,13 +101,15 @@ const PackageFormStep1: React.FC<Props> = ({ form, onNext }) => {
       const selectedImg = imageOptions.find(i => i.id === currentImageID);
       if (selectedImg) {
         setImagePreviewUrl(selectedImg.url);
-        if (!imageSearchQuery) setImageSearchQuery(selectedImg.name);
+        if (!imageSearchQuery || imageSearchQuery !== selectedImg.name) {
+             setImageSearchQuery(selectedImg.name);
+        }
       } else {
         setImagePreviewUrl(getProxiedImageUrl(currentImageID));
       }
     } else {
       setImagePreviewUrl(null);
-      setImageSearchQuery("");
+      if(!isImageDropdownOpen) setImageSearchQuery("");
     }
     return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [currentImageID, imageOptions]);
@@ -102,6 +117,7 @@ const PackageFormStep1: React.FC<Props> = ({ form, onNext }) => {
   const handleSelectImage = (image: ImageOption) => {
     form.setValue("imageID", image.id, { shouldValidate: true });
     form.setValue("imageUrl", image.url); 
+    setImageSearchQuery(image.name);
     setIsImageDropdownOpen(false);
   };
 
@@ -228,16 +244,24 @@ const PackageFormStep1: React.FC<Props> = ({ form, onNext }) => {
                             setImageSearchQuery(e.target.value);
                             setIsImageDropdownOpen(true);
                         }}
-                        onFocus={() => setIsImageDropdownOpen(true)}
+                        onClick={() => setIsImageDropdownOpen(prev => !prev)} 
                         placeholder="Search image database..."
-                        className="pl-10"
+                        className="pl-10 cursor-pointer"
                     />
                     <Search className="absolute left-3 top-2.5 text-muted-foreground pointer-events-none" size={18} />
-                    {loadingImages ? (
-                        <Loader2 className="absolute right-3 top-2.5 text-indigo-500 animate-spin" size={18} />
-                    ) : (
-                        <ChevronDown className={`absolute right-3 top-2.5 text-muted-foreground pointer-events-none transition-transform ${isImageDropdownOpen ? "rotate-180" : ""}`} size={18} />
-                    )}
+                    <div 
+                        className="absolute right-0 top-0 bottom-0 px-3 flex items-center cursor-pointer"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            setIsImageDropdownOpen(prev => !prev);
+                        }}
+                    >
+                        {loadingImages ? (
+                            <Loader2 className="text-indigo-500 animate-spin" size={18} />
+                        ) : (
+                            <ChevronDown className={`text-muted-foreground transition-transform ${isImageDropdownOpen ? "rotate-180" : ""}`} size={18} />
+                        )}
+                    </div>
                 </div>
 
                 {isImageDropdownOpen && (

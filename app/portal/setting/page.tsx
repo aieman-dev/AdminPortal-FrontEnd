@@ -192,7 +192,7 @@ export default function SettingsPage() {
   }, []);
 
   return (
-    <div className="space-y-2"> 
+    <div className="space-y-4 pb-20 md:pb-0">
       <PageHeader 
         title="Settings" 
         description="View your profile details, permissions, and system preferences." 
@@ -200,21 +200,23 @@ export default function SettingsPage() {
 
       <Tabs defaultValue="account" className="space-y-3">
         
-        <TabsList 
-            className={`grid w-full ${
-                isSuperAdmin ? "grid-cols-2 lg:w-[400px]" : "grid-cols-1 lg:w-[200px]"
-            }`}
-        >
-          <TabsTrigger value="account" className="flex items-center gap-2">
-            <User className="h-4 w-4" /> My Account
-          </TabsTrigger>
-          
-          {isSuperAdmin && (
-            <TabsTrigger value="system" className="flex items-center gap-2">
-                <Megaphone className="h-4 w-4" /> System Announcement
-            </TabsTrigger>
-          )}
-        </TabsList>
+        <div className="w-full overflow-x-auto scrollbar-hide pb-1">
+            <TabsList className="flex w-max h-auto p-1 bg-muted rounded-lg">
+                <TabsTrigger 
+                    value="account" 
+                    className="flex-1 min-w-[120px] gap-2 px-4 py-2">
+                    <User className="h-4 w-4" /> My Account
+                </TabsTrigger>
+                
+                {isSuperAdmin && (
+                    <TabsTrigger 
+                        value="system" 
+                        className="flex-1 min-w-[170px] gap-2 px-4 py-2">
+                        <Megaphone className="h-4 w-4" /> System Announcement
+                    </TabsTrigger>
+                )}
+            </TabsList>
+        </div>
 
         {/* === TAB 1: MY ACCOUNT === */}
         <TabsContent value="account" className="space-y-3 animate-in fade-in-50 duration-300">

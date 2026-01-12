@@ -24,7 +24,7 @@ export function ActivityCell({ activity }: ActivityCellProps) {
   return (
     <div className="flex flex-col">
       {/* Description Line */}
-      <span className="text-sm font-medium text-foreground truncate max-w-[220px]" title={activity.description}>
+      <span className="text-sm font-medium text-foreground whitespace-normal break-words leading-snug line-clamp-2" title={activity.description}>
         {activity.description}
       </span>
       

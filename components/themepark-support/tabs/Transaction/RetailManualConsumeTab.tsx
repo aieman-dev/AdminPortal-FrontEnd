@@ -26,6 +26,7 @@ import { CONSUME_TYPES, TERMINAL_GROUPS } from "@/lib/constants"
 import { PaginationControls } from "@/components/ui/pagination-controls" 
 import { usePagination } from "@/hooks/use-pagination"
 
+
 type Step = 'selection' | 'confirmation';
 
 export default function RetailManualConsumeTab() {
@@ -241,7 +242,7 @@ export default function RetailManualConsumeTab() {
     }},
     { header: "Line Total", accessor: "id", className: "text-right pr-6 font-bold", cell: (_: any, row: RetailItem) => {
         const qty = quantities[row.id] || 0;
-        return <span className={qty > 0 ? "text-foreground" : "text-muted-foreground/30"}>RM {(row.unitPrice * qty).toFixed(2)}</span>
+        return <span className={qty > 0 ? "text-foreground" : "text-muted-foreground/30"}>{formatCurrency(row.unitPrice * qty)}</span>
     }}
   ];
 
@@ -310,7 +311,7 @@ export default function RetailManualConsumeTab() {
                                     <span className="text-sm text-muted-foreground">Total Payable Amount</span>
                                     <div className="flex items-center gap-2 text-2xl font-bold text-primary">
                                         <TrendingUp className="h-5 w-5" />
-                                        RM {cartTotal.toFixed(2)}
+                                        {formatCurrency(cartTotal)}
                                     </div>
                                 </div>
                                 
@@ -348,7 +349,7 @@ export default function RetailManualConsumeTab() {
                 <CardContent className="space-y-6">
                     <div className="flex justify-between items-center bg-muted/50 p-4 rounded-lg border">
                         <span className="text-sm font-medium text-muted-foreground">Credit Balance</span>
-                        <span className="text-xl font-bold text-primary">RM {creditBalance.toFixed(2)}</span>
+                        <span className="text-xl font-bold text-primary">{formatCurrency(cartTotal)}</span>
                     </div>
                     <Separator />
                     <div className="space-y-4">
@@ -361,12 +362,12 @@ export default function RetailManualConsumeTab() {
                                         <div className="space-y-1">
                                             <div className="font-semibold text-foreground">{item.itemName}</div>
                                             <div className="text-muted-foreground text-xs">
-                                                ID: {item.itemID} <span className="mx-1">•</span> RM {item.unitPrice.toFixed(2)}/unit
+                                                ID: {item.itemID} <span className="mx-1">•</span>{formatCurrency(item.unitPrice * qty)}/unit
                                             </div>
                                         </div>
                                         <div className="text-right">
                                             <div className="font-mono text-muted-foreground">x {qty}</div>
-                                            <div className="font-bold text-foreground">RM {(item.unitPrice * qty).toFixed(2)}</div>
+                                            <div className="font-bold text-foreground">{formatCurrency(cartTotal)}</div>
                                         </div>
                                     </div>
                                 );

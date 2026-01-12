@@ -36,8 +36,9 @@ export default function PackageListingTab() {
 
 
   const handlePackageSearch = (query?: string) => {
-      const term = query !== undefined ? query : packageSearchTerm;
-      if(query !== undefined) setPackageSearchTerm(query);
+      const safeQuery = typeof query === "string" ? query : undefined;
+      const term = safeQuery !== undefined ? safeQuery : packageSearchTerm;
+      if(safeQuery !== undefined) setPackageSearchTerm(safeQuery);
       pagination.setCurrentPage(1); 
       fetchData(1, term);
   }

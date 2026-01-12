@@ -29,6 +29,13 @@ import { SystemOffline } from "@/components/portal/system-offline";
 import { SystemDiagnostics } from "@/components/portal/system-diagnostics";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppToast } from "@/hooks/use-app-toast";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 interface DashboardClientProps {
   initialPendingPackages: Package[]; 
@@ -153,6 +160,24 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
         <div className="h-[60vh] flex flex-col items-center justify-center">
             <EmptyState icon={ShieldAlert} title="Access Restricted" description="Department not configured." />
         </div>
+      );
+  }
+
+  // --- Sub-Components ---
+  const StatCardItem = ({ stat }: { stat: any }) => {
+      let finalColor = stat.color;
+      if (stat.id === "package_sync") finalColor = unsyncedCount > 0 ? "text-orange-600" : "text-green-600";
+      if (stat.id === "system_health") finalColor = systemStatus.startsWith("200") ? "text-green-600" : "text-red-600";
+
+      return (
+        <StatCard 
+            title={stat.label} 
+            value={getStatValue(stat.id)} 
+            description={stat.id === "package_sync" ? (unsyncedCount > 0 ? `${unsyncedCount} unsynced` : "Synced") : ""} 
+            icon={stat.icon} 
+            valueColor={finalColor === "default" ? undefined : finalColor} 
+            trend={stat.trend ? { value: "Live", positive: true } : undefined} 
+        />
       );
   }
 
@@ -362,7 +387,9 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
       );
   };
 
-  const gridClass = roleConfig.stats.length === 5 ? "grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-5" : "grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4";
+  const desktopGridClass = roleConfig.stats.length === 5 
+    ? "hidden md:grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-5" 
+    : "hidden md:grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4";
 
   return (
     <motion.div className="space-y-6" variants={containerVariants} initial="hidden" animate="show">
@@ -370,18 +397,27 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
           <PageHeader title={`Hello, ${user?.name?.split(' ')[0] || 'User'}`} description="Dashboard Overview" />
       </motion.div>
 
-      <div className={gridClass}>
-        {roleConfig.stats.map((stat, idx) => {
-            let finalColor = stat.color;
-            if (stat.id === "package_sync") finalColor = unsyncedCount > 0 ? "text-orange-600" : "text-green-600";
-            if (stat.id === "system_health") finalColor = systemStatus.startsWith("200") ? "text-green-600" : "text-red-600";
+      {/* === MOBILE STATS CAROUSEL === */}
+      <div className="md:hidden -mx-6 px-6">
+          <Carousel opts={{ align: "start", loop: true }} className="w-full">
+              <CarouselContent>
+                  {roleConfig.stats.map((stat, idx) => (
+                      <CarouselItem key={stat.id} className="basis-[85%] pl-4">
+                          <StatCardItem stat={stat} />
+                      </CarouselItem>
+                  ))}
+              </CarouselContent>
+          </Carousel>
+      </div>
 
-            return (
-                <motion.div key={stat.id} variants={itemVariants} className="relative hover:z-50 transition-all duration-200">
-                    <StatCard title={stat.label} value={getStatValue(stat.id)} description={stat.id === "package_sync" ? (unsyncedCount > 0 ? `${unsyncedCount} items pending sync` : "All items synced") : ""} icon={stat.icon} valueColor={finalColor === "default" ? undefined : finalColor} trend={stat.trend ? { value: "Live", positive: true } : undefined} />
-                </motion.div>
-            );
-        })}
+      {/* === DESKTOP STATS GRID === */}
+      {/* This uses the dynamic class to handle 4 vs 5 columns correctly */}
+      <div className={desktopGridClass}>
+        {roleConfig.stats.map((stat, idx) => (
+            <motion.div key={stat.id} variants={itemVariants} className="relative hover:z-50 transition-all duration-200">
+                <StatCardItem stat={stat} />
+            </motion.div>
+        ))}
       </div>
 
       <div className="grid gap-6 md:grid-cols-7 items-start">

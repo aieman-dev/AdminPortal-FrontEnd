@@ -56,8 +56,8 @@ const PackageFormStep3: React.FC<Props> = ({ form, onBack, onSubmit, onSaveDraft
       <Tabs defaultValue="overview" className="w-full flex-1 flex flex-col min-h-0">
         
         {/* Tab Header - Removed border-b */}
-        <div className="flex-shrink-0 px-4 py-2 bg-muted/10 flex justify-between items-center mb-4 rounded-t-lg">
-            <TabsList className="bg-muted/50 p-1 h-9 border shadow-sm">
+        <div className="flex-shrink-0 px-0 md:px-4 py-2 bg-muted/10 flex justify-between items-center mb-4 rounded-t-lg">
+            <TabsList className="bg-muted/50 p-1 h-auto md:h-9 border shadow-sm w-full md:w-auto grid grid-cols-2 md:flex">
                 <TabsTrigger 
                     value="overview" 
                     className="px-4 text-xs font-medium data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-all"
@@ -78,7 +78,6 @@ const PackageFormStep3: React.FC<Props> = ({ form, onBack, onSubmit, onSaveDraft
             
             {/* TAB 1: OVERVIEW */}
             <TabsContent value="overview" className="mt-0 h-full">
-                {/* items-stretch ensures left (image) and right (content) are same height */}
                 <div className="flex flex-col lg:flex-row gap-6 items-stretch h-full lg:h-auto">
                     
                     {/* LEFT: IMAGE (Stretches to match content height) */}

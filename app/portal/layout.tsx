@@ -18,7 +18,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
 
-  const [isSystemOffline, setIsSystemOffline] = useState(false);
+  const [isSystemLocked, setIsSystemLocked] = useState(false);
+  const [lockMessage, setLockMessage] = useState("");
 
   // Broadcast noti
   const [broadcasts, setBroadcasts] = useState<BroadcastItem[]>([]);
@@ -82,17 +83,32 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   useAutoLogout();
 
   useEffect(() => {
-    const handleOfflineTrigger = () => setIsSystemOffline(true);
-    window.addEventListener("sys:offline", handleOfflineTrigger);
+    const handleGlobalError = (event: Event) => {
+        const customEvent = event as CustomEvent;
+        // 1. Get message from event
+        const msg = customEvent.detail?.message || "System Unavailable";
+        
+        // 2. Set State
+        setLockMessage(msg);
+        setIsSystemLocked(true);
+    };
+
+    window.addEventListener("sys:global-error", handleGlobalError);
+    window.addEventListener("sys:offline", handleGlobalError);
+    
     return () => {
-      window.removeEventListener("sys:offline", handleOfflineTrigger);
+      window.removeEventListener("sys:global-error", handleGlobalError);
+      window.removeEventListener("sys:offline", handleGlobalError);
     };
   }, []);
-  
-  if (isSystemOffline) {
+
+  if (isSystemLocked) {
     return (
-        <div className="h-screen w-screen bg-background flex items-center justify-center">
-            <SystemOffline onRetry={() => window.location.reload()} />
+        <div className="h-screen w-screen bg-background flex items-center justify-center p-4">
+            <SystemOffline 
+                message={lockMessage} 
+                onRetry={() => window.location.reload()} 
+            />
         </div>
     );
   }
