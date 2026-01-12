@@ -1,24 +1,90 @@
 // app/portal/it-poswf/account-management/[id]/page.tsx
 "use client"
 import { useEffect, useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { AccountDetailsClient } from "./account-details-client"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { AccountDetailsClient } from "@/app/portal/themepark-support/account-master/[id]/account-details-client"
 import { Account } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support" 
-import { LoaderState } from "@/components/ui/loader-state"
+import { Skeleton } from "@/components/ui/skeleton"
 
+// --- CUSTOM SKELETON LOADER ---
+const AccountDetailSkeleton = () => (
+  <div className="space-y-6 pb-20 animate-in fade-in duration-500">
+      {/* 1. Header Breadcrumbs */}
+      <div className="flex items-center gap-2 mb-4">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-4 w-4" />
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-4 w-4" />
+          <Skeleton className="h-4 w-40" />
+      </div>
 
-// FIX: Destructure 'id' directly from the params object in the function argument
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full lg:min-h-[calc(100vh-140px)]">
+          
+          {/* LEFT PANEL SKELETON */}
+          <div className="lg:col-span-4 h-full flex flex-col gap-6">
+              {/* Profile Card */}
+              <Card>
+                  <CardHeader className="pb-3 border-b bg-muted/10">
+                      <Skeleton className="h-6 w-32" />
+                  </CardHeader>
+                  <CardContent className="pt-4 space-y-4">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                          <div key={i} className="flex justify-between">
+                              <Skeleton className="h-4 w-24" />
+                              <Skeleton className="h-4 w-32" />
+                          </div>
+                      ))}
+                  </CardContent>
+              </Card>
+
+              {/* Actions Card */}
+              <Card className="flex-1">
+                  <CardHeader className="pb-3 border-b bg-muted/10">
+                      <Skeleton className="h-6 w-32" />
+                  </CardHeader>
+                  <CardContent className="pt-4">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                          {Array.from({ length: 6 }).map((_, i) => (
+                              <Skeleton key={i} className="h-10 w-full rounded-md" />
+                          ))}
+                      </div>
+                  </CardContent>
+              </Card>
+          </div>
+
+          {/* RIGHT PANEL SKELETON */}
+          <div className="lg:col-span-8 h-full">
+              <Card className="h-full flex flex-col border-0 lg:border">
+                  <CardHeader className="pb-3 border-b bg-muted/10">
+                      <Skeleton className="h-6 w-48" />
+                  </CardHeader>
+                  <CardContent className="flex-1 p-6 space-y-4">
+                      {/* Table Header */}
+                      <div className="flex justify-between mb-4">
+                          <Skeleton className="h-4 w-20" />
+                          <Skeleton className="h-4 w-40" />
+                          <Skeleton className="h-4 w-20" />
+                      </div>
+                      {/* Table Rows */}
+                      {Array.from({ length: 8 }).map((_, i) => (
+                          <div key={i} className="flex justify-between items-center py-2 border-b">
+                               <Skeleton className="h-4 w-full" />
+                          </div>
+                      ))}
+                  </CardContent>
+              </Card>
+          </div>
+      </div>
+  </div>
+)
+
 export default function AccountDetailsPage({ params: { id } }: { params: { id: string } }) {
-  // Line 11 is now fixed by destructuring above: const { id } = params
-  // const { id } = params // This line is removed/fixed by the new signature
-
   const [account, setAccount] = useState<Account | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchAccount = async () => {
-      // The 'id' is now guaranteed to be a string here.
       const accId = id; 
 
       if (!accId) {
@@ -29,10 +95,8 @@ export default function AccountDetailsPage({ params: { id } }: { params: { id: s
       const response = await itPoswfService.getAccountDetails(accId);
 
       if (response.success && response.data) {
-        // The data is already mapped to the 'Account' interface in the service layer
         setAccount(response.data); 
       } else {
-        // Handle failure to load account
         console.error("Failed to load account details:", response.error);
         setAccount(null);
       }
@@ -40,11 +104,11 @@ export default function AccountDetailsPage({ params: { id } }: { params: { id: s
     };
 
     fetchAccount();
-  }, [id]) // Dependency array updated to rely on destructured 'id'
+  }, [id]) 
 
 
   if (loading) {
-    return <LoaderState message="Loading Account Details..." className="min-h-[60vh] border-none bg-transparent" />
+    return <AccountDetailSkeleton />
   }
 
   if (!account) {
@@ -59,6 +123,5 @@ export default function AccountDetailsPage({ params: { id } }: { params: { id: s
     )
   }
 
-  // Pass the real account data to the client component
   return <AccountDetailsClient account={account} />
 }

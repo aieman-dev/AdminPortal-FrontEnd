@@ -43,11 +43,8 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     const apiResponse = await fetch(backendUrl, {
       method: request.method,
       headers: headers,
-      
-      // --- THE CRITICAL FIX IS HERE ---
-      // We check if body is explicitly not undefined.
-      // This allows 'false' and '0' to pass through correctly.
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      cache: "no-store",
     });
 
     const responseText = await apiResponse.text();
@@ -72,7 +69,16 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
       );
     }
 
-    return NextResponse.json(data, { status: 200 });
+    const nextResponse = NextResponse.json(data, { status: 200 });
+    const setCookieHeader = apiResponse.headers.get("Set-Cookie");
+
+    if (setCookieHeader) {
+        // Forward the cookie to the browser
+        // Note: You might need to adjust domain/path if backend sets them strictly
+        nextResponse.headers.set("Set-Cookie", setCookieHeader);
+    }
+
+    return nextResponse;
 
   } catch (error) {
     console.error(`Proxy Error [${request.method} ${path}]:`, error);
