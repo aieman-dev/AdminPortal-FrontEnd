@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { UseFormReturn } from "react-hook-form";
-import { PackageFormValues } from "@/lib/schemas";
+import { PackageFormValues } from "@/lib/schemas/package-management";
 import { PackageItem } from "@/type/packages"; 
 import { ShoppingCart, List, Trash2, PlusCircle, AlertTriangle } from "lucide-react"; 
 import { 

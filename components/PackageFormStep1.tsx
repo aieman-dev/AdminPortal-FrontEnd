@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Search, X, ChevronDown, Check, Loader2, Eye } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
-import { PackageFormValues } from "@/lib/schemas";
+import { PackageFormValues } from "@/lib/schemas/package-management";
 import { packageService } from "@/services/package-services"
 import { NATIONALITY_OPTIONS } from "@/lib/constants"; 
 import { getProxiedImageUrl } from "@/lib/utils";

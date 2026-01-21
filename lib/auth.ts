@@ -104,6 +104,11 @@ export function canViewThemeParkSupport(department?: string): boolean {
   return deptUpper.includes("MIS") || deptUpper.includes("IT");
 }
 
+export function canViewCarParkSupport(department?: string): boolean {
+  if (!department) return false;
+  return department === ROLES.MIS_SUPER || department === ROLES.CP_Admin;
+}
+
 export function canCreatePackage(department?: string): boolean {
   if (!department) return false;
   const allowed = [ROLES.MIS_SUPER, ROLES.TP_ADMIN];

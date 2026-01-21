@@ -20,6 +20,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
   const [isSystemLocked, setIsSystemLocked] = useState(false);
   const [lockMessage, setLockMessage] = useState("");
+  const [lockDetails, setLockDetails] = useState<any>(null);
 
   // Broadcast noti
   const [broadcasts, setBroadcasts] = useState<BroadcastItem[]>([]);
@@ -87,9 +88,11 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         const customEvent = event as CustomEvent;
         // 1. Get message from event
         const msg = customEvent.detail?.message || "System Unavailable";
+        const debug = customEvent.detail?.debugInfo;
         
         // 2. Set State
         setLockMessage(msg);
+        setLockDetails(debug);
         setIsSystemLocked(true);
     };
 
@@ -108,6 +111,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             <SystemOffline 
                 message={lockMessage} 
                 onRetry={() => window.location.reload()} 
+                errorDetails={lockDetails}
             />
         </div>
     );

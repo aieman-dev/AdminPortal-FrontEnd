@@ -27,7 +27,9 @@ export const ROLES = {
   MIS_SUPER: "MIS_SUPERADMIN",
   IT_ADMIN: "IT_ADMIN",
   TP_ADMIN: "TP_ADMIN",
-  FINANCE: "FINANCE"
+  FINANCE: "FINANCE",
+  HR_Admin:"HR_Admin",
+  CP_Admin :"CP_Admin"
 } as const;
 
 // 2. Map Backend Strings -> Frontend Roles
@@ -35,7 +37,9 @@ export const BACKEND_ROLE_MAP: Record<string, string> = {
   "ITTP_Support": ROLES.IT_ADMIN, 
   "SuperAdmin": ROLES.MIS_SUPER,
   "TP_Admin": ROLES.TP_ADMIN,
-  "Finance": ROLES.FINANCE
+  "Finance": ROLES.FINANCE,
+  "HR_Admin":ROLES.HR_Admin,
+  "CP_Admin":ROLES.CP_Admin
 };
 
 // 3. UI Dropdown 
@@ -43,7 +47,9 @@ export const STAFF_ROLES = [
   { label: "IT Admin", value: "ITTP_Support" },
   { label: "MIS Superadmin", value: "SuperAdmin" },
   { label: "Finance", value: "Finance" },
-  { label: "Theme Park", value: "TP_Admin" } 
+  { label: "Theme Park", value: "TP_Admin" }, 
+  { label: "Car Park", value: "CP_Admin" },
+  { label: "Human Resources", value: "HR_Admin" }  
 ] as const;
 
 export const PACKAGE_TYPE_LABELS: Record<string, string> = {
@@ -74,7 +80,7 @@ export const getNationalityLabel = (code: string | undefined) => {
 export const STATUS_COLORS: Record<string, string> = {
   Pending: "#eab308", // Yellow-500
   Active: "#16a34a",  // Green-600
-  ExpiringSoon: "#f97316", // Orange-500
+  Expiring: "#f97316", // Orange-500
   Expired: "#dc2626", // Red-600
   Rejected: "#b91c1c", // Red-700
   Draft: "#4f46e5",   // Indigo-600
@@ -110,6 +116,11 @@ export const STATUS_STYLES: Record<string, string> = {
     // --- Sync Statuses (NEW) ---
     synced: "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-emerald-200", 
     error: "bg-rose-100 text-rose-700 hover:bg-rose-200 border-rose-200",
+
+    // --- Parking Activity ---
+    parked: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800",
+    completed: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700",
+    blocked: "bg-slate-800 text-slate-50 border-slate-800 hover:bg-slate-900 dark:bg-slate-200 dark:text-slate-900 dark:border-slate-200",
   }
 
 

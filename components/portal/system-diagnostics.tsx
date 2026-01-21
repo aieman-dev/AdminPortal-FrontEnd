@@ -8,11 +8,12 @@ import { Badge } from "@/components/ui/badge"
 import { useAppToast } from "@/hooks/use-app-toast"
 
 interface DiagnosticProps {
-    autoRun?: boolean; // If true, runs immediately (for Error pages)
+    autoRun?: boolean; 
     className?: string;
+    errorDetails?: any;
 }
 
-export function SystemDiagnostics({ autoRun = false, className }: DiagnosticProps) {
+export function SystemDiagnostics({ autoRun = false, className, errorDetails }: DiagnosticProps) {
   const toast = useAppToast()
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -38,8 +39,11 @@ export function SystemDiagnostics({ autoRun = false, className }: DiagnosticProp
 
   const handleCopyReport = () => {
       if (!result) return;
+
+      const errorSection = errorDetails 
+        ? `\n[Error Details]\n${typeof errorDetails === 'object' ? JSON.stringify(errorDetails, null, 2) : errorDetails}`
+        : '';
       
-      // Format the report for easy reading in Slack/Teams/Email
       const text = `[System Diagnostic Report]
         Time: ${new Date().toLocaleString()}
         Status: ${result.status.toUpperCase()}

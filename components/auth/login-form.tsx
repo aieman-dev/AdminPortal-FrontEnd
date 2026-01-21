@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/form"
 
 import { login } from "@/lib/auth"
-import { loginSchema, LoginValues } from "@/lib/schemas"
+import { loginSchema, LoginValues } from "@/lib/schemas/login"
 
 export function LoginForm() {
   const router = useRouter()

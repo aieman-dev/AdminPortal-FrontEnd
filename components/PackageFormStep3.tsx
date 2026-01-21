@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { UseFormReturn } from "react-hook-form";
-import { PackageFormValues } from "@/lib/schemas";
+import { PackageFormValues } from "@/lib/schemas/package-management";
 import { canDraftPackage } from "@/lib/auth";
 import { useAuth } from "@/hooks/use-auth";
 import { getProxiedImageUrl } from "@/lib/utils";

@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { Package, PackageItem } from "@/type/packages";
 import { packageService } from "@/services/package-services"; 
-// FIX: Imported ConfirmationModal for the warning popup
 import { ApprovalModal, ConfirmationModal } from "@/components/PackageModals"; 
 import { useAuth } from "@/hooks/use-auth";
 import { isFinanceApprover } from "@/lib/auth";

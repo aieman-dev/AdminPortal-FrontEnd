@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form"; 
 import { Form } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod"; 
-import { packageFormSchema, PackageFormValues } from "@/lib/schemas";
+import { packageFormSchema, PackageFormValues } from "@/lib/schemas/package-management";
 
 // Components
 import StepIndicator from "@/components/StepIndicator";

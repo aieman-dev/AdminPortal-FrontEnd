@@ -13,29 +13,31 @@ export class AppError extends Error {
   public readonly type: ErrorType;
   public readonly statusCode?: number;
   public readonly originalError?: any;
+  public readonly data?: any;
 
-  constructor(message: string, type: ErrorType, statusCode?: number, originalError?: any) {
+  constructor(message: string, type: ErrorType, statusCode?: number, originalError?: any, data?: any) {
     super(message);
     this.name = "AppError";
     this.type = type;
+    this.data = data;
     this.statusCode = statusCode;
     this.originalError = originalError;
   }
 
   // Helper to determine type from Status Code
-  static fromStatusCode(status: number, message?: string): AppError {
+  static fromStatusCode(status: number, message?: string, data?: any): AppError {
     if (status === 401 || status === 403) {
-      return new AppError(message || "Unauthorized access", ErrorType.AUTHENTICATION, status);
+      return new AppError(message || "Unauthorized access", ErrorType.AUTHENTICATION, status, null, data);
     }
     if (status === 404) {
-      return new AppError(message || "Resource not found", ErrorType.NOT_FOUND, status);
+      return new AppError(message || "Resource not found", ErrorType.NOT_FOUND, status, null, data);
     }
     if (status >= 400 && status < 500) {
-      return new AppError(message || "Invalid request", ErrorType.VALIDATION, status);
+      return new AppError(message || "Invalid request", ErrorType.VALIDATION, status, null, data);
     }
     if (status >= 500) {
-      return new AppError(message || "Server error", ErrorType.SERVER, status);
+      return new AppError(message || "Server error", ErrorType.SERVER, status, null, data);
     }
-    return new AppError(message || "Unknown error", ErrorType.UNKNOWN, status);
+    return new AppError(message || "Unknown error", ErrorType.UNKNOWN, status, null, data);
   }
 }

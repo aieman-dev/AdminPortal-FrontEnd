@@ -9,9 +9,10 @@ import { useAuth } from "@/hooks/use-auth"
 interface SystemOfflineProps {
   onRetry?: () => void;
   message?: string;
+  errorDetails?: any;
 }
 
-export function SystemOffline({ onRetry, message = "Unknown Error" }: SystemOfflineProps) {
+export function SystemOffline({ onRetry, message = "Unknown Error", errorDetails }: SystemOfflineProps) {
   const { logout } = useAuth();
 
   // Default: Network Error
@@ -65,7 +66,7 @@ export function SystemOffline({ onRetry, message = "Unknown Error" }: SystemOffl
       {/* -- DIAGNOSTICS (Only for connectivity issues) --- */}
       {showDiagnostics && (
           <div className="w-full">
-             <SystemDiagnostics autoRun={true} />
+             <SystemDiagnostics autoRun={true} errorDetails={errorDetails}/>
           </div>
       )}
 

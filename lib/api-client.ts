@@ -4,10 +4,10 @@ import { AppError, ErrorType } from "@/lib/errors"
 import { USER_DATA_KEY } from "@/lib/constants"
 
 // --- NEW: Helper to trigger global lock screen ---
-export const triggerGlobalError = (message: string) => {
+export const triggerGlobalError = (message: string, debugInfo?: any) => {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("sys:global-error", { 
-        detail: { message } 
+        detail: { message, debugInfo } 
     }));
   }
 };
@@ -52,10 +52,8 @@ class ApiClient {
         }
 
         if (!response.ok) {
-          // Extract the error message safely
           let errorMessage = data?.content?.message || data?.message || data?.error;
           
-          // Handle the weird string format "{ message = ... }" if present
           if (!errorMessage && data?.errorMessage) {
              errorMessage = data.errorMessage.replace("{ message = ", "").replace(" }", "");
           }
@@ -82,21 +80,16 @@ class ApiClient {
              
              // Check if it's specifically an expiry issue
              if (finalMessage.toLowerCase().includes("expired")) {
-                 triggerGlobalError(finalMessage); // "Access Denied: Your permissions have expired."
-             } else {
-                 // For other 403s, you might just want to show a toast or partial error
-                 // But if it's critical, you can trigger global error too:
-                 // triggerGlobalError("Access Denied: You do not have permission to view this resource.");
-             }
-             
-             throw AppError.fromStatusCode(403, finalMessage);
+                 triggerGlobalError(finalMessage, data); 
+             } 
+             throw AppError.fromStatusCode(403, finalMessage, data);
           }
 
           if (response.status === 503 || response.status === 502) {
              // triggerOfflineState(); 
           }
           
-          throw AppError.fromStatusCode(response.status, finalMessage);
+          throw AppError.fromStatusCode(response.status, finalMessage, data);
         }
 
         return { success: true, data: data };

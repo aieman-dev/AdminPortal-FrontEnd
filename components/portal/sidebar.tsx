@@ -10,7 +10,7 @@ import { LogOut, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 import { useState, useEffect } from "react" 
-import { canViewThemeParkSupport, canViewPackageManagement } from "@/lib/auth"
+import { canViewThemeParkSupport, canViewPackageManagement, canViewCarParkSupport } from "@/lib/auth"
 import { SIDEBAR_NAVIGATION } from "@/config/navigation"
 
 const LOCAL_STORAGE_KEY_TO_CLEAR = 'accountMasterEmailSearch';
@@ -70,6 +70,10 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
     
     if (item.name === "Package Management") {
         return canViewPackageManagement(department);
+    }
+
+    if (item.name === "Car Park Support") {
+        return canViewCarParkSupport(department);
     }
 
     if (item.name === "Staff Management") {
