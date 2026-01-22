@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { DatePicker } from "@/components/ui/date-picker";
 
 export interface ExpiryData {
   isoString: string;
@@ -11,7 +12,7 @@ interface ExpirySelectorProps {
 }
 
 const ExpirySelector: React.FC<ExpirySelectorProps> = ({ onExpiryChange }) => {
-  const [date, setDate] = useState<string>('');
+  const [date, setDate] = useState<Date | undefined>(undefined);
   
   // Time State
   const [hour, setHour] = useState<string>('12');
@@ -23,11 +24,16 @@ const ExpirySelector: React.FC<ExpirySelectorProps> = ({ onExpiryChange }) => {
   useEffect(() => {
     if (!date) return;
 
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
     let hours24 = parseInt(hour, 10);
     if (ampm === 'PM' && hours24 < 12) hours24 += 12;
     if (ampm === 'AM' && hours24 === 12) hours24 = 0;
 
-    const expiryDateTimeString = `${date}T${hours24.toString().padStart(2, '0')}:${minute}:00`;
+    const expiryDateTimeString = `${dateStr}T${hours24.toString().padStart(2, '0')}:${minute}:00`;
     const expiryDateObj = new Date(expiryDateTimeString);
     const now = new Date();
 
@@ -41,6 +47,10 @@ const ExpirySelector: React.FC<ExpirySelectorProps> = ({ onExpiryChange }) => {
 
   }, [date, hour, minute, ampm, onExpiryChange]);
 
+  const displayDateStr = date 
+    ? date.toLocaleDateString("en-GB", { year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-') 
+    : "YYYY-MM-DD";
+
   return (
     <div className="space-y-2">
       {/* Label for the whole section */}
@@ -53,13 +63,12 @@ const ExpirySelector: React.FC<ExpirySelectorProps> = ({ onExpiryChange }) => {
         
         {/* 1. Date Input (Left Side) */}
         <div className="flex-1">
-          <input 
-            type="date"
-            min={todayStr}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 
-              ${!date ? 'text-gray-400' : 'text-gray-900 dark:text-gray-100'}`}
+          <DatePicker 
+            date={date}
+            setDate={setDate}
+            minDate={new Date()}
+            placeholder="Pick expiry date"
+            className="w-full h-10" 
           />
         </div>
 
@@ -117,7 +126,7 @@ const ExpirySelector: React.FC<ExpirySelectorProps> = ({ onExpiryChange }) => {
 
       {/* Helper Text */}
       <p className="text-[0.8rem] text-muted-foreground">
-        *Announcement will automatically disappear on {date || "YYYY-MM-DD"} at {hour}:{minute} {ampm}
+        *Announcement will automatically disappear on {displayDateStr} at {hour}:{minute} {ampm}
       </p>
     </div>
   );

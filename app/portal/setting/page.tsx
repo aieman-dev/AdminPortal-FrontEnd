@@ -310,7 +310,7 @@ export default function SettingsPage() {
 
        {/* === TAB 2: SYSTEM CONTROL (Modified for Compactness) === */}
         {isSuperAdmin && (
-            <TabsContent value="system" className="space-y-3 animate-in fade-in-50 duration-300">
+            <TabsContent value="system" className="flex-1 min-w-[190px] gap-2 px-4 py-2 flex items-center justify-center">
                 {/* ITEMS-STRETCH: Aligns heights of Left Form and Right Preview */}
                 <div className="grid gap-4 lg:grid-cols-3 items-stretch">
                     
