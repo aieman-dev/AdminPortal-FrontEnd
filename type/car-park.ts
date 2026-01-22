@@ -162,11 +162,12 @@ export interface ParkingDetailData {
     parkingMode: string;
     remarks: string;
 
+    qrId?: number;
+    message?: string;
+
     // Unit Location
-    // Optional: Only for UI state management in Edit form
     phase?: string; 
     unitNo: string; 
-    // Flags
     isLpr: boolean;
     isTandem: boolean;
     isHomestay: boolean;
@@ -202,10 +203,25 @@ export interface ParkingDetailStatus {
     modifiedBy: string;
 }
 
+export interface ManualEntryPayload {
+    accId: number;
+    terminalId: number;
+    adminStaffId: number;
+    direction: "In" | "Out";
+    
+    plateNo?: string | null;
+    cardNo?: string | null;
+    amount?: number;
+
+    //force exit
+    rParkingID?: string;
+}
+
 
 // --- PARKING HISTORY ---
 export interface ParkingActivity {
     accId: number;
+    rParkingID : string;
     plateNo: string;
     entryTime: string;
     exitTime: string;

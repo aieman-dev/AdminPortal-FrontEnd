@@ -262,14 +262,14 @@ const PackageFormStep2: React.FC<Props> = ({ form, onNext, onBack }) => {
                         <Input 
                             type="number" 
                             className="w-20 h-9 text-center bg-white shadow-sm" 
-                            value={activeItem?.[valueField] || ""} 
+                            value={activeItem?.[valueField] ?? ""} 
                             onChange={(e) => handleItemChange(item, valueField, e.target.value)} 
                             placeholder={isPointMode ? "Pts" : "RM"} 
                         />
                         <Input 
                             type="number" 
                             className="w-16 h-9 text-center bg-white shadow-sm" 
-                            value={activeItem?.entryQty || ""} 
+                            value={activeItem?.entryQty ?? ""} 
                             onChange={(e) => handleItemChange(item, "entryQty", e.target.value)} 
                             placeholder="Qty" 
                         />

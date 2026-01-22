@@ -226,8 +226,23 @@ const PackageFormStep1: React.FC<Props> = ({ form, onNext }) => {
 
         <FormField control={form.control} name="dayPass" render={({ field }) => (
             <FormItem>
-                <FormLabel>Day Pass</FormLabel>
-                <FormControl><Input {...field} placeholder="e.g. 1 Day" /></FormControl>
+                <FormLabel>Day Pass (Days) <span className="text-red-500">*</span></FormLabel>
+                <FormControl>
+                    <Input {...field}
+                    type="number"
+                    min="0"  
+                    placeholder="e.g. 1" 
+                    onChange={(e) => {
+                        const value = e.target.value;
+                        field.onChange(value);
+                    }}
+                    onKeyDown={(e) => {
+                            if (["e", "E", "+", "-"].includes(e.key)) {
+                                e.preventDefault();
+                            }
+                        }}
+                    />
+                </FormControl>
                 <FormMessage />
             </FormItem>
         )} />

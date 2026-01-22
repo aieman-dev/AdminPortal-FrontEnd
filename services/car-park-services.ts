@@ -10,13 +10,17 @@ import {
     CarParkApplication,
     CarParkCard,
     CarParkDepartment,
+    ParkingDetailData,
+    ParkingDetailStatus,
     ParkingHistoryPayload,
     ParkingHistoryResponse,
+    ManualEntryPayload,
     BlockedUser,
     WhitelistedUser
  } from "@/type/car-park";
 
 const ENDPOINTS = {
+    SEARCH_ACCOUNTS: "support/account/search",
     GET_ACCOUNT_DETAILS: "support/account/details",
 
     //new registration 
@@ -29,9 +33,10 @@ const ENDPOINTS = {
 
     //qr listing
     QR_LISTING: "Carpark/cards/active",
-    QR_ID : "Carpark/cards/active",
+    QR_ID : "Carpark/pass/detail",
     MANUAL_ENTRY: "CarPark/access/manual-entry",
     CHECK_BALANCE: "support/balance/check",
+    CHECK_STATUS: "Carpark/pass/detail",
     PARKING_HISTORY: "CarPark/history",
     UPDATE_PASS: "CarPark/pass/update",
     DELETE_PASS: "CarPark/pass/delete",
@@ -50,7 +55,7 @@ const getDataObject = <T>(data: any): T => {
     return data?.content || data?.data || data || {};
 };
 
-// 3. ADD THIS MAPPER (It was missing in this file)
+// Ensure this mapper matches your Account interface
 const mapToAccount = (raw: any): Account => ({
     id: String(raw.accID),
     accId: String(raw.accID),
@@ -59,26 +64,36 @@ const mapToAccount = (raw: any): Account => ({
     mobile: raw.mobileNo || "N/A",
     createdDate: raw.createdDate || "N/A",
     accountStatus: (raw.recordStatus as "Active" | "Inactive" | "Suspended") || "N/A",
-    transactions: raw.transactionHistory || [],
+    transactions: raw.transactionHistory || [], 
 });
 
 export const carParkService = {
-    getAccount: async (accId: string | number): Promise<CarParkAccount | null> => {
+    searchSuperAppAccounts: async (query: string): Promise<Account[]> => {
+        const payload = { email: query }; 
+        const response = await apiClient.post<any>(ENDPOINTS.SEARCH_ACCOUNTS, payload);
+
+        if (!response.success) {
+             return [];
+        }
+
+        const content = response.data?.content || response.data?.data || response.data;
+        let items = [];
+        
+        if (Array.isArray(content)) {
+            items = content;
+        } else if (content && content.accID) {
+            items = [content];
+        }
+
+        return items.map(mapToAccount);
+    },
+
+    getSuperAppAccount: async (accId: string | number) : Promise<Account | null> => {
         const payload = { accID: Number(accId) };
         const response = await apiClient.post<any>(ENDPOINTS.GET_ACCOUNT_DETAILS, payload);
-
         if (!response.success || !response.data) return null;
-
-        const raw = response.data?.content || response.data?.data || response.data;
-        
-        return {
-            accId: raw.accID,
-            email: raw.email || "N/A",
-            firstName: raw.firstName || "Unknown",
-            mobile: raw.mobileNo || "N/A",
-            accountStatus: raw.recordStatus || "Active",
-            createdDate: raw.createdDate
-        };
+        const data = response.data?.content || response.data?.data || response.data;
+        return mapToAccount(data);
     },
 
     checkBalance: async (email: string): Promise<number> => {
@@ -87,7 +102,6 @@ export const carParkService = {
             const response = await apiClient.post<any>(ENDPOINTS.CHECK_BALANCE, payload);
             
             if (response.success && response.data) {
-                // Handle nested "content" if present, or direct property
                 const content = response.data.content || response.data;
                 return content.balance || 0;
             }
@@ -239,34 +253,114 @@ export const carParkService = {
         } as ActivePassesResponse;
     },
 
-    getQrListingID: async (qrId: number | string): Promise<CarParkCard[]> => {
-        const response = await apiClient.get<any>(`${ENDPOINTS.QR_ID}/${qrId}`);
-        
-        if (!response.success) return [];
-        
-        const data = response.data?.content || response.data;
-        
-        if (Array.isArray(data)) {
-            return data;
-        } else if (data && typeof data === 'object') {
-            return [data]; 
+    getQrListingID: async (params: { qrId?: string | number; accId?: string | number }) => {
+        const payload: Record<string, string> = {};
+
+        // PRIORITY 1: Season Parking (QrID)
+        if (params.qrId) {
+            payload.QrID = String(params.qrId);
+        } 
+        // PRIORITY 2: SuperApp Visitor (AccID) - Only if QrID is missing
+        else if (params.accId) {
+            payload.AccID = String(params.accId);
         }
-        
-        return [];
+        try {
+            const response = await apiClient.post<any>(ENDPOINTS.CHECK_STATUS, payload);
+
+            if (!response.success || !response.data) {
+                return null;
+            }
+
+            const raw = response.data.content || response.data;
+
+            // 1. Map to ParkingDetailData (Form Data)
+            const data: ParkingDetailData = {
+                accId: raw.accId,
+                name: raw.name,
+                email: raw.email,
+                nric: raw.cardNo || "",
+                mobile: raw.mobileNo || "",
+                company: raw.company || "",
+
+                qrId: raw.qrId || 0,
+                message: raw.Message || "",
+
+                type: raw.packageId === 0 ? "Visitor" : "Season", 
+                staffId: raw.staffNo || "",
+                contactOffice: raw.officeNo || "",
+                contactHp: raw.mobileNo || "",
+                
+                seasonPackage: String(raw.packageId || ""),
+                bayNo: raw.bayNo || "",
+                parkingMode: raw.bayNo ? "Reserved" : "Normal",
+                remarks: raw.remarks || "",
+
+                phase: "", 
+                unitNo: "", 
+
+                isLpr: raw.isLPR || false,
+                isTandem: raw.isTandem || false,
+                isHomestay: raw.isHomestay || false,
+                isMobileQr: raw.isTransfer || false,
+
+                effectiveDate: raw.effectiveDate || "",
+                expiryDate: raw.expiryDate || "",
+
+                plate1: raw.plateNo1 || "",
+                plate2: raw.plateNo2 || "",
+                plate3: raw.plateNo3 || "",
+                
+                amanoCardNo: raw.amanoCardNo || "",
+                amanoExpiryDate: "", 
+                walletBalance: 0 
+            };
+
+            // 2. Map to ParkingDetailStatus (Status Bar)
+            const status: ParkingDetailStatus = {
+                recordStatus: raw.recordStatus || "Active",
+                seasonStatus: raw.seasonStatus || "N/A",
+                iPointStatus: raw.iPointStatus || "N/A",
+                lastExitSeason: raw.seasonLastAccess || "-",
+                lastExitIPoint: raw.iPointLastAccess || "-",
+                createdOn: raw.createdDate,
+                createdBy: raw.createdByName || "System",
+                modifiedOn: raw.modifiedDate || "-",
+                modifiedBy: raw.modifiedByName || "-"
+            };
+
+            return { data, status };
+
+        } catch (error) {
+            console.error("getPassDetail Error:", error);
+            return null;
+        }
     },
 
-    assignManualEntry: async (payload: { 
-        accId: number; 
-        plateNo: string; 
-        cardNo: string; 
-        direction: "In" | "Out"; 
-        terminalId: number; 
-        adminStaffId: number; 
-        remarks: string; 
-    }) => {
-        const response = await apiClient.post(ENDPOINTS.MANUAL_ENTRY, payload);
+    assignManualEntry: async (payload: ManualEntryPayload) => {
+        const response = await apiClient.post<any>(ENDPOINTS.MANUAL_ENTRY, payload);
         if (!response.success) {
-            throw new Error(response.error || "Failed to assign manual entry.");
+            const errorObj: any = new Error(response.error || "Failed to assign manual entry.");
+            errorObj.content = response.data?.content || response.data; 
+            throw errorObj;
+        }
+        return response.data;
+    },
+
+    forceExit: async (rParkingID: string, accId: number, adminStaffId: number, plateNo: string) => {
+        const payload: ManualEntryPayload = {
+            accId,
+            terminalId: 383, 
+            adminStaffId,
+            direction: "Out",
+            plateNo,
+            rParkingID, 
+            amount: 0
+        };
+
+        const response = await apiClient.post(ENDPOINTS.MANUAL_ENTRY, payload);
+        
+        if (!response.success) {
+            throw new Error(response.error || "Failed to force exit.");
         }
         return response.data;
     },

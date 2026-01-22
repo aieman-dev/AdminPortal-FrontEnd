@@ -430,11 +430,20 @@ export function ParkingStatusDetail({
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className={labelClass}>Effective Date</Label>
-                                                <DatePicker date={new Date(data.effectiveDate)} setDate={(d) => d && onDataChange({ effectiveDate: d.toISOString().split('T')[0] })} disabled={isReadOnly} className={`w-full ${inputStateClass}`} />
+                                                <DatePicker 
+                                                    date={data.effectiveDate ? new Date(data.effectiveDate) : undefined} 
+                                                    setDate={(d) => d && onDataChange({ effectiveDate: d.toISOString().split('T')[0] })} 
+                                                    disabled={isReadOnly} 
+                                                    className={`w-full ${inputStateClass}`} 
+                                                />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className={labelClass}>Expiry Date</Label>
-                                                <DatePicker date={new Date(data.expiryDate)} setDate={(d) => d && onDataChange({ expiryDate: d.toISOString().split('T')[0] })} disabled={isReadOnly} className={`w-full ${inputStateClass}`} />
+                                                <DatePicker 
+                                                    date={data.expiryDate? new Date(data.expiryDate) : undefined}
+                                                    setDate={(d) => d && onDataChange({ expiryDate: d.toISOString().split('T')[0] })}
+                                                    disabled={isReadOnly} 
+                                                    className={`w-full ${inputStateClass}`} />
                                             </div>
                                         </div>
                                         <Separator className="dark:bg-zinc-800" />

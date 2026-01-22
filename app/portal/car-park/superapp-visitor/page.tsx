@@ -12,12 +12,13 @@ import { usePagination } from "@/hooks/use-pagination"
 
 // Services & Types
 import { carParkService } from "@/services/car-park-services" 
-import { CarParkPass } from "@/type/car-park" 
+import { Account } from "@/type/car-park" 
 
 // Components
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { type TableColumn, DataTable } from "@/components/themepark-support/it-poswf/data-table"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
+import { formatDateTime } from "@/lib/formatter"
 
 const LOCAL_STORAGE_KEY = 'superAppVisitorSearch';
 
@@ -27,7 +28,7 @@ export default function SuperAppVisitor() {
   const pagination = usePagination({ pageSize: 20 });
 
   // --- State ---
-  const [data, setData] = useState<CarParkPass[]>([])
+  const [data, setData] = useState<Account[]>([])
   const [isSearching, setIsSearching] = useState(false)
   
   // Initialize search from local storage
@@ -39,22 +40,18 @@ export default function SuperAppVisitor() {
   });
 
   // --- Main Fetch Logic ---
-  // Handles both initial load, search, and pagination
-  const fetchData = useCallback(async (page: number, query: string) => {
+  const fetchData = useCallback(async (query: string) => {
+    if (!query.trim()) {
+        setData([]);
+        return;
+    }
     setIsSearching(true)
-    
-    // Sync pagination state if triggered manually
-    if (page !== pagination.currentPage) pagination.setCurrentPage(page);
-
     try {
-      // Use getQrListing to ensure we get qrId and parking status
-      const { items, totalCount, totalPages } = await carParkService.getQrListing(page, pagination.pageSize, query)
-
+      const items = await carParkService.searchSuperAppAccounts(query.trim())
       setData(items)
-      pagination.setMetaData(totalPages, totalCount)
-
-      if (page === 1 && items.length > 0) {
-         toast.info("Search Complete", `Found ${totalCount} records.`)
+      
+      if (items.length > 0) {
+         toast.info("Search Complete", `Found ${items.length} records.`)
       }
     } catch (error) {
       console.error("Search Error:", error)
@@ -63,12 +60,12 @@ export default function SuperAppVisitor() {
     } finally {
       setIsSearching(false)
     }
-  }, [pagination.pageSize ]) 
+  }, [])
 
   // Auto-search hook
   useAutoSearch((query) => {
       setSearchTerm(query);
-      fetchData(1, query);
+      fetchData(query);
   });
 
   // Persist search term
@@ -78,23 +75,17 @@ export default function SuperAppVisitor() {
     }
   }, [searchTerm]);
   
-  // Initial Load (Manual trigger if auto-search doesn't fire immediately)
-  useEffect(() => {
-      fetchData(1, searchTerm);
-  }, []);
-
   const handleSearchClick = () => {
-     fetchData(1, searchTerm.trim());
+     fetchData(searchTerm);
   }
 
   // --- Navigation ---
-  const handleEdit = (item: CarParkPass) => {
-      // Navigate to the SuperApp Visitor details page
-      router.push(`/portal/car-park/superapp-visitor/${item.qrId}?accId=${item.accId}`);
+  const handleEdit = (item: any) => {
+      router.push(`/portal/car-park/superapp-visitor/${item.accId}`);
   }
 
   // --- Columns ---
-  const columns: TableColumn<CarParkPass>[] = useMemo(() => [
+  const columns: TableColumn<Account>[] = useMemo(() => [
     { 
         header: "Acc ID", 
         accessor: "accId", 
@@ -102,22 +93,31 @@ export default function SuperAppVisitor() {
     },
     { 
         header: "Name", 
-        accessor: "name"
+        accessor: "firstName"
     },
     { 
         header: "Email", 
         accessor: "email" 
     },
     { 
+        header: "Mobile No", 
+        accessor: "mobile" 
+    },
+    { 
         header: "Status", 
-        accessor: "status", 
+        accessor: "accountStatus", 
         cell: (value) => <StatusBadge status={value as string} /> 
+    },
+    { 
+        header: "Created Date", 
+        accessor: "createdDate",
+        cell: (value) => formatDateTime(value as string)
     },
     {
         header: "Action",
         accessor: "accId",
         className: "text-right pr-6",
-        cell: (_: any, row: CarParkPass) => (
+        cell: (_: any, row: Account) => (
             <Button variant="ghost" size="sm" onClick={() => handleEdit(row)}>
                 <Pencil className="h-3.5 w-3.5 mr-2 text-muted-foreground" /> Edit
             </Button>
@@ -156,7 +156,7 @@ export default function SuperAppVisitor() {
           <DataTable
             columns={columns}
             data={data}
-            keyExtractor={(row) => row.qrId.toString()}
+            keyExtractor={(row) => row.accId}
             isLoading={isSearching}
             emptyTitle="No Records Found"
             emptyIcon={Users}
@@ -167,10 +167,6 @@ export default function SuperAppVisitor() {
                     ? `No records found matching "${searchTerm}"`
                     : "Enter a keyword to search."
             }
-            pagination={{
-                ...pagination.paginationProps,
-                onPageChange: (newPage) => fetchData(newPage, searchTerm) 
-            }}
           />
         </CardContent>
       </Card>

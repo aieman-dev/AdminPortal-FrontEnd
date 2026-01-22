@@ -79,8 +79,8 @@ export default function EditQrPage() {
         if (!qrId) return;
         setIsLoading(true);
         try {
-            const [cardsData, packagesData, phasesData] = await Promise.all([
-                carParkService.getQrListingID(qrId),    
+            const [passResult, packagesData, phasesData] = await Promise.all([
+                carParkService.getQrListingID({ qrId: qrId }),    
                 carParkService.getPackages(),
                 carParkService.getPhases()
             ]);
@@ -88,67 +88,24 @@ export default function EditQrPage() {
             if (packagesData) setPackageList(packagesData);
             if (phasesData) setPhases(phasesData);
 
-            if (cardsData && cardsData.length > 0) {
-                const data = cardsData[0] as any; 
+            if (passResult) {
+                const { data, status } = passResult;
 
-                const userEmail = data.email || "";
-                let fetchedBalance = 0;
-                if (userEmail && userEmail !== "N/A") {
-                    fetchedBalance = await carParkService.checkBalance(userEmail);
+            let fetchedBalance = 0;
+                if (data.email && data.email !== "N/A") {
+                    fetchedBalance = await carParkService.checkBalance(data.email);
                 }
 
-                // Map Unit ID
-                const unitIdVal = data.unitId ? String(data.unitId) : (data.unitNo || "");
-                
+                // 3. Update State directly
                 setFormData(prev => ({
                     ...prev,
-                    accId: data.accId || Number(accId) || 0,
-                    name: data.name || "",
-                    email: data.email || "N/A",
-                    nric: data.cardNo || "", 
-                    mobile: data.mobileNo || "", 
-                    contactHp: data.mobileNo || "",
-                    contactOffice: data.officeNo || "",
-                    company: data.company || "",
-                    
-                    seasonPackage: String(data.packageId || ""),
-                    unitNo: unitIdVal,
-                    phase: "", // Default empty, user must re-select to change unit
-                    
-                    staffId: data.staffNo || "",
-                    bayNo: data.bayNo || "",
-                    parkingMode: data.bayNo ? "Reserved" : "Normal",
-                    remarks: data.remarks || "",
-                    
-                    isLpr: data.isLPR || false,
-                    isTandem: data.isTandem || false,
-                    isHomestay: data.isHomestay || false,
-                    isMobileQr: data.isTransfer || false, 
-
-                    effectiveDate: data.effectiveDate || "",
-                    expiryDate: data.expiryDate || "",
-
+                    ...data, 
                     walletBalance: fetchedBalance,
-
-                    plate1: data.plateNo1 || "",
-                    plate2: data.plateNo2 || "",
-                    plate3: data.plateNo3 || "",
-                    
-                    amanoCardNo: data.amanoCardNo || "",
-                    amanoExpiryDate: data.amanoExpiryDate || ""
+                    phase: prev.phase,
+                    unitNo: data.unitNo || prev.unitNo 
                 }));
 
-                setStatusInfo({
-                    recordStatus: data.recordStatus || "Inactive", 
-                    seasonStatus: data.seasonStatus || "Inactive",
-                    iPointStatus: data.iPointStatus || "Inactive",
-                    lastExitSeason: data.seasonLastAccess || "-",
-                    lastExitIPoint: data.iPointLastAccess || "-",
-                    createdOn: data.createdDate || "-",
-                    createdBy: data.createdByName || "System", 
-                    modifiedOn: data.modifiedDate || "-",
-                    modifiedBy: data.modifiedByName || "-"
-                });
+                setStatusInfo(status);
             }
         } catch (error) {
             console.error("Load Error:", error);
