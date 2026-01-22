@@ -72,7 +72,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
         return canViewPackageManagement(department);
     }
 
-    if (item.name === "Car Park Support") {
+    if (item.name === "Car Park Management") {
         return canViewCarParkSupport(department);
     }
 

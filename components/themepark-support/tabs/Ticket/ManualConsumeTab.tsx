@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge" 
 import { Separator } from "@/components/ui/separator"
-import { Search, Wallet, TrendingUp, AlertTriangle, Ticket, ArrowLeft, CheckCircle2, Loader2, Minus, Plus, SearchX } from "lucide-react"
+import { Search, Wallet, Ticket, ArrowLeft, CheckCircle2, Loader2, Minus, Plus, SearchX, AlertTriangle } from "lucide-react"
 import { BalanceCard } from "@/components/themepark-support/it-poswf/balance-card"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { TerminalSelector } from "@/components/themepark-support/it-poswf/terminal-selector"
@@ -57,17 +57,24 @@ export default function ManualConsumeTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
 
-  // Validation Helpers
   const isSuperApp = consumeType === "superapp";
   const isReceipt = consumeType === "receipt";
 
   // --- 1. Main Search Logic ---
   const handleConsumeSearch = async (query?: string) => {
+    let typeToUse = consumeType;
+    let emailToUse = email;
+    let invoiceToUse = invoiceNo;
+
     if (query) {
         if (query.includes("@")) {
+            typeToUse = "superapp";
+            emailToUse = query;
             setConsumeType("superapp");
             setEmail(query);
         } else {
+            typeToUse = "receipt";
+            invoiceToUse = query;
             setConsumeType("receipt");
             setInvoiceNo(query);
         }
@@ -76,11 +83,11 @@ export default function ManualConsumeTab() {
     let missingFields: string[] = [];
 
     if (!query) {
-        if (!consumeType) missingFields.push("Consume Type");
+        if (!typeToUse) missingFields.push("Consume Type");
         if (!terminalId) missingFields.push("Terminal");
         
-        if (isSuperApp && !email.trim()) missingFields.push("Email Address");
-        if (isReceipt && !invoiceNo.trim()) missingFields.push("Invoice No");
+        if (typeToUse === "superapp" && !emailToUse.trim()) missingFields.push("Email Address");
+        if (typeToUse === "receipt" && !invoiceToUse.trim()) missingFields.push("Invoice No");
 
         if (missingFields.length > 0) {
             toast.info("Input Required", `Missing: ${missingFields.join(", ")}`);
@@ -96,22 +103,20 @@ export default function ManualConsumeTab() {
     setCurrentPage(1);
     setCurrentStep('selection');
 
-    const searchPayload: ManualConsumeSearchPayload = {
-        searchType: consumeType.toUpperCase(),
-        email: email.trim(), 
+    const searchPayload: any = {
+        searchType: typeToUse.toUpperCase(),
+        email: emailToUse.trim(), 
         mobile: mobileNo.trim(), 
-        invoiceNo: invoiceNo.trim(),
+        invoiceNo: invoiceToUse.trim(),
         terminalID: terminalId,
         ticketType: ticketType.toUpperCase(),
         ticketStatus: ticketStatus.toUpperCase(),
-        SourceType: ticketType.toUpperCase(), 
     };
     
     try {
         const response = await itPoswfService.searchManualConsume(searchPayload);
 
         if (response.success && response.data) {
-            
             const hasTickets = response.data.tickets && response.data.tickets.length > 0;
 
             if (!hasTickets) {
@@ -119,7 +124,7 @@ export default function ManualConsumeTab() {
                 return; 
             }
 
-            if (isSuperApp && !response.data.accID) {
+            if (typeToUse === "superapp" && !response.data.accID) {
                  toast.error("Account Data Missing", "Account ID is missing.");
                 return;
             }
@@ -143,6 +148,7 @@ export default function ManualConsumeTab() {
   // --- 3. Quantity Handlers ---
   const updateQuantity = (itemId: string, val: number, maxQty: number) => {
       setQuantities(prev => {
+          // Ensure quantity doesn't exceed balanceQty (maxQty)
           const updated = Math.min(Math.max(0, val), maxQty); 
           const newMap = { ...prev, [itemId]: updated };
           if (updated === 0) delete newMap[itemId]; 
@@ -171,14 +177,9 @@ export default function ManualConsumeTab() {
         const selectedTickets = consumeSearchResult.tickets.filter(t => (quantities[t.id] || 0) > 0);
         if (selectedTickets.length === 0) return;
         
+        // Even if points are removed from UI, we assume 0 cost if not displayed.
         const totalPoints = selectedTickets.reduce((sum, item) => sum + (item.itemPoint * quantities[item.id]), 0);
 
-        if (consumeSearchResult.creditBalance < totalPoints) {
-            toast.error("Insufficient Balance", `Credit Balance (RM ${consumeSearchResult.creditBalance}) is less than Total (RM ${totalPoints}).`);
-            return;
-        }
-
-        // FIX: Map to camelCase properties to match ConsumeTicketItem interface
         const consumeList: ConsumeTicketItem[] = selectedTickets.map(item => ({
             packageName: item.packageName,
             itemName: item.itemName,
@@ -191,7 +192,7 @@ export default function ManualConsumeTab() {
 
         const numericTerminalId = Number(terminalId.split('-').pop() || terminalId) || 0; 
         
-        const executePayload: TicketConsumeExecutePayload = {
+        const executePayload: any = {
             terminalID: numericTerminalId,
             myQrData: consumeSearchResult.myQr ?? null, 
             custEmail: email.trim(),
@@ -228,13 +229,6 @@ export default function ManualConsumeTab() {
 
   const activeTicketsCount = consumeSearchResult?.tickets.filter(t => t.packageStatus.toLowerCase() === 'active').length ?? 0;
   
-  const totalPoints = useMemo(() => {
-      if (!consumeSearchResult) return 0;
-      return consumeSearchResult.tickets.reduce((sum, t) => {
-          return sum + (t.itemPoint * (quantities[t.id] || 0));
-      }, 0);
-  }, [consumeSearchResult, quantities]);
-
   // --- Pagination Logic ---
   const paginatedTickets = useMemo(() => {
       if (!consumeSearchResult) return [];
@@ -244,12 +238,12 @@ export default function ManualConsumeTab() {
 
   const totalPages = consumeSearchResult ? Math.ceil(consumeSearchResult.tickets.length / ITEMS_PER_PAGE) : 0;
 
-  // --- DATA TABLE COLUMNS (Replaces manual table rows) ---
+  // --- DATA TABLE COLUMNS ---
   const ticketColumns: TableColumn<AvailableTicket>[] = [
     { 
         header: "Item Details", 
         accessor: "id", 
-        className: "w-[40%] pl-6",
+        className: "w-[50%] pl-6", // Increased width since we removed columns
         cell: (_, row) => (
             <div className="flex flex-col gap-1">
                 <span className={cn("font-medium text-sm transition-colors", (quantities[row.id] || 0) > 0 ? "text-indigo-700 dark:text-indigo-300" : "text-foreground")}>
@@ -277,19 +271,30 @@ export default function ManualConsumeTab() {
         className: "text-center",
         cell: (val) => <StatusBadge status={val} className="w-auto px-2" />
     },
-    { header: "Terminal", accessor: "consumeTerminal", className: "text-center text-xs font-mono text-muted-foreground" },
-    { header: "Points", accessor: "itemPoint", className: "text-right font-medium", cell: (val) => val.toLocaleString() },
     { 
-        header: "Quantity", 
+        header: "Terminal", 
+        accessor: "consumeTerminal", 
+        className: "text-center text-xs font-mono text-muted-foreground" 
+    },
+    // NEW: Available / Balance Column
+    { 
+        header: "Available", 
+        accessor: "balanceQty", 
+        className: "text-center font-bold text-foreground",
+        cell: (val) => val
+    },
+    // UPDATED: Quantity Selector
+    { 
+        header: "Consume Qty", 
         accessor: "id", 
-        className: "text-center",
+        className: "text-right pr-6",
         cell: (_, row) => {
             const qty = quantities[row.id] || 0;
             const isActive = row.packageStatus.toLowerCase() === 'active';
-            const maxQty = row.balanceQty;
+            const maxQty = row.balanceQty; // Limit to balance
 
             return (
-                <div className="flex items-center justify-center gap-1">
+                <div className="flex items-center justify-end gap-1">
                     <Button variant="outline" size="icon" className="h-7 w-7 rounded-l-md border-r-0"
                         onClick={() => updateQuantity(row.id, qty - 1, maxQty)}
                         disabled={!isActive || qty === 0}
@@ -298,7 +303,7 @@ export default function ManualConsumeTab() {
                     </Button>
                     <Input 
                         type="number" 
-                        className="h-7 w-12 text-center rounded-none border-x-0 focus-visible:ring-0 px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className="h-7 w-12 text-center rounded-none border-x-0 focus-visible:ring-0 px-1"
                         value={qty.toString()}
                         onChange={(e) => updateQuantity(row.id, parseInt(e.target.value) || 0, maxQty)}
                         disabled={!isActive}
@@ -311,17 +316,6 @@ export default function ManualConsumeTab() {
                     </Button>
                 </div>
             )
-        }
-    },
-    { 
-        header: "Line Total", 
-        accessor: "id", 
-        className: "text-right pr-6 font-bold",
-        cell: (_, row) => {
-            const qty = quantities[row.id] || 0;
-            return <span className={qty > 0 ? "text-foreground" : "text-muted-foreground/30"}>
-                {(row.itemPoint * qty).toLocaleString()}
-            </span>
         }
     }
   ];
@@ -374,7 +368,6 @@ export default function ManualConsumeTab() {
                     />
                 </div>
                 
-                {/* Pagination */}
                 {totalPages > 1 && (
                     <div className="px-6 pb-4">
                         <PaginationControls 
@@ -391,21 +384,13 @@ export default function ManualConsumeTab() {
                 <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t p-6 sticky bottom-0 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                         <div className="text-sm text-muted-foreground">
-                            Total items selected: {Object.values(quantities).reduce((a, b) => a + b, 0)}
+                            Total tickets selected: {Object.values(quantities).reduce((a, b) => a + b, 0)}
                         </div>
                         
                         <div className="flex items-center gap-6 w-full md:w-auto">
-                            <div className="flex flex-col items-end">
-                                <span className="text-sm text-muted-foreground">Total Points</span>
-                                <div className="flex items-center gap-2 text-2xl font-bold text-primary">
-                                    <TrendingUp className="h-5 w-5" />
-                                    {totalPoints.toLocaleString()}
-                                </div>
-                            </div>
-                            
                             <Button 
                                 onClick={handleNextStep} 
-                                disabled={totalPoints === 0 || isExecuting} 
+                                disabled={Object.keys(quantities).length === 0 || isExecuting} 
                                 size="lg"
                                 className="min-w-[150px]"
                             >
@@ -455,18 +440,12 @@ export default function ManualConsumeTab() {
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <div className="font-mono text-muted-foreground">x {qty}</div>
-                                            <div className="font-bold text-foreground">{(ticket.itemPoint * qty).toLocaleString()} Pts</div>
+                                            <div className="font-bold text-foreground">x {qty}</div>
                                         </div>
                                     </div>
                                 );
                             })}
                         </div>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between items-center pt-2">
-                        <span className="text-lg font-bold">Total Points Deduction:</span>
-                        <span className="text-2xl font-bold text-primary">{totalPoints.toLocaleString()} Pts</span>
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-between bg-muted/10 p-6">
@@ -474,7 +453,7 @@ export default function ManualConsumeTab() {
                         <ArrowLeft className="h-4 w-4 mr-2" /> Back
                     </Button>
                     <Button onClick={handleConsumeExecute} disabled={isExecuting} className="min-w-[140px]">
-                        {isExecuting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : "Submit"}
+                        {isExecuting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : "Confirm Consume"}
                     </Button>
                 </CardFooter>
             </Card>
@@ -487,7 +466,6 @@ export default function ManualConsumeTab() {
       {currentStep === 'selection' && (
         <Card>
             <CardContent>
-            {/* UPDATED LAYOUT */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-end">
                 
                 {/* ROW 1: Consume Type | Email | Mobile */}
