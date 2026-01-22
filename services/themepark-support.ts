@@ -375,7 +375,7 @@ export const itPoswfService = {
     },
 
     findExtendableTickets: async (searchQuery: string): Promise<ApiResponse<ExtendTicketData[]>> => {
-        const payload = { invoiceNo: searchQuery };
+        const payload = { TrxNo: searchQuery };
         const response = await apiClient.post<any>(ENDPOINTS.EXTEND_EXPIRY_SEARCH, payload);
         if (!response.success) return { success: false, error: response.error || "Failed to find extendable tickets." };
 

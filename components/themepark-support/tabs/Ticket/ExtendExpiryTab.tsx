@@ -179,8 +179,8 @@ export default function ExtendExpiryTab() {
         <CardContent>
           <div>
             <SearchField 
-                label="Invoice No. / Transaction No"
-                placeholder="Enter invoice or transaction number"
+                label="Invoice No. "
+                placeholder="Enter invoice"
                 value={extendSearchQuery}
                 onChange={setExtendSearchQuery}
                 onSearch={() => handleExtendSearch()}

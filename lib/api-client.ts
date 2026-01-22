@@ -52,7 +52,7 @@ class ApiClient {
         }
 
         if (!response.ok) {
-          let errorMessage = data?.content?.message || data?.message || data?.error;
+          let errorMessage = data?.content?.error || data?.content?.message || data?.message || data?.error;
           
           if (!errorMessage && data?.errorMessage) {
              errorMessage = data.errorMessage.replace("{ message = ", "").replace(" }", "");
