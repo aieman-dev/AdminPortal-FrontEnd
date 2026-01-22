@@ -34,6 +34,7 @@ export const SIDEBAR_NAVIGATION = [
       },
     ],
   },
+  /* // --- CAR PARK HIDDEN TEMPORARILY ---
   {
     name: "Car Park Management",
     icon: Car,
@@ -64,6 +65,7 @@ export const SIDEBAR_NAVIGATION = [
       },
     ],
   },
+  */
   {
     name: "Staff Management",
     href: "/portal/staff-management",
