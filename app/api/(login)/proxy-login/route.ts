@@ -27,6 +27,12 @@ export async function POST(request: NextRequest) {
     // 1. Target the NEW backend endpoint
     const BACKEND_URL = `${BACKEND_API_BASE}/api/auth/login`;
 
+    console.log("------------------------------------------------");
+    console.log("Attempting Login Proxy:");
+    console.log("Target URL:", BACKEND_URL); 
+    console.log("Environment Var:", process.env.NEXT_PUBLIC_BACKEND_API_URL);
+    console.log("Config Var:", BACKEND_API_BASE);
+
     const apiResponse = await fetch(BACKEND_URL, {
       method: "POST",
       headers: {
@@ -36,7 +42,18 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     });
 
-    const data = await apiResponse.json();
+    const responseText = await apiResponse.text();
+    console.log("Raw Backend Response:", responseText.slice(0, 500)); 
+
+    let data;
+    try {
+        data = JSON.parse(responseText);
+    } catch (e) {
+        return NextResponse.json(
+            { message: "Backend returned HTML instead of JSON. Check terminal logs." }, 
+            { status: 502 }
+        );
+    }
 
     // 2. Handle Backend Errors (Check statusCode or errorMessage)
     if (!apiResponse.ok || data.statusCode !== 200) {
@@ -119,7 +136,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, user }, { status: 200 });
 
   } catch (error) {
-    console.error("Login Proxy Error:", error);
+    console.error("LOGIN PROXY FAILED:");
+    console.error(error);
+
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }
