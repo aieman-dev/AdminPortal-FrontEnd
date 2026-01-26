@@ -1,3 +1,7 @@
+// lib/config.ts
 
-// ngrok Url Server to connect to backend
-export const BACKEND_API_BASE = "http://10.110.212.188:5000";
+// --- Active Server ---
+export const BACKEND_API_BASE = "https://staging.i-bhd.com/support-api"; // Real Server
+
+// --- Backup / Testing ---
+// export const BACKEND_API_BASE = "https://hazel-nonpungent-yun.ngrok-free.dev"; // Ngrok
