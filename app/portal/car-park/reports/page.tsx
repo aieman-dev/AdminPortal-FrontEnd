@@ -4,49 +4,61 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { FileText, ExternalLink } from "lucide-react"
+import { FileText, ExternalLink, RefreshCw } from "lucide-react"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 import { PageHeader } from "@/components/portal/page-header"
-import { CAR_PARK_REPORTS, ReportDefinition } from "@/config/reports"
+import { carParkService } from "@/services/car-park-services"
+import { ReportDefinition } from "@/type/car-park"
+import { useAppToast } from "@/hooks/use-app-toast"
 
 export default function ReportsPage() {
     const router = useRouter()
+    const toast = useAppToast()
+    
     const [searchTerm, setSearchTerm] = useState("")
     const [isLoading, setIsLoading] = useState(true)
+    const [allReports, setAllReports] = useState<ReportDefinition[]>([])
     const [filteredReports, setFilteredReports] = useState<ReportDefinition[]>([])
 
-    // Simulate initial data fetch loading
-    useEffect(() => {
-        const loadReports = async () => {
-            setIsLoading(true)
-            // Simulate network delay (e.g. 800ms)
-            await new Promise(resolve => setTimeout(resolve, 800))
-            setFilteredReports(CAR_PARK_REPORTS)
+    // Fetch from API
+    const loadReports = async () => {
+        setIsLoading(true)
+        try {
+            const data = await carParkService.getReports()
+            setAllReports(data)
+            setFilteredReports(data)
+        } catch (error) {
+            console.error("Reports Error:", error);
+            toast.error("Error", "Failed to load report list.")
+        } finally {
             setIsLoading(false)
         }
+    }
+
+    useEffect(() => {
         loadReports()
     }, [])
 
-    // Handle Search with loading simulation
+    // Client-side filtering
     const handleSearch = (term: string) => {
-        setIsLoading(true)
         setSearchTerm(term)
+        if (!term.trim()) {
+            setFilteredReports(allReports)
+            return
+        }
         
-        // Simulate search delay
-        setTimeout(() => {
-            const results = CAR_PARK_REPORTS.filter(r => 
-                r.name.toLowerCase().includes(term.toLowerCase()) || 
-                r.code.toLowerCase().includes(term.toLowerCase()) ||
-                r.description.toLowerCase().includes(term.toLowerCase())
-            )
-            setFilteredReports(results)
-            setIsLoading(false)
-        }, 500)
+        const lowerTerm = term.toLowerCase()
+        const results = allReports.filter(r => 
+            r.name.toLowerCase().includes(lowerTerm) || 
+            r.code.toLowerCase().includes(lowerTerm)
+        )
+        setFilteredReports(results)
     }
 
     const handleViewReport = (report: ReportDefinition) => {
-        router.push(`/portal/car-park/reports/viewer?report=${report.code}`);
+        // Pass the code via URL. The viewer will fetch/derive details.
+        router.push(`/portal/car-park/reports/viewer?report=${encodeURIComponent(report.code)}`);
     }
 
     const columns: TableColumn<ReportDefinition>[] = [
@@ -103,14 +115,21 @@ export default function ReportsPage() {
 
             <Card>
                 <CardContent>
-                    <SearchField 
-                        label="Search Reports"
-                        placeholder="Search by report name or code..."
-                        value={searchTerm}
-                        onChange={(val) => handleSearch(val)} // Trigger search on type or use onSearch for enter key
-                        onSearch={() => handleSearch(searchTerm)}
-                        isSearching={isLoading}
-                    />
+                    <div className="flex gap-4 items-end">
+                        <div className="flex-1">
+                            <SearchField 
+                                label="Search Reports"
+                                placeholder="Search by report name or code"
+                                value={searchTerm}
+                                onChange={handleSearch}
+                                onSearch={() => handleSearch(searchTerm)}
+                                isSearching={isLoading}
+                            />
+                        </div>
+                        <Button variant="outline" size="icon" onClick={loadReports} className="h-11 w-11 shrink-0" title="Refresh List">
+                            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                        </Button>
+                    </div>
                 </CardContent>
             </Card>
 
@@ -120,7 +139,7 @@ export default function ReportsPage() {
                         columns={columns}
                         data={filteredReports}
                         keyExtractor={(row) => row.code}
-                        isLoading={isLoading} // Triggers the TableSkeleton
+                        isLoading={isLoading}
                         emptyIcon={FileText}
                         emptyTitle="No Reports Found"
                         emptyMessage="Try adjusting your search terms."

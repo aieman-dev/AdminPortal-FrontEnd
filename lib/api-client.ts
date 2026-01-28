@@ -100,7 +100,7 @@ class ApiClient {
           return { success: false, error: "Unable to connect to server." };
         }
         if (error instanceof AppError) {
-            return { success: false, error: error.message }; 
+            return { success: false, error: error.message, data: error.data }; 
         }
         return { success: false, error: error instanceof Error ? error.message : "An unexpected error occurred" };
       }

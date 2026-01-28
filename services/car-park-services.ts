@@ -11,11 +11,21 @@ import {
     CarParkCard,
     CarParkDepartment,
     ParkingDetailData,
+    PassDetailResult,
     ParkingDetailStatus,
     ParkingHistoryPayload,
     ParkingHistoryResponse,
+    ParkingActivity,
     ManualEntryPayload,
-    BlockedUser,
+    ReportDefinition,
+    ReportPayload,
+    ReportResponse,
+    ApplicationListResponse,
+    CarParkApplicationDetail,
+    ApplicationUpdatePayload,
+    ApplicationApprovePayload,
+    ApplicationRejectPayload,
+    BlockedUserResponse,
     WhitelistedUser
  } from "@/type/car-park";
 
@@ -42,13 +52,27 @@ const ENDPOINTS = {
     DELETE_PASS: "CarPark/pass/delete",
     BLOCK_PASS: "CarPark/pass/block",
 
-    // Application new SuperApp - mock endpoints
+    //Reports
+    GET_REPORTS: "CarPark/report/list",
+    EXECUTE_REPORT: "CarPark/report",
+
+    // Application new SuperApp 
     GET_APPLICATIONS: "CarPark/applications/pending", 
-    UPDATE_APPLICATION: "CarPark/applications/status",
+    GET_APPLICATION_DETAIL: "CarPark/applications",
+    UPDATE_APPLICATION: "CarPark/applications/update",
+    APPROVE_APPLICATION: "CarPark/application/approve",
+    REJECT_APPLICATION: "CarPark/application/reject",
 
     // Access Control - placeholders
     GET_BLACKLIST: "CarPark/access/blacklist", 
     GET_WHITELIST: "CarPark/access/whitelist"
+};
+
+const getContent = <T>(data: any): T[] => {
+    if (data?.content && Array.isArray(data.content)) return data.content;
+    if (data?.data && Array.isArray(data.data)) return data.data; 
+    if (Array.isArray(data)) return data;
+    return [];
 };
 
 const getDataObject = <T>(data: any): T => {
@@ -66,6 +90,24 @@ const mapToAccount = (raw: any): Account => ({
     accountStatus: (raw.recordStatus as "Active" | "Inactive" | "Suspended") || "N/A",
     transactions: raw.transactionHistory || [], 
 });
+
+// FIX: Mapper for Parking Activity to handle response keys (camelCase from your JSON)
+const mapToParkingActivity = (raw: any): ParkingActivity => ({
+    accId: raw.accId || raw.AccId,
+    rParkingID: String(raw.rParkingID || raw.RParkingID || raw.id), 
+    plateNo: raw.plateNo || raw.PlateNo,
+    entryTime: raw.entryTime || raw.EntryTime,
+    exitTime: raw.exitTime || raw.ExitTime,
+    entryGate: raw.entryGate || raw.EntryGate,
+    exitGate: raw.exitGate || raw.ExitGate,
+    status: raw.status || raw.Status,
+    duration: raw.duration || raw.Duration
+});
+
+const cleanAccessDate = (str: string | undefined) => {
+    if (!str) return "-";
+    return str.replace(/^(Last (Exit|Entry):\s*)/i, "").trim();
+};
 
 export const carParkService = {
     searchSuperAppAccounts: async (query: string): Promise<Account[]> => {
@@ -253,21 +295,27 @@ export const carParkService = {
         } as ActivePassesResponse;
     },
 
-    getQrListingID: async (params: { qrId?: string | number; accId?: string | number }) => {
+    getQrListingID: async (params: { qrId?: string | number; accId?: string | number }): Promise<PassDetailResult> => {
         const payload: Record<string, string> = {};
 
-        // PRIORITY 1: Season Parking (QrID)
         if (params.qrId) {
             payload.QrID = String(params.qrId);
         } 
-        // PRIORITY 2: SuperApp Visitor (AccID) - Only if QrID is missing
         else if (params.accId) {
             payload.AccID = String(params.accId);
         }
+
         try {
             const response = await apiClient.post<any>(ENDPOINTS.CHECK_STATUS, payload);
 
-            if (!response.success || !response.data) {
+            if (!response.success) {
+                const errorData = response.data; 
+                const errContent = errorData?.content || errorData;
+                const errMsg = response.error || errContent?.error || "";
+                
+                if (!params.qrId && (errMsg.includes("Conflict") || errMsg.includes("Active Pass Found"))) {
+                    return { error: "CONFLICT_SEASON_PASS", qrId: errContent?.qrId }; 
+                }
                 return null;
             }
 
@@ -320,8 +368,8 @@ export const carParkService = {
                 recordStatus: raw.recordStatus || "Active",
                 seasonStatus: raw.seasonStatus || "N/A",
                 iPointStatus: raw.iPointStatus || "N/A",
-                lastExitSeason: raw.seasonLastAccess || "-",
-                lastExitIPoint: raw.iPointLastAccess || "-",
+                lastExitSeason: cleanAccessDate(raw.seasonLastAccess),
+                lastExitIPoint: cleanAccessDate(raw.IPointLastAccess),
                 createdOn: raw.createdDate,
                 createdBy: raw.createdByName || "System",
                 modifiedOn: raw.modifiedDate || "-",
@@ -350,7 +398,6 @@ export const carParkService = {
         const payload: ManualEntryPayload = {
             accId,
             terminalId: 383, 
-            adminStaffId,
             direction: "Out",
             plateNo,
             rParkingID, 
@@ -366,10 +413,17 @@ export const carParkService = {
     },
 
     getParkingHistory: async (payload: ParkingHistoryPayload): Promise<ParkingHistoryResponse> => {
-        const response = await apiClient.post<any>(ENDPOINTS.PARKING_HISTORY, payload);
+        const apiPayload = {
+            pageNumber: payload.pageNumber,
+            pageSize: payload.pageSize,
+            accId: payload.accId,
+            startDate: payload.startDate,
+            endDate: payload.endDate
+        };
+
+        const response = await apiClient.post<any>(ENDPOINTS.PARKING_HISTORY, apiPayload);
 
         if (!response.success) {
-            // Return empty structure on failure to prevent UI crash
             return { items: [], totalCount: 0, pageNumber: 1, pageSize: 10, totalPages: 0 };
         }
 
@@ -429,40 +483,194 @@ export const carParkService = {
         return response.data;
     },
 
+//-------------- Car Park Reports ---------------
+    getReports: async (): Promise<ReportDefinition[]> => {
+            const response = await apiClient.get<any>(ENDPOINTS.GET_REPORTS);
+            
+            if (!response.success) {
+                return [];
+            }
+
+            // 1. Extract the array from { content: [...] }
+            const rawList = getContent<string>(response.data);
+
+            return rawList.map((rawCode, index) => {
+                // "report_CarPark_BlockedList" -> "CarPark BlockedList"
+                const cleanName = rawCode
+                    .replace(/^report_/i, "") 
+                    .replace(/_/g, " ");       
+
+                return {
+                    id: index + 1,
+                    code: rawCode,
+                    name: cleanName,
+                    description: `System generated report: ${cleanName}`,
+                    path: `/${rawCode}` 
+                };
+            });
+        },
+
+        generateReport: async (payload: ReportPayload): Promise<ReportResponse> => {
+        const response = await apiClient.post<any>(ENDPOINTS.EXECUTE_REPORT, payload);
+        
+        if (!response.success || !response.data) {
+             return { items: [], totalCount: 0, pageNumber: 1, pageSize: 10, totalPages: 0 };
+        }
+
+        const content = getDataObject<any>(response.data);
+        
+        return {
+            items: content.items || [],
+            totalCount: content.totalCount || 0,
+            pageNumber: content.pageNumber || 1,
+            pageSize: content.pageSize || 10,
+            totalPages: content.totalPages || 0
+        };
+    },
+
 //-------------- Car Park SuperApp Applications ---------------
 
-    getApplications: async (searchQuery: string = ""): Promise<CarParkApplication[]> => {
+    getApplications: async (pageNumber: number, pageSize: number, searchQuery: string = ""): Promise<ApplicationListResponse> => {
+        const payload = {
+            pageNumber,
+            pageSize,
+            searchQuery: searchQuery || ""
+        };
 
-        await new Promise(r => setTimeout(r, 600)); // Simulate delay
+        try {
+            const response = await apiClient.post<any>(ENDPOINTS.GET_APPLICATIONS, payload);
 
-        const mockData: CarParkApplication[] = [
-            { id: 1, name: "FOR TESTING ONLY", email: "system@i-city.my", seasonPackage: "(CP) Maybank Staff Exclusive LG3", documentUrl: "https://staging.i-bhd.com/doc/1", status: "Pending" },
-            { id: 2, name: "Irham Hakim", email: "system@i-city.my", seasonPackage: "(CP) CentralWalk Motorcycle", documentUrl: "", status: "Pending" },
-            { id: 3, name: "sad", email: "", seasonPackage: "(CP) Centralwalk Reserved Premium P2", documentUrl: "", status: "Pending" },
-            { id: 4, name: "Gsuis", email: "", seasonPackage: "(CP) CityPark for Mercu Maybank Tenant", documentUrl: "", status: "Pending" },
-            { id: 5, name: "Yw", email: "", seasonPackage: "(CP) Mall Tenant (1Month) - G", documentUrl: "", status: "Pending" },
-            { id: 6, name: "FOR TESTING ONLY", email: "system@i-city.my", seasonPackage: "(CP) Maybank Staff Exclusive LG3", documentUrl: "https://staging.i-bhd.com/doc/2", status: "Pending" },
-        ];
+            if (!response.success) {
+                return { items: [], totalCount: 0, totalPages: 0, pageNumber: 1, pageSize: 10 };
+            }
 
-        if (!searchQuery) return mockData;
-        return mockData.filter(app => 
-            app.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-            app.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            app.seasonPackage.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+            const data = getDataObject<any>(response.data);
+            const rawItems = data.items || [];
+
+            const items = rawItems.map((item: any) => ({
+                id: item.applicationId, // Map for DataTable key
+                applicationId: item.applicationId,
+                accountId: item.accountId,
+                name: item.name,
+                email: item.email,
+                seasonPackage: item.seasonPackage,
+                documentUrl: item.documentUrl || "",
+                status: item.status,
+                createdDate: item.createdDate,
+                packageId: item.packageId
+            }));
+
+            return {
+                items,
+                totalCount: data.totalCount || 0,
+                totalPages: data.totalPages || 0,
+                pageNumber: data.pageNumber || 1,
+                pageSize: data.pageSize || 10
+            };
+        } catch (error) {
+            console.error("Get Applications Error:", error);
+            return { items: [], totalCount: 0, totalPages: 0, pageNumber: 1, pageSize: 10 };
+        }
     },
 
-    updateApplicationStatus: async (id: number, status: "Approved" | "Rejected", remarks?: string) => {
-        // Mock API Call
-        console.log(`Updating App ${id} to ${status}. Remarks: ${remarks}`);
-        await new Promise(r => setTimeout(r, 800));
-        return { success: true };
+    getApplicationById: async (id: string | number): Promise<CarParkApplicationDetail | null> => {
+        const response = await apiClient.get<any>(`${ENDPOINTS.GET_APPLICATION_DETAIL}/${id}`);
+        
+        if (!response.success || !response.data) {
+            return null;
+        }
+
+        const content = getDataObject<any>(response.data);
+        
+        return {
+            applicationId: content.applicationId,
+            accountId: content.accountId,
+            name: content.name,
+            ic: content.ic,
+            email: content.email,
+            hp: content.hp,
+            company: content.company,
+            carPlateNo: content.carPlateNo,
+            type: content.type,
+            packageId: content.packageId,
+            packageName: content.packageName,
+            phaseId: content.phaseId,
+            unitId: content.unitId,
+            unitName: content.unitName,
+            bayNo: content.bayNo,
+            documentUrl: content.documentUrl,
+            status: content.status,
+            reason: content.reason,
+            createdDate: content.createdDate
+        };
     },
 
-    getBlacklist: async (searchQuery: string = ""): Promise<BlockedUser[]> => {
-        // Mocking data based on your screenshot structure
-        await new Promise(r => setTimeout(r, 600));
-        return []; // Return empty array for now or mock data
+    updateApplication: async (payload: ApplicationUpdatePayload) => {
+        const response = await apiClient.post<any>(ENDPOINTS.UPDATE_APPLICATION, payload);
+        if (!response.success) {
+             throw new Error(response.error || "Failed to update application.");
+        }
+        return response.data;
+    },
+
+    approveApplication: async (payload: ApplicationApprovePayload) => {
+        const response = await apiClient.post<any>(ENDPOINTS.APPROVE_APPLICATION, payload);
+        if (!response.success) {
+             throw new Error(response.error || "Failed to approve application.");
+        }
+        return response.data;
+    },
+
+    rejectApplication: async (payload: ApplicationRejectPayload) => {
+        const apiPayload = {
+            applicationId: payload.applicationId,
+            adminStaffId: payload.adminStaffId,
+            reason: payload.reason 
+        };
+        
+        const response = await apiClient.post<any>(ENDPOINTS.REJECT_APPLICATION, apiPayload);
+        if (!response.success) {
+             throw new Error(response.error || "Failed to reject application.");
+        }
+        return response.data;
+    },
+
+    getBlacklist: async (pageNumber: number = 1, pageSize: number = 10): Promise<BlockedUserResponse> => {
+        const payload = {
+            reportName: "report_CarPark_BlockedList",
+            pageNumber,
+            pageSize
+        };
+
+        const response = await apiClient.post<any>(ENDPOINTS.EXECUTE_REPORT, payload);
+        const emptyResult = { items: [], totalCount: 0, totalPages: 0, pageNumber, pageSize };
+
+        if (!response.success || !response.data) {
+             return emptyResult;
+        }
+
+        const content = getDataObject<any>(response.data);
+        const rawItems = content.items || [];
+
+        const items = rawItems.map((item: any) => ({
+            id: String(item.CardID),
+            qrId: String(item.CardID),
+            email: item.Email || "N/A",
+            staffNo: item.StaffNo || "-",
+            carPlate: item.CarPlate || "-",
+            unitNo: item.UnitName || "-",
+            seasonPackage: item.SeasonPackage || "-",
+            blockedDate: "N/A",
+            reason: "Blocked"
+        }));
+
+        return {
+            items,
+            totalCount: content.totalCount || 0,
+            totalPages: content.totalPages || 0,
+            pageNumber: content.pageNumber || pageNumber,
+            pageSize: content.pageSize || pageSize
+        };
     },
 
     getWhitelist: async (searchQuery: string = ""): Promise<WhitelistedUser[]> => {

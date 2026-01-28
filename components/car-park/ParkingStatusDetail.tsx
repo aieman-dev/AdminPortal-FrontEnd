@@ -210,8 +210,8 @@ export function ParkingStatusDetail({
                     <div className={`grid gap-6 items-stretch ${mode === 'superapp' ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
                         <div className="w-full h-full">
                             {mode === "season" 
-                                ? renderStatusCard("qr", "Parking Season Status", status.seasonStatus, ` ${status.lastExitSeason}`)
-                                : renderStatusCard("account", "Parking IPoint Status", status.iPointStatus, ` ${status.lastExitIPoint}`)
+                                ? renderStatusCard("qr", "Parking Season Status", status.seasonStatus, `Last Exit : ${status.lastExitSeason}`)
+                                : renderStatusCard("account", "Parking IPoint Status", status.iPointStatus, `Last Exit : ${status.lastExitIPoint}`)
                             }
                         </div>
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { FileText, ArrowRight } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -8,9 +8,12 @@ import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/portal/page-header"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
+import { PaginationControls } from "@/components/ui/pagination-controls" // Import Pagination
 import { useAppToast } from "@/hooks/use-app-toast"
+import { useAutoSearch } from "@/hooks/use-auto-search" // Use AutoSearch for consistency
 import { carParkService } from "@/services/car-park-services"
 import { CarParkApplication } from "@/type/car-park"
+import { formatDate } from "@/lib/formatter"
 
 export default function ApplicationsPage() {
     const toast = useAppToast()
@@ -19,21 +22,47 @@ export default function ApplicationsPage() {
     const [searchTerm, setSearchTerm] = useState("")
     const [applications, setApplications] = useState<CarParkApplication[]>([])
     const [loading, setLoading] = useState(false)
+    
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1)
+    const [totalPages, setTotalPages] = useState(0)
+    const [totalRecords, setTotalRecords] = useState(0)
+    const PAGE_SIZE = 10;
 
-    useEffect(() => {
-        const load = async () => {
-            setLoading(true)
-            try {
-                const data = await carParkService.getApplications(searchTerm)
-                setApplications(data)
-            } catch (error) {
-                toast.error("Error", "Failed to load applications.")
-            } finally {
-                setLoading(false)
+    const fetchApplications = useCallback(async (page: number, query: string) => {
+        setLoading(true)
+        // Reset to page 1 if query changed (managed by caller or effect)
+        
+        try {
+            const response = await carParkService.getApplications(page, PAGE_SIZE, query.trim())
+            setApplications(response.items)
+            setTotalPages(response.totalPages)
+            setTotalRecords(response.totalCount)
+            setCurrentPage(response.pageNumber)
+            
+            if (page === 1 && response.items.length > 0) {
+                 // Optional: toast.info("Data Loaded", `Found ${response.totalCount} applications.`);
             }
+        } catch (error) {
+            toast.error("Error", "Failed to load applications.")
+        } finally {
+            setLoading(false)
         }
-        load()
-    }, [searchTerm])
+    }, [toast]);
+
+    // Initial Load & Search
+    useAutoSearch((query) => {
+        setSearchTerm(query);
+        fetchApplications(1, query);
+    });
+
+    const handleSearchClick = () => {
+        fetchApplications(1, searchTerm);
+    };
+
+    const handlePageChange = (newPage: number) => {
+        fetchApplications(newPage, searchTerm);
+    };
 
     const handleReview = (id: number) => {
         router.push(`/portal/car-park/application/${id}`);
@@ -41,9 +70,15 @@ export default function ApplicationsPage() {
 
     const columns: TableColumn<CarParkApplication>[] = [
         { 
+            header: "App ID", 
+            accessor: "applicationId", 
+            className: "pl-6 w-[80px]",
+            cell: (val) => <span className="font-mono text-muted-foreground">#{val}</span>
+        },
+        { 
             header: "Name", 
             accessor: "name", 
-            className: "pl-6 font-medium min-w-[180px]" 
+            className: "font-medium min-w-[180px]" 
         },
         { 
             header: "Email", 
@@ -56,21 +91,9 @@ export default function ApplicationsPage() {
             cell: (val) => <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300">{val}</span>
         },
         { 
-            header: "Document", 
-            accessor: "documentUrl",
-            cell: (val) => val ? (
-                <a 
-                    href={val as string} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-xs text-blue-600 hover:underline bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded w-fit"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <FileText className="h-3 w-3" /> View
-                </a>
-            ) : (
-                <span className="text-xs text-muted-foreground">-</span>
-            )
+            header: "Date", 
+            accessor: "createdDate",
+            cell: (val) => <span className="text-xs text-muted-foreground">{formatDate(val as string)}</span>
         },
         {
             header: "Action",
@@ -102,7 +125,7 @@ export default function ApplicationsPage() {
                         placeholder="Search by name, email or package..."
                         value={searchTerm}
                         onChange={setSearchTerm}
-                        onSearch={() => {}} // Auto-search handles it
+                        onSearch={handleSearchClick}
                         isSearching={loading}
                     />
                 </CardContent>
@@ -118,6 +141,18 @@ export default function ApplicationsPage() {
                         emptyTitle="No Pending Applications"
                         emptyMessage="All caught up! There are no applications to review."
                     />
+
+                    {totalPages > 1 && (
+                        <div className="mt-4">
+                             <PaginationControls 
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                totalRecords={totalRecords}
+                                pageSize={PAGE_SIZE}
+                                onPageChange={handlePageChange}
+                            />
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>

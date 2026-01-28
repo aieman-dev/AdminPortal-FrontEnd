@@ -6,10 +6,11 @@ import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAppToast } from "@/hooks/use-app-toast"
-import { ChevronRight, Ban, Unlock } from "lucide-react"
+import { ChevronRight, Ban, Unlock, ArrowRightLeft, Loader2, LogIn, LogOut } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 
 // Services & Types
 import { carParkService } from "@/services/car-park-services"
@@ -48,6 +49,11 @@ export default function EditQrPage() {
     const [isDeleteOpen, setIsDeleteOpen] = useState(false)
     const [deleteReason, setDeleteReason] = useState("")
     const [isDeleting, setIsDeleting] = useState(false)
+
+    const [isManualEntryOpen, setIsManualEntryOpen] = useState(false)
+    const [manualDirection, setManualDirection] = useState<"In" | "Out">("In")
+    const [manualTerminalId, setManualTerminalId] = useState("383")
+    const [isProcessingEntry, setIsProcessingEntry] = useState(false)
 
     // Data State
     const [formData, setFormData] = useState<ParkingDetailData>({
@@ -88,10 +94,10 @@ export default function EditQrPage() {
             if (packagesData) setPackageList(packagesData);
             if (phasesData) setPhases(phasesData);
 
-            if (passResult) {
+            if (passResult && 'data' in passResult) {
                 const { data, status } = passResult;
 
-            let fetchedBalance = 0;
+                let fetchedBalance = 0;
                 if (data.email && data.email !== "N/A") {
                     fetchedBalance = await carParkService.checkBalance(data.email);
                 }
@@ -135,37 +141,49 @@ export default function EditQrPage() {
 
     // --- Actions ---
     const handleAssignEntry = async (target: "qr" | "account") => {
-        const targetAccId = formData.accId;
-        if (!targetAccId) return toast.error("Error", "Account ID missing.");
 
         const currentStatus = target === "qr" ? statusInfo.seasonStatus : statusInfo.iPointStatus;
         const s = (currentStatus || "").toUpperCase();
         const isInside = (s.includes("PARK") || s.includes("USED")) && !s.includes("UNUSED") && !s.includes("AWAY");
         const direction = isInside ? "Out" : "In"; 
 
-        setSubmittingTarget(target); 
+        setSubmittingTarget(target);
+        setManualDirection(direction);
+        setManualTerminalId("383"); 
+        setIsManualEntryOpen(true); 
+    };
+
+    const executeManualEntry = async () => {
+        const targetAccId = formData.accId;
+        if (!targetAccId) return toast.error("Error", "Account ID missing.");
+
+        setIsProcessingEntry(true);
 
         try {
-            const isQr = target === "qr";
             const payload = {
                 accId: targetAccId,
-                terminalId: 383, 
-                adminStaffId: Number(user?.id || 0), 
-                direction: direction as "In" | "Out",
-                remarks: `Manual ${direction} (${target.toUpperCase()}) via Portal`,
-                cardNo: isQr ? formData.nric : "", 
-                plateNo: isQr ? formData.plate1 : ""
+                plateNo: formData.plate1 || "", 
+                cardNo: formData.amanoCardNo || "",
+                rParkingId: 0,
+                terminalId: parseInt(manualTerminalId) || 383, 
+                direction: manualDirection,
+                amount : 0,
+                remarks: `Manual ${manualDirection} via Admin Portal`
             };
 
             await carParkService.assignManualEntry(payload);
-            const newStatus = direction === 'In' ? 'PARK/USED' : 'AWAY/UNUSED';
-            toast.success("Success", `Status updated to ${direction === 'In' ? 'PARK/USED' : 'AWAY/UNUSED'}`);
+
+            toast.success("Success", `Status updated to ${manualDirection === 'In' ? 'PARK/USED' : 'AWAY/UNUSED'}`);
+            setIsManualEntryOpen(false);
+            setSubmittingTarget(null);
             await fetchData(); 
 
         } catch (error) {
             toast.error("Failed", error instanceof Error ? error.message : "Update failed.");
-        } finally {
             setSubmittingTarget(null); 
+
+        } finally {
+            setIsProcessingEntry(false);
         }
     };
 
@@ -283,7 +301,7 @@ export default function EditQrPage() {
         try {
             await carParkService.deleteSeasonPass(Number(qrId), Number(user?.id || 0), deleteReason);
             toast.success("Deleted", "Season pass deactivated successfully.");
-            router.push('/portal/car-park/season-parking'); // Redirect after delete
+            router.push('/portal/car-park/season-parking'); 
         } catch (error) {
             toast.error("Delete Failed", error instanceof Error ? error.message : "Action failed.");
         } finally {
@@ -334,6 +352,46 @@ export default function EditQrPage() {
                     )}
                 </div>
             </ParkingStatusDetail>
+
+            {/* MANUAL ENTRY DIALOG (Updated for Season Pass) */}
+            <Dialog open={isManualEntryOpen} onOpenChange={(open) => {
+                if (!open && !isProcessingEntry) {
+                    setIsManualEntryOpen(false);
+                    setSubmittingTarget(null);
+                }
+            }}>
+                <DialogContent className="sm:max-w-[400px]">
+                    <DialogHeader>
+                        <DialogTitle className={`flex items-center gap-2 ${manualDirection === 'Out' ? 'text-amber-600' : 'text-emerald-600'}`}>
+                            {manualDirection === 'Out' ? <LogOut className="h-5 w-5" /> : <LogIn className="h-5 w-5" />}
+                            Manual {manualDirection}
+                        </DialogTitle>
+                        <DialogDescription>
+                            Assign a manual {manualDirection.toLowerCase()} event for this season pass.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-4">
+                        <div className="space-y-2">
+                            <Label>Terminal ID</Label>
+                            <Input 
+                                value={manualTerminalId}
+                                onChange={(e) => setManualTerminalId(e.target.value)}
+                                placeholder="e.g. 383"
+                                type="number"
+                            />
+                            <p className="text-xs text-muted-foreground">Default Gate: 383</p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => { setIsManualEntryOpen(false); setSubmittingTarget(null); }} disabled={isProcessingEntry}>
+                            Cancel
+                        </Button>
+                        <Button onClick={executeManualEntry} disabled={isProcessingEntry} className={manualDirection === 'Out' ? "bg-amber-600 hover:bg-amber-700 text-white" : "bg-emerald-600 hover:bg-emerald-700 text-white"}>
+                            {isProcessingEntry ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Confirm"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/*BLOCK DIALOG */}
             <Dialog open={isBlockOpen} onOpenChange={setIsBlockOpen}>

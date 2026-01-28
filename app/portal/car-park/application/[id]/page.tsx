@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useAppToast } from "@/hooks/use-app-toast"
+import { useAuth } from "@/hooks/use-auth"
 import { carParkService } from "@/services/car-park-services"
 import { carParkFormSchema, CarParkFormValues } from "@/lib/schemas/car-park"
 import { CarParkForm } from "@/components/car-park/CarParkForm"
@@ -21,6 +22,7 @@ import { CarParkPhase, CarParkUnit, CarParkPackage, CarParkDepartment } from "@/
 export default function ApplicationReviewPage() {
     const router = useRouter()
     const { id } = useParams()
+    const { user } = useAuth()
     const toast = useAppToast()
     
     // Local State for Lists
@@ -29,6 +31,7 @@ export default function ApplicationReviewPage() {
     const [seasonPackages, setSeasonPackages] = useState<CarParkPackage[]>([]);
     const [departments, setDepartments] = useState<CarParkDepartment[]>([]);
     const [loadingUnits, setLoadingUnits] = useState(false);
+    const [isLoadingData, setIsLoadingData] = useState(true);
 
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isRejectOpen, setIsRejectOpen] = useState(false)
@@ -38,86 +41,111 @@ export default function ApplicationReviewPage() {
     const form = useForm<CarParkFormValues>({
         resolver: zodResolver(carParkFormSchema) as any,
         defaultValues: {
-            // Defaults will be overridden by useEffect
-            userEmail: "", name: "", nric: "", mobileContact: "", 
-            plate1: "", phase: "", unitNo: "", userType: "Staff", 
-            parkingType: "Reserved", isTandem: false
+            userEmail: "",
+            name: "",
+            nric: "",
+            mobileContact: "", 
+            plate1: "", 
+            phase: "", 
+            unitNo: "", 
+            userType: "Staff", 
+            parkingType: "Reserved", 
+            isTandem: false
         }
     });
-    const { setValue, handleSubmit } = form;
+    const { setValue, handleSubmit, getValues } = form;
 
     // 2. Fetch Initial Data (Mocked for now as per original file)
     useEffect(() => {
         const init = async () => {
-            // Load Metadata
-            const [phaseData, packageData, deptData] = await Promise.all([
-                carParkService.getPhases(),
-                carParkService.getPackages(),
-                carParkService.getDepartments()
-            ]);
-            setPhases(phaseData);
-            setSeasonPackages(packageData);
-            setDepartments(deptData);
+            setIsLoadingData(true);
+            try {
+                // Load Metadata
+                const [phaseData, packageData, deptData] = await Promise.all([
+                    carParkService.getPhases(),
+                    carParkService.getPackages(),
+                    carParkService.getDepartments()
+                ]);
+                setPhases(phaseData);
+                setSeasonPackages(packageData);
+                setDepartments(deptData);
 
-            // Simulate Fetching Application Data
-            // In real app: await carParkService.getApplicationById(id)
-            const mockData = {
-                email: "system@i-city.my",
-                name: "FOR TESTING ONLY",
-                nric: "901010-10-1234",
-                mobile: "012-3456789",
-                office: "",
-                company: "i-City Berhad",
-                plate1: "WWA 1234",
-                plate2: "",
-                plate3: "",
-                phase: "CityPark", // Assuming this matches an ID or Name
-                unitNo: "B-10-2",
-                userType: "Staff",
-                staffId: "ICP1001",
-                parkingMode: "Reserved",
-                bayNo: "CP-B1-12",
-                seasonPackage: "(CP) Maybank Staff Exclusive LG3",
-                isTandem: false,
-                isMobileQr: true,
-                isLpr: false,
-                remarks: "Pending approval"
-            };
+                // Fetch Real Application Data
+                if (id) {
+                    const appData = await carParkService.getApplicationById(Number(id));
+                    
+                    if (appData) {
+                        // Populate Form with API Data
+                        setValue("accId", appData.accountId);
+                        setValue("userEmail", appData.email);
+                        setValue("name", appData.name);
+                        setValue("nric", appData.ic);
+                        setValue("mobileContact", appData.hp);
+                        setValue("companyName", appData.company);
+                        setValue("plate1", appData.carPlateNo);
+                        
+                        // Map User Type (Ensure it matches schema enum)
+                        // Note: Backend might return "Tenant", Schema expects "Staff" | "Tenant" | ...
+                        const safeType = ["Staff", "Tenant", "Non-Tenant", "Owner"].includes(appData.type) 
+                            ? appData.type 
+                            : "Tenant"; // Fallback
+                        setValue("userType", safeType as any);
 
-            // Populate Form
-            setValue("userEmail", mockData.email);
-            setValue("name", mockData.name);
-            setValue("nric", mockData.nric);
-            setValue("mobileContact", mockData.mobile);
-            setValue("officeContact", mockData.office);
-            setValue("companyName", mockData.company);
-            setValue("plate1", mockData.plate1);
-            setValue("plate2", mockData.plate2);
-            setValue("plate3", mockData.plate3);
-            
-            // For Phase/Unit, we might need IDs. 
-            // Assuming logic to find ID from Name exists or data returns IDs
-            // setValue("phase", ...); 
-            
-            setValue("userType", mockData.userType as any);
-            setValue("staffId", mockData.staffId);
-            setValue("parkingType", mockData.parkingMode as any);
-            setValue("bayNo", mockData.bayNo);
-            setValue("seasonPackage", mockData.seasonPackage);
-            setValue("isTandem", mockData.isTandem);
-            setValue("isMobileQr", mockData.isMobileQr);
-            setValue("isLpr", mockData.isLpr);
-            setValue("remarks", mockData.remarks);
+                        // If it's a Staff, we don't have explicit staffId in this endpoint response yet
+                        // You might need to fetch account details separately if needed, or leave blank.
+                        
+                        // Phase & Unit
+                        if (appData.phaseId) {
+                            setValue("phase", String(appData.phaseId));
+                            // Fetch units for this phase immediately to populate dropdown
+                            const unitList = await carParkService.getUnits(appData.phaseId);
+                            setUnits(unitList);
+                            
+                            if (appData.unitId) {
+                                setValue("unitNo", String(appData.unitId));
+                            }
+                        }
+
+                        // Package & Parking Mode
+                        // Logic: If bayNo exists, assume "Reserved", else "Normal"
+                        const mode = appData.bayNo ? "Reserved" : "Normal";
+                        setValue("parkingType", mode);
+                        setValue("bayNo", appData.bayNo);
+                        
+                        if (appData.packageId) {
+                            setValue("seasonPackage", String(appData.packageId));
+                        }
+
+                        // Defaults for flags not present in this specific API response
+                        setValue("isTandem", false); 
+                        setValue("isMobileQr", false); 
+                        setValue("isLpr", false);
+                        
+                        // Populate remarks
+                        // setValue("remarks", ""); // API doesn't seem to return remarks field in the example?
+                    } else {
+                        toast.error("Not Found", "Application details could not be loaded.");
+                    }
+                }
+            } catch (error) {
+                console.error("Init Error:", error);
+                toast.error("Error", "Failed to load application data.");
+            } finally {
+                setIsLoadingData(false);
+            }
         };
         init();
     }, [id, setValue]);
 
     const handlePhaseChange = async (value: string) => {
         setValue("phase", value);
+        setValue("unitNo", "");
         setLoadingUnits(true);
         try {
             const data = await carParkService.getUnits(value);
             setUnits(data);
+        } catch (error) {
+            console.error(error);
         } finally {
             setLoadingUnits(false);
         }
@@ -126,10 +154,21 @@ export default function ApplicationReviewPage() {
     const handleSave = async (data: CarParkFormValues) => {
         setIsSubmitting(true);
         try {
-            await new Promise(r => setTimeout(r, 1000)); // Mock API
-            toast.success("Saved", "Application details updated.");
+            const payload = {
+                applicationId: Number(id),
+                plateNo1: data.plate1 || "",
+                packageId: Number(data.seasonPackage),
+                userType: data.userType,
+                phaseId: Number(data.phase),
+                unitId: Number(data.unitNo),
+                bayNo: data.bayNo || "",
+                adminStaffId: Number(user?.id || 0)
+            };
+
+            await carParkService.updateApplication(payload);
+            toast.success("Saved", "Application details updated successfully.");
         } catch (error) {
-            toast.error("Error", "Failed to save.");
+            toast.error("Error", error instanceof Error ? error.message : "Failed to save.");
         } finally {
             setIsSubmitting(false);
         }
@@ -137,29 +176,94 @@ export default function ApplicationReviewPage() {
 
     const handleApprove = async () => {
         setIsSubmitting(true);
+        const data = getValues();
+        
         try {
-            await carParkService.updateApplicationStatus(Number(id), "Approved");
-            toast.success("Approved", "Application approved.");
+            const payload = {
+                applicationId: Number(id),
+                accId: Number(data.accId),
+                adminStaffId: Number(user?.id || 0),
+                terminalId: 383, // Hardcoded per requirement
+
+                name: data.name,
+                ic: data.nric,
+                company: data.companyName || "",
+                hp: data.mobileContact,
+                officeNo: data.officeContact || "",
+                userType: data.userType,
+                
+                plateNo1: data.plate1,
+                plateNo2: data.plate2 || "",
+                plateNo3: data.plate3 || "",
+                packageId: Number(data.seasonPackage),
+
+                unitId: Number(data.unitNo),
+                bayNo: data.bayNo || "",
+                isReserved: data.parkingType === "Reserved",
+
+                staffId: data.staffId || "",
+                department: data.department || "",
+                isStaffTag: data.userType === 'Staff',
+                
+                isTandem: data.isTandem,
+                tandemEmail: data.tandemEmail || "",
+                tandemName: data.tandemName || "",
+                tandemIC: data.tandemNric || "",
+                tandemHP: data.tandemMobile || "",
+                tandemPlateNo1: data.tandemPlate1 || "",
+                tandemPlateNo2: "", // Not in form
+                tandemPlateNo3: "", // Not in form
+
+                isLPR: data.isLpr,
+                isHomestay: data.isHomestay,
+                isTransfer: data.isMobileQr, // Form label: "Conversion to Mobile QR"
+                
+                amanoCardNo: data.amanoCardNo || "",
+                amanoExpiryDate: data.amanoExpiryDate || null,
+
+                comment: "Approved via Portal",
+                remarks: data.remarks || ""
+            };
+
+            await carParkService.approveApplication(payload);
+            toast.success("Approved", "Application approved and pass registered.");
             router.push("/portal/car-park/application");
         } catch (error) {
-            toast.error("Error", "Approval failed.");
+            toast.error("Error", error instanceof Error ? error.message : "Approval failed.");
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const handleReject = async () => {
-        if (!rejectReason) return toast.error("Required", "Enter a reason.");
+        if (!rejectReason.trim()) return toast.error("Required", "Please enter a rejection reason.");
+        
         setIsSubmitting(true);
         try {
-            await carParkService.updateApplicationStatus(Number(id), "Rejected", rejectReason);
-            toast.info("Rejected", "Application rejected.");
+            const payload = {
+                applicationId: Number(id),
+                adminStaffId: Number(user?.id || 0),
+                reason: rejectReason
+            };
+
+            await carParkService.rejectApplication(payload);
+            toast.info("Rejected", "Application rejected successfully.");
             router.push("/portal/car-park/application");
+        } catch (error) {
+            toast.error("Error", error instanceof Error ? error.message : "Rejection failed.");
         } finally {
             setIsSubmitting(false); 
             setIsRejectOpen(false);
         }
     };
+
+    if (isLoadingData) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col h-[calc(100vh-80px)] w-full max-w-[1400px] mx-auto bg-gray-50/50 dark:bg-zinc-950/50">
@@ -177,24 +281,11 @@ export default function ApplicationReviewPage() {
                         <p className="text-sm text-muted-foreground">Verify details before approval</p>
                     </div>
                 </div>
-
-                <div className="flex gap-3">
-                    <Button variant="outline" onClick={handleSubmit(handleSave)} disabled={isSubmitting}>
-                        <Save className="mr-2 h-4 w-4" /> Save Changes
-                    </Button>
-                    <Button variant="destructive" onClick={() => setIsRejectOpen(true)} disabled={isSubmitting} className="bg-red-600 hover:bg-red-700">
-                        <XCircle className="mr-2 h-4 w-4" /> Reject
-                    </Button>
-                    <Button onClick={handleApprove} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700 text-white min-w-[140px]">
-                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-                        Approve
-                    </Button>
-                </div>
             </div>
 
             {/* FORM CONTENT (REUSING COMPONENT) */}
             <div className="flex-1 overflow-y-auto p-6 md:p-8 scrollbar-hide">
-                <div className="max-w-5xl mx-auto space-y-8 pb-10">
+                <div className="max-w-5xl mx-auto space-y-8 pb-4">
                     <CarParkForm 
                         form={form} 
                         phases={phases} 
@@ -203,8 +294,46 @@ export default function ApplicationReviewPage() {
                         departments={departments}
                         loadingUnits={loadingUnits} 
                         onPhaseChange={handlePhaseChange}
-                        readOnlyUser={true} // Locks User Info for Review Mode
+                        readOnlyUser={true} 
                     />
+                </div>
+            </div>
+
+            <div className="flex-shrink-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 py-4 md:px-8 md:py-5 pb-8 z-30">
+                <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+                    
+                    <p className="text-sm text-muted-foreground hidden sm:block">
+                        Please ensure all details are correct before approving.
+                    </p>
+
+                    <div className="flex gap-3 w-full sm:w-auto">
+                        <Button 
+                            variant="outline" 
+                            onClick={handleSubmit(handleSave)} 
+                            disabled={isSubmitting}
+                            className="flex-1 sm:flex-none"
+                        >
+                            <Save className="mr-2 h-4 w-4" /> Save Changes
+                        </Button>
+                        
+                        <Button 
+                            variant="destructive" 
+                            onClick={() => setIsRejectOpen(true)} 
+                            disabled={isSubmitting} 
+                            className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700"
+                        >
+                            <XCircle className="mr-2 h-4 w-4" /> Reject
+                        </Button>
+                        
+                        <Button 
+                            onClick={handleApprove} 
+                            disabled={isSubmitting} 
+                            className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white min-w-[140px]"
+                        >
+                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                            Approve
+                        </Button>
+                    </div>
                 </div>
             </div>
 
@@ -222,7 +351,7 @@ export default function ApplicationReviewPage() {
                         <Textarea 
                             value={rejectReason}
                             onChange={(e) => setRejectReason(e.target.value)}
-                            placeholder="e.g. Incomplete documents..."
+                            placeholder="e.g. Incomplete documents"
                             className="mt-2"
                         />
                     </div>

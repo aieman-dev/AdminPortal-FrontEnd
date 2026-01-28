@@ -206,7 +206,6 @@ export interface ParkingDetailStatus {
 export interface ManualEntryPayload {
     accId: number;
     terminalId: number;
-    adminStaffId: number;
     direction: "In" | "Out";
     
     plateNo?: string | null;
@@ -247,14 +246,132 @@ export interface ParkingHistoryResponse {
     totalPages: number;
 }
 
+// --- REPORTS ---
+export interface ReportDefinition {
+    id: number;
+    code: string; 
+    name: string; 
+    description: string;
+    path: string; 
+}
+
+export interface ReportPayload {
+    reportName: string;
+    pageNumber: number;
+    pageSize: number;
+    parameters?: {
+        AccID?: string | number | null;
+        StartDate?: string | null;
+        EndDate?: string | null;
+        [key: string]: any; 
+    };
+}
+
+export interface ReportResponse {
+    items: Record<string, any>[];
+    totalCount: number;
+    pageNumber: number;
+    pageSize: number;
+    totalPages: number;
+}
+
 // Application new SuperApp
 export interface CarParkApplication {
     id: number;
+    applicationId: number;
+    accountId: number;
     name: string;
     email: string;
     seasonPackage: string;
     documentUrl: string; 
     status: string;      
+    createdDate: string;
+    packageId: number;
+}
+
+export interface CarParkApplicationDetail {
+    applicationId: number;
+    accountId: number;
+    name: string;
+    ic: string;
+    email: string;
+    hp: string;
+    company: string;
+    carPlateNo: string;
+    type: string;
+    packageId: number;
+    packageName: string;
+    phaseId: number | null;
+    unitId: number | null;
+    unitName: string;
+    bayNo: string;
+    documentUrl: string;
+    status: string;
+    reason: string;
+    createdDate: string;
+}
+
+export interface ApplicationListResponse {
+    items: CarParkApplication[];
+    totalCount: number;
+    totalPages: number;
+    pageNumber: number;
+    pageSize: number;
+}
+
+export interface ApplicationUpdatePayload {
+    applicationId: number;
+    plateNo1: string;
+    packageId: number;
+    userType: string;
+    phaseId: number;
+    unitId: number;
+    bayNo: string;
+    adminStaffId: number;
+}
+
+export interface ApplicationApprovePayload {
+    applicationId: number;
+    accId: number;
+    adminStaffId: number;
+    terminalId: number;
+    name: string;
+    ic: string;
+    company: string;
+    hp: string;
+    officeNo: string;
+    userType: string;
+    plateNo1: string;
+    plateNo2: string;
+    plateNo3: string;
+    packageId: number;
+    unitId: number;
+    bayNo: string;
+    isReserved: boolean;
+    staffId: string;
+    department: string;
+    isStaffTag: boolean;
+    isTandem: boolean;
+    tandemEmail: string;
+    tandemName: string;
+    tandemIC: string;
+    tandemHP: string;
+    tandemPlateNo1: string;
+    tandemPlateNo2: string;
+    tandemPlateNo3: string;
+    isLPR: boolean;
+    isHomestay: boolean;
+    isTransfer: boolean;
+    amanoCardNo: string;
+    amanoExpiryDate: string | null;
+    comment: string;
+    remarks: string;
+}
+
+export interface ApplicationRejectPayload {
+    applicationId: number;
+    adminStaffId: number;
+    reason: string; 
 }
 
 // Blocked List/ Whietlist
@@ -266,8 +383,16 @@ export interface BlockedUser {
     carPlate: string;
     unitNo: string;
     seasonPackage: string;
-    blockedDate: string;
+    blockedDate?: string; 
     reason?: string;
+}
+
+export interface BlockedUserResponse {
+    items: BlockedUser[];
+    totalCount: number;
+    totalPages: number;
+    pageNumber: number;
+    pageSize: number;
 }
 
 export interface WhitelistedUser {
@@ -281,3 +406,10 @@ export interface WhitelistedUser {
     whitelistedDate: string;
     remarks?: string;
 }
+
+// --- CRITICAL: Union Type for Service Return ---
+// This tells TypeScript: "The result might be success (data+status), error (conflict), or nothing (null)"
+export type PassDetailResult = 
+    | { data: ParkingDetailData; status: ParkingDetailStatus } // Success Case
+    | { error: string; qrId?: any }                            // Conflict/Error Case
+    | null;
