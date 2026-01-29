@@ -1,6 +1,7 @@
 // services/car-park-service.ts
 
 import { apiClient, ApiResponse } from "@/lib/api-client";
+import { SYSTEM_TERMINAL_ID } from "@/lib/constants";
 import { 
     Account,
     CarParkAccount,
@@ -9,6 +10,7 @@ import {
     CarParkRegistrationForm,
     CarParkApplication,
     CarParkCard,
+    CarParkPass,
     CarParkDepartment,
     ParkingDetailData,
     PassDetailResult,
@@ -231,7 +233,7 @@ export const carParkService = {
             isStaffTag: false, 
 
             adminStaffId: Number(adminStaffId), 
-            terminalId: 383,  //hardcoded for now 
+            terminalId: SYSTEM_TERMINAL_ID,  
             comment: form.comment || "Manual Registration",
             remarks: form.remarks || null,
 
@@ -397,7 +399,7 @@ export const carParkService = {
     forceExit: async (rParkingID: string, accId: number, adminStaffId: number, plateNo: string) => {
         const payload: ManualEntryPayload = {
             accId,
-            terminalId: 383, 
+            terminalId: SYSTEM_TERMINAL_ID, 
             direction: "Out",
             plateNo,
             rParkingID, 
@@ -447,8 +449,8 @@ export const carParkService = {
         return response.data;
     },
 
-    blockSeasonPass: async (cardId: number, adminStaffId: number, reason: string) => {
-        const payload = { cardId, adminStaffId, reason, isBlocked: true };
+    blockSeasonPass: async (cardId: number, reason: string) => {
+        const payload = { cardId, reason, isBlocked: true };
         const response = await apiClient.post<any>(ENDPOINTS.BLOCK_PASS, payload);
         
         if (!response.success) {

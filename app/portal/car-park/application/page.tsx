@@ -1,16 +1,17 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { FileText, ArrowRight } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/portal/page-header"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
-import { PaginationControls } from "@/components/ui/pagination-controls" // Import Pagination
+import { PaginationControls } from "@/components/ui/pagination-controls" 
 import { useAppToast } from "@/hooks/use-app-toast"
-import { useAutoSearch } from "@/hooks/use-auto-search" // Use AutoSearch for consistency
+import { useAutoSearch } from "@/hooks/use-auto-search" 
+import { usePagination } from "@/hooks/use-pagination"
 import { carParkService } from "@/services/car-park-services"
 import { CarParkApplication } from "@/type/car-park"
 import { formatDate } from "@/lib/formatter"
@@ -23,34 +24,24 @@ export default function ApplicationsPage() {
     const [applications, setApplications] = useState<CarParkApplication[]>([])
     const [loading, setLoading] = useState(false)
     
-    // Pagination State
-    const [currentPage, setCurrentPage] = useState(1)
-    const [totalPages, setTotalPages] = useState(0)
-    const [totalRecords, setTotalRecords] = useState(0)
-    const PAGE_SIZE = 10;
+    const pagination = usePagination({ pageSize: 10 });
 
     const fetchApplications = useCallback(async (page: number, query: string) => {
         setLoading(true)
-        // Reset to page 1 if query changed (managed by caller or effect)
-        
         try {
-            const response = await carParkService.getApplications(page, PAGE_SIZE, query.trim())
+            const response = await carParkService.getApplications(page, pagination.pageSize, query.trim())
             setApplications(response.items)
-            setTotalPages(response.totalPages)
-            setTotalRecords(response.totalCount)
-            setCurrentPage(response.pageNumber)
+            pagination.setMetaData(response.totalPages, response.totalCount)
             
             if (page === 1 && response.items.length > 0) {
-                 // Optional: toast.info("Data Loaded", `Found ${response.totalCount} applications.`);
             }
         } catch (error) {
             toast.error("Error", "Failed to load applications.")
         } finally {
             setLoading(false)
         }
-    }, [toast]);
+    }, [pagination.pageSize, toast]);
 
-    // Initial Load & Search
     useAutoSearch((query) => {
         setSearchTerm(query);
         fetchApplications(1, query);
@@ -142,14 +133,14 @@ export default function ApplicationsPage() {
                         emptyMessage="All caught up! There are no applications to review."
                     />
 
-                    {totalPages > 1 && (
+                    {pagination.totalPages > 1 && (
                         <div className="mt-4">
                              <PaginationControls 
-                                currentPage={currentPage}
-                                totalPages={totalPages}
-                                totalRecords={totalRecords}
-                                pageSize={PAGE_SIZE}
-                                onPageChange={handlePageChange}
+                                currentPage={pagination.currentPage}
+                                totalPages={pagination.totalPages}
+                                totalRecords={pagination.totalRecords}
+                                pageSize={pagination.pageSize}
+                                onPageChange={(page) => fetchApplications(page, searchTerm)}
                             />
                         </div>
                     )}

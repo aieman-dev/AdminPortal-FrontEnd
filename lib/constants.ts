@@ -20,6 +20,9 @@ export const MAX_PAGE_SIZE = 100
 export const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 export const ALLOWED_FILE_TYPES = ["image/jpeg", "image/png", "image/gif", "application/pdf"]
 
+// System Terminal ID
+export const SYSTEM_TERMINAL_ID = 383;
+
 // --- BUSINESS LOGIC CONSTANTS ---
 
 // 1. The Single Source of Truth for Frontend Logic
@@ -120,7 +123,7 @@ export const STATUS_STYLES: Record<string, string> = {
     // --- Parking Activity ---
     parked: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800",
     completed: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700",
-    blocked: "bg-slate-800 text-slate-50 border-slate-800 hover:bg-slate-900 dark:bg-slate-200 dark:text-slate-900 dark:border-slate-200",
+    blocked: "bg-slate-800 text-slate-50 border-slate-800 hover:bg-slate-900 dark:bg-slate-200 dark:text-slate-900 dark:border-slate-200 uppercase tracking-wider font-bold",
   }
 
 

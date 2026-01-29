@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
+import { SYSTEM_TERMINAL_ID } from "@/lib/constants"
 
 // Services & Types
 import { carParkService } from "@/services/car-park-services"
@@ -52,7 +53,7 @@ export default function EditQrPage() {
 
     const [isManualEntryOpen, setIsManualEntryOpen] = useState(false)
     const [manualDirection, setManualDirection] = useState<"In" | "Out">("In")
-    const [manualTerminalId, setManualTerminalId] = useState("383")
+    const [manualTerminalId, setManualTerminalId] = useState(String(SYSTEM_TERMINAL_ID))
     const [isProcessingEntry, setIsProcessingEntry] = useState(false)
 
     // Data State
@@ -149,7 +150,7 @@ export default function EditQrPage() {
 
         setSubmittingTarget(target);
         setManualDirection(direction);
-        setManualTerminalId("383"); 
+        setManualTerminalId(String(SYSTEM_TERMINAL_ID)); 
         setIsManualEntryOpen(true); 
     };
 
@@ -165,7 +166,7 @@ export default function EditQrPage() {
                 plateNo: formData.plate1 || "", 
                 cardNo: formData.amanoCardNo || "",
                 rParkingId: 0,
-                terminalId: parseInt(manualTerminalId) || 383, 
+                terminalId: parseInt(manualTerminalId) || SYSTEM_TERMINAL_ID, 
                 direction: manualDirection,
                 amount : 0,
                 remarks: `Manual ${manualDirection} via Admin Portal`
@@ -215,7 +216,7 @@ export default function EditQrPage() {
                 isStaffTag: false, 
                 
                 adminStaffId: Number(user?.id || 0),
-                terminalId: 383,
+                terminalId: SYSTEM_TERMINAL_ID,
                 comment: "Updated via Portal",
                 remarks: formData.remarks || null,
                 
@@ -262,7 +263,7 @@ export default function EditQrPage() {
         
         setIsProcessingBlock(true);
         try {
-            await carParkService.blockSeasonPass(Number(qrId), Number(user?.id || 0), blockReason);
+            await carParkService.blockSeasonPass(Number(qrId), blockReason);
             toast.success("Blocked", "Season pass blocked successfully.");
             await fetchData(); 
             setIsBlockOpen(false);

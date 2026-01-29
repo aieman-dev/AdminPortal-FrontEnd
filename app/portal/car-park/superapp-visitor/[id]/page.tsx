@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { ChevronRight, ArrowRightLeft, Loader2, LogOut, Wallet, LogIn, AlertTriangle, ExternalLink } from "lucide-react"
+import { SYSTEM_TERMINAL_ID } from "@/lib/constants"
 
 // Services & Types
 import { carParkService } from "@/services/car-park-services"
 import { CarParkPackage, ParkingDetailData, ParkingDetailStatus } from "@/type/car-park"
+import { cn } from "@/lib/utils"
 
 // Import Components
 import { ParkingStatusDetail } from "@/components/car-park/ParkingStatusDetail"
@@ -20,6 +22,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
+import { SeasonPassConflictOverlay } from "@/components/car-park/overlays/SeasonPassConflictoverlay"
 
 const DEFAULT_VISITOR_DATA: ParkingDetailData = {
     accId: 0,
@@ -52,10 +55,11 @@ export default function SuperAppVisitorDetail() {
     const [isManualEntryOpen, setIsManualEntryOpen] = useState(false)
     const [manualDirection, setManualDirection] = useState<"In" | "Out">("In")
     const [manualAmount, setManualAmount] = useState<string>("0.00")
-    const [manualTerminalId, setManualTerminalId] = useState("383")
+    const [manualTerminalId, setManualTerminalId] = useState(String(SYSTEM_TERMINAL_ID))
     const [manualRemarks, setManualRemarks] = useState("")
     const [isProcessingEntry, setIsProcessingEntry] = useState(false)
 
+    // Season Pass Conflict State
     const [hasActiveSeasonPass, setHasActiveSeasonPass] = useState(false)
     const [seasonPassQrId, setSeasonPassQrId] = useState<string | null>(null)
 
@@ -168,7 +172,7 @@ export default function SuperAppVisitorDetail() {
         setSubmittingTarget(target);
         setManualDirection(nextDir);
         setManualAmount("0.00");
-        setManualTerminalId("383"); // Reset default
+        setManualTerminalId(String(SYSTEM_TERMINAL_ID))
         setManualRemarks("");
         setIsManualEntryOpen(true);
     };
@@ -194,7 +198,7 @@ export default function SuperAppVisitorDetail() {
                 plateNo: formData.plate1 || "", 
                 cardNo: formData.amanoCardNo || "",
                 direction: manualDirection,
-                terminalId: parseInt(manualTerminalId) || 383, 
+                terminalId: parseInt(manualTerminalId) || SYSTEM_TERMINAL_ID, 
                 amount: amount,
                 rParkingId: 0, // Should be fetched if needed, but 0 is safe for generic entry
                 remarks: manualRemarks || `Manual ${manualDirection} via Portal`
@@ -250,53 +254,48 @@ export default function SuperAppVisitorDetail() {
                 </span>
             </div>
 
-            {/* SEASON PASS CONFLICT BANNER */}
-            {hasActiveSeasonPass && (
-                <Alert className="mb-6 border-amber-500 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200">
-                    <AlertTriangle className="h-5 w-5 stroke-amber-600" />
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-4">
-                        <div>
-                            <AlertTitle className="text-amber-900 dark:text-amber-100 font-bold">Active Season Pass Detected</AlertTitle>
-                            <AlertDescription className="text-amber-700 dark:text-amber-300">
-                                This user has an active season pass (ID: {seasonPassQrId}). Please manage their parking access via the Season Parking module.
-                            </AlertDescription>
-                        </div>
-                        <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="bg-white border-amber-300 text-amber-800 hover:bg-amber-100 hover:text-amber-900 shrink-0"
-                            onClick={navigateToSeasonPass}
-                        >
-                            Go to Season Pass <ExternalLink className="ml-2 h-3.5 w-3.5" />
-                        </Button>
-                    </div>
-                </Alert>
-            )}
-
-            <ParkingStatusDetail 
-                mode="superapp"
-                data={formData}
-                status={statusInfo}
-                packages={packageList}
-                phases={[]} 
-                units={[]} 
-                isLoading={isLoading}
-                isSaving={isSaving}
-                submittingTarget={submittingTarget}
-                onDataChange={handleDataChange}
-                onSave={handleSave}
-                onAssignEntry={handleAssignEntry}
-            />
-            
-            <div className="w-full mt-4"> 
-                {formData.accId ? (
-                    <ParkingActivityHistory accId={formData.accId} />
-                ) : (
-                    <div className="h-64 border rounded-xl bg-muted/10 animate-pulse" />
+            {/* --- WRAP CONTENT IN RELATIVE DIV FOR OVERLAY --- */}
+            <div className="relative min-h-[600px] rounded-xl">
+                
+                {/* 1. OVERLAY BLOCKER */}
+                {hasActiveSeasonPass && (
+                    <SeasonPassConflictOverlay 
+                        qrId={seasonPassQrId} 
+                        onRedirect={navigateToSeasonPass} 
+                    />
                 )}
+
+                {/* 2. MAIN CONTENT (BLURRED/DISABLED IF BLOCKED) */}
+                <div className={cn(
+                    "transition-all duration-300", 
+                    hasActiveSeasonPass && "opacity-20 pointer-events-none grayscale blur-[1px] select-none"
+                )}>
+                    <ParkingStatusDetail 
+                        mode="superapp"
+                        data={formData}
+                        status={statusInfo}
+                        packages={packageList}
+                        phases={[]} 
+                        units={[]} 
+                        isLoading={isLoading}
+                        isSaving={isSaving}
+                        submittingTarget={submittingTarget}
+                        onDataChange={handleDataChange}
+                        onSave={handleSave}
+                        onAssignEntry={handleAssignEntry}
+                    />
+                    
+                    <div className="w-full mt-4"> 
+                        {formData.accId ? (
+                            <ParkingActivityHistory accId={formData.accId} />
+                        ) : (
+                            <div className="h-64 border rounded-xl bg-muted/10 animate-pulse" />
+                        )}
+                    </div>
+                </div>
             </div>
 
-            {/* UNIFIED MANUAL ENTRY DIALOG (Updated for SuperApp Visitor) */}
+            {/* DIALOGS (Outside the relative wrapper so they aren't blocked) */}
             <Dialog open={isManualEntryOpen} onOpenChange={(open) => {
                 if(!open && !isProcessingEntry) {
                     setIsManualEntryOpen(false);
@@ -309,13 +308,10 @@ export default function SuperAppVisitorDetail() {
                             {manualDirection === 'Out' ? <LogOut className="h-5 w-5" /> : <LogIn className="h-5 w-5" />}
                             Manual {manualDirection}
                         </DialogTitle>
-                        <DialogDescription>
-                            Configure manual access details.
-                        </DialogDescription>
+                        <DialogDescription>Configure manual access details.</DialogDescription>
                     </DialogHeader>
 
                     <div className="py-4 space-y-4">
-                         {/* Wallet Display (Only for Out) */}
                          {manualDirection === "Out" && (
                              <div className="flex justify-between items-center text-xs bg-muted/30 p-2 rounded-lg border">
                                 <span className="text-muted-foreground">Current Wallet Balance</span>
@@ -326,7 +322,6 @@ export default function SuperAppVisitorDetail() {
                             </div>
                          )}
 
-                        {/* Terminal ID Input */}
                         <div className="space-y-2">
                             <Label className="text-sm font-semibold">Terminal ID</Label>
                             <Input 
@@ -335,10 +330,9 @@ export default function SuperAppVisitorDetail() {
                                 value={manualTerminalId}
                                 onChange={(e) => setManualTerminalId(e.target.value)}
                             />
-                            <p className="text-xs text-muted-foreground">Default Gate: 383</p>
+                            <p className="text-xs text-muted-foreground">Default Gate: {SYSTEM_TERMINAL_ID}</p>
                         </div>
 
-                        {/* Remarks Input (New) */}
                         <div className="space-y-2">
                             <Label className="text-sm font-semibold">Remarks</Label>
                             <Textarea 
@@ -349,7 +343,6 @@ export default function SuperAppVisitorDetail() {
                             />
                         </div>
 
-                        {/* Amount Input (Only for Out) */}
                         {manualDirection === "Out" && (
                             <div className="space-y-2">
                                 <Label className="text-sm font-semibold">Deduction Amount</Label>
@@ -361,25 +354,16 @@ export default function SuperAppVisitorDetail() {
                                         placeholder="0.00"
                                         value={manualAmount}
                                         onChange={(e) => setManualAmount(e.target.value)}
-                                        onFocus={(e) => e.target.select()}
                                     />
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Enter 0 for free exit.
-                                </p>
+                                <p className="text-xs text-muted-foreground">Enter 0 for free exit.</p>
                             </div>
                         )}
                     </div>
 
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => { setIsManualEntryOpen(false); setSubmittingTarget(null); }} disabled={isProcessingEntry}>
-                            Cancel
-                        </Button>
-                        <Button 
-                            onClick={executeManualAccess} 
-                            disabled={isProcessingEntry}
-                            className={manualDirection === 'Out' ? "bg-amber-600 hover:bg-amber-700 text-white" : "bg-emerald-600 hover:bg-emerald-700 text-white"}
-                        >
+                        <Button variant="outline" onClick={() => { setIsManualEntryOpen(false); setSubmittingTarget(null); }} disabled={isProcessingEntry}>Cancel</Button>
+                        <Button onClick={executeManualAccess} disabled={isProcessingEntry} className={manualDirection === 'Out' ? "bg-amber-600 hover:bg-amber-700 text-white" : "bg-emerald-600 hover:bg-emerald-700 text-white"}>
                             {isProcessingEntry ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRightLeft className="mr-2 h-4 w-4" />}
                             Confirm {manualDirection}
                         </Button>

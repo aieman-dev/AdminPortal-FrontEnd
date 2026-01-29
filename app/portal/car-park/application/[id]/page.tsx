@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { 
     Save, CheckCircle2, XCircle, ArrowLeft, Loader2, AlertCircle
 } from "lucide-react"
+import { SYSTEM_TERMINAL_ID } from "@/lib/constants"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -183,7 +184,7 @@ export default function ApplicationReviewPage() {
                 applicationId: Number(id),
                 accId: Number(data.accId),
                 adminStaffId: Number(user?.id || 0),
-                terminalId: 383, // Hardcoded per requirement
+                terminalId: SYSTEM_TERMINAL_ID, 
 
                 name: data.name,
                 ic: data.nric,

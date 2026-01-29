@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Ban, Unlock, RefreshCw, User, Loader2 } from "lucide-react"
+import { Ban, Unlock, RefreshCw, CreditCard, Loader2 } from "lucide-react" 
 import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
 import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
 import { carParkService } from "@/services/car-park-services"
-import { BlockedUser, Account } from "@/type/car-park"
+import { BlockedUser, CarParkPass } from "@/type/car-park" 
 import { useAppToast } from "@/hooks/use-app-toast"
 import { PaginationControls } from "@/components/ui/pagination-controls"
 import { usePagination } from "@/hooks/use-pagination"
@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/hooks/use-auth"
+import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 
 export default function BlacklistTab() {
     const toast = useAppToast()
@@ -25,7 +26,7 @@ export default function BlacklistTab() {
     const [viewMode, setViewMode] = useState<"blacklist" | "search">("blacklist")
     
     const [blacklistData, setBlacklistData] = useState<BlockedUser[]>([])
-    const [searchResultData, setSearchResultData] = useState<Account[]>([])
+    const [searchResultData, setSearchResultData] = useState<CarParkPass[]>([])
     const [loading, setLoading] = useState(false)
 
     // Block Dialog State
@@ -64,8 +65,8 @@ export default function BlacklistTab() {
         }
     }, [currentPage, pageSize, setMetaData, setCurrentPage, toast]);
 
-    // --- 2. Search Accounts (Global Search) ---
-    const handleAccountSearch = async () => {
+    // --- 2. UPDATED: Reuse getQrListing for Search ---
+    const handleCardSearch = async () => {
         if (!searchTerm.trim()) {
             fetchBlacklist(1);
             return;
@@ -76,13 +77,19 @@ export default function BlacklistTab() {
         setSearchResultData([]);
 
         try {
-            const results = await carParkService.searchSuperAppAccounts(searchTerm.trim());
+            // REUSE: Calling getQrListing (which uses /cards/active)
+            // We request page 1 with a larger size (e.g., 20 or 50) for search results
+            const response = await carParkService.getQrListing(1, 20, searchTerm.trim());
+            
+            // Extract items from the paginated response
+            const results = response.items || []; 
             setSearchResultData(results);
+            
             if (results.length === 0) {
-                toast.info("No Users Found", "Try searching by exact email or mobile number.");
+                toast.info("No Active Cards Found", "Try searching by name, email or plate number.");
             }
         } catch (error) {
-            toast.error("Search Failed", "Could not search accounts.");
+            toast.error("Search Failed", "Could not search active cards.");
         } finally {
             setLoading(false);
         }
@@ -92,27 +99,14 @@ export default function BlacklistTab() {
     useEffect(() => { fetchBlacklist(1) }, [])
 
     // --- Actions ---
-    const handleBlockClick = async (account: Account) => {
-        setLoading(true);
-        try {
-            const passDetails = await carParkService.getQrListingID({ accId: account.accId });
-            
-            if (passDetails && 'data' in passDetails && passDetails.data.qrId) {
-                setSelectedUserToBlock({
-                    accId: account.accId,
-                    name: account.firstName || "User",
-                    qrId: passDetails.data.qrId
-                });
-                setBlockReason("");
-                setIsBlockOpen(true);
-            } else {
-                toast.error("Cannot Block", "This user does not have an active season pass/card to block.");
-            }
-        } catch (error) {
-            toast.error("Error", "Failed to retrieve user pass details.");
-        } finally {
-            setLoading(false);
-        }
+    const handleBlockClick = (card: CarParkPass) => {
+        setSelectedUserToBlock({
+            accId: String(card.accId), 
+            name: card.name || "Unknown",
+            qrId: Number(card.qrId)
+        });
+        setBlockReason("");
+        setIsBlockOpen(true);
     };
 
     const confirmBlock = async () => {
@@ -125,7 +119,6 @@ export default function BlacklistTab() {
         try {
             await carParkService.blockSeasonPass(
                 selectedUserToBlock.qrId, 
-                Number(user?.id || 0), 
                 blockReason
             );
             toast.success("Blocked", `${selectedUserToBlock.name} has been added to blacklist.`);
@@ -180,13 +173,31 @@ export default function BlacklistTab() {
         }
     ];
 
-    const searchColumns: TableColumn<Account>[] = [
-        { header: "Name", accessor: "firstName", className: "pl-6 font-medium" },
-        { header: "Email", accessor: "email" },
-        { header: "Mobile", accessor: "mobile" },
-        { header: "Acc ID", accessor: "accId", className: "text-muted-foreground font-mono text-xs" },
+    // Search Results Columns (Active Cards)
+    const searchColumns: TableColumn<CarParkPass>[] = [
         { 
-            header: "Action", accessor: "id", className: "text-right pr-6",
+            header: "Card ID", 
+            accessor: "qrId", 
+            className: "pl-6 font-mono text-xs text-muted-foreground" 
+        },
+        { 
+            header: "Name", 
+            accessor: "name", // Use 'name' from CarParkPass
+            className: "font-medium" 
+        },
+        { header: "Email", accessor: "email" },
+        { 
+            header: "Car Plate", 
+            accessor: "plateNo", 
+            cell: (val) => <span className="uppercase font-semibold">{val}</span> 
+        },
+        { 
+            header: "Status", 
+            accessor: "status", 
+            cell: (val) => <StatusBadge status={val as string} /> 
+        },
+        { 
+            header: "Action", accessor: "qrId", className: "text-right pr-6",
             cell: (_, row) => (
                 <Button 
                     variant="destructive" 
@@ -205,35 +216,54 @@ export default function BlacklistTab() {
             
             {/* === CARD 1: SEARCH BAR === */}
             <Card>
-                <CardContent className="pt-6">
-                    <div className="flex flex-col md:flex-row gap-4 justify-between items-end">
-                        <div className="flex-1 w-full space-y-1">
-                             <SearchField 
-                                label={viewMode === 'search' ? "Searching Accounts Database" : "Search to Block User"}
-                                placeholder="Enter Name, Email or Mobile to find user..."
-                                value={searchTerm}
-                                onChange={setSearchTerm}
-                                onSearch={handleAccountSearch}
-                                isSearching={loading}
-                            />
-                            {viewMode === 'search' && (
-                                <p className="text-xs text-muted-foreground ml-1">
-                                    Showing search results. Clear search to return to blacklist view.
-                                </p>
-                            )}
-                        </div>
+                <CardContent>
+                    <div className="space-y-2"> {/* Wrapper to handle spacing between Search Row and Helper Text */}
                         
-                        <div className="flex gap-2">
-                            {viewMode === 'search' && (
-                                <Button variant="secondary" onClick={() => { setSearchTerm(""); fetchBlacklist(1); }}>
-                                    Back to List
+                        <div className="flex flex-col md:flex-row gap-4 justify-between items-end">
+                            {/* Left Side: Search Field */}
+                            <div className="flex-1 w-full">
+                                <SearchField 
+                                    label={viewMode === 'search' ? "Searching Active Cards" : "Search to Block User"}
+                                    placeholder="Enter Name, Email, Plate No or Card ID..."
+                                    value={searchTerm}
+                                    onChange={setSearchTerm}
+                                    onSearch={handleCardSearch}
+                                    isSearching={loading}
+                                />
+                            </div>
+                            
+                            {/* Right Side: Buttons (Aligned to bottom of search input) */}
+                            <div className="flex gap-2">
+                                {viewMode === 'search' && (
+                                    <Button 
+                                        variant="secondary" 
+                                        onClick={() => { setSearchTerm(""); fetchBlacklist(1); }}
+                                        className="h-11" // Match SearchField height
+                                    >
+                                        Back to List
+                                    </Button>
+                                )}
+                                <Button 
+                                    variant="outline" 
+                                    onClick={() => viewMode === 'blacklist' ? fetchBlacklist(1) : handleCardSearch()} 
+                                    disabled={loading}
+                                    className="h-11" // Match SearchField height
+                                >
+                                    <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> 
+                                    {loading ? "Loading..." : "Refresh"}
                                 </Button>
-                            )}
-                            <Button variant="outline" onClick={() => viewMode === 'blacklist' ? fetchBlacklist(1) : handleAccountSearch()} disabled={loading}>
-                                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> 
-                                {loading ? "Loading..." : "Refresh"}
-                            </Button>
+                            </div>
                         </div>
+
+                        {/* Helper Text (Moved OUTSIDE the flex row so it doesn't break alignment) */}
+                        {viewMode === 'search' && (
+                            <div className="flex items-center gap-2 px-1">
+                                <div className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                <p className="text-xs text-muted-foreground">
+                                    Showing active card results. <span className="font-medium text-foreground">Clear search</span> or click <span className="font-medium text-foreground">Back to List</span> to return.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>
@@ -249,8 +279,8 @@ export default function BlacklistTab() {
                         </div>
                     ) : (
                         <div className="mb-4 flex items-center gap-2 text-sm text-blue-600 bg-blue-50 p-3 rounded-lg border border-blue-100 animate-in fade-in slide-in-from-top-1">
-                            <User className="h-4 w-4" />
-                            <span className="font-medium">Search Results</span>
+                            <CreditCard className="h-4 w-4" />
+                            <span className="font-medium">Active Card Search Results</span>
                         </div>
                     )}
 
@@ -282,11 +312,11 @@ export default function BlacklistTab() {
                         <DataTable 
                             columns={searchColumns}
                             data={searchResultData}
-                            keyExtractor={(row) => row.id}
+                            keyExtractor={(row) => String(row.qrId)}
                             isLoading={loading}
-                            emptyIcon={User}
-                            emptyTitle="No Users Found"
-                            emptyMessage="No accounts matched your search criteria."
+                            emptyIcon={CreditCard}
+                            emptyTitle="No Active Cards Found"
+                            emptyMessage="No matching active cards/passes found."
                         />
                     )}
                 </CardContent>

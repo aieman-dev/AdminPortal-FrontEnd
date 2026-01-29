@@ -9,8 +9,10 @@ import { SearchField } from "@/components/themepark-support/it-poswf/search-fiel
 import { carParkService } from "@/services/car-park-services"
 import { WhitelistedUser } from "@/type/car-park"
 import { useAppToast } from "@/hooks/use-app-toast"
+import { FeatureUnderConstruction } from "@/components/portal/feature-under-construction"
 
 export default function WhitelistTab() {
+    /* 
     const toast = useAppToast()
     const [searchTerm, setSearchTerm] = useState("")
     const [data, setData] = useState<WhitelistedUser[]>([])
@@ -45,8 +47,11 @@ export default function WhitelistTab() {
             )
         }
     ];
+     */
 
     return (
+        <>
+        {/*
         <div className="space-y-6">
             <Card>
                 <CardContent>
@@ -82,5 +87,12 @@ export default function WhitelistTab() {
                 </CardContent>
             </Card>
         </div>
+        */}
+        <FeatureUnderConstruction 
+            title="Whitelist Management"
+            description="The whitelist logic is currently under review to support the new multi-tier exemption feature. This module is temporarily halted."
+            badgeText="Under Construction"
+        />
+     </>
     )
 }
