@@ -29,7 +29,7 @@ export function AccountProfileCard({
     const disabledStyle = "disabled:opacity-100 bg-gray-100 dark:bg-zinc-800/40 text-gray-500 dark:text-zinc-400 border-transparent cursor-not-allowed";
     const editableStyle = "bg-white dark:bg-zinc-950 border-gray-200 dark:border-zinc-800 focus-visible:ring-indigo-500";
     
-    const isStaffType = data.type === "Staff";
+    const isStaffType = data.userType === "Staff";
     const labelClass = "text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block";
 
     return (
@@ -73,7 +73,7 @@ export function AccountProfileCard({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <Label className={labelClass}>User Type</Label>
-                        <Select value={data.type} disabled> 
+                        <Select value={data.userType} disabled> 
                             <SelectTrigger className={disabledStyle}><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="Staff">Staff</SelectItem>

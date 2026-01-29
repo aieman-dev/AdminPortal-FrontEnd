@@ -26,8 +26,8 @@ import { SeasonPassConflictOverlay } from "@/components/car-park/overlays/Season
 
 const DEFAULT_VISITOR_DATA: ParkingDetailData = {
     accId: 0,
-    name: "", email: "", nric: "", mobile: "", company: "", 
-    type: "Visitor", staffId: "", contactOffice: "", contactHp: "",
+    name: "", email: "", nric: "", userType: "", mobile: "", company: "", 
+    staffId: "", contactOffice: "", contactHp: "",
     seasonPackage: "", bayNo: "", parkingMode: "Normal", remarks: "",
     isLpr: false, isTandem: false, isHomestay: false, isMobileQr: false,
     effectiveDate: "", expiryDate: "",

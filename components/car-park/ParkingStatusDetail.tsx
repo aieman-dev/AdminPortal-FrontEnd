@@ -85,11 +85,11 @@ export function ParkingStatusDetail({
                     <div className="flex items-center gap-3 text-sm text-muted-foreground">
                         <span className="bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-xs border font-mono">{data.email}</span>
                         <span className="text-border">|</span>
-                        <span>SuperApp {data.type} </span>
+                        <span>SuperApp {mode === "season" ? "Season" : "Visitor"}</span>
                     </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 w-full md:w-auto">
                     {mode === "season" && (
                         <>
                             <Button variant="ghost" onClick={onDelete} className="text-red-600 hover:bg-red-50">

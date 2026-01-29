@@ -148,10 +148,10 @@ export interface ParkingDetailData {
     accId: number;
     name: string;
     email: string;
+    userType: string;
     nric: string;
     mobile: string;
     company: string;
-    type: string;
     staffId: string;
     contactOffice: string;
     contactHp: string;

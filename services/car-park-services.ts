@@ -335,7 +335,7 @@ export const carParkService = {
                 qrId: raw.qrId || 0,
                 message: raw.Message || "",
 
-                type: raw.packageId === 0 ? "Visitor" : "Season", 
+                userType: raw.userType || "", 
                 staffId: raw.staffNo || "",
                 contactOffice: raw.officeNo || "",
                 contactHp: raw.mobileNo || "",

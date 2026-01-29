@@ -201,7 +201,7 @@ export default function SettingsPage() {
       <Tabs defaultValue="account" className="space-y-3">
         
         <div className="w-full overflow-x-auto scrollbar-hide pb-1">
-            <TabsList className="flex w-max h-auto p-1 bg-muted rounded-lg">
+            <TabsList className="flex w-max h-auto p-1 bg-muted rounded-lg gap-2">
                 <TabsTrigger 
                     value="account" 
                     className="flex-1 min-w-[120px] gap-2 px-4 py-2">
@@ -311,11 +311,9 @@ export default function SettingsPage() {
        {/* === TAB 2: SYSTEM CONTROL (Modified for Compactness) === */}
         {isSuperAdmin && (
             <TabsContent value="system" className="flex-1 min-w-[190px] gap-2 px-4 py-2 flex items-center justify-center">
-                {/* ITEMS-STRETCH: Aligns heights of Left Form and Right Preview */}
                 <div className="grid gap-4 lg:grid-cols-3 items-stretch">
                     
                     <div className="lg:col-span-2 flex flex-col">
-                         {/* H-FULL: Ensures this card stretches to match the neighbor */}
                          <Card className="border-muted bg-card h-full flex flex-col">
                             <CardHeader className="pb-2">
                                 <CardTitle className="flex items-center gap-2">

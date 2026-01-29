@@ -59,8 +59,8 @@ export default function EditQrPage() {
     // Data State
     const [formData, setFormData] = useState<ParkingDetailData>({
         accId: 0,
-        name: "", email: "", nric: "", mobile: "", company: "", 
-        type: "Staff", staffId: "", contactOffice: "", contactHp: "",
+        name: "", email: "", nric: "", userType: "", mobile: "", company: "", 
+        staffId: "", contactOffice: "", contactHp: "",
         seasonPackage: "", bayNo: "", parkingMode: "Reserved", remarks: "",
         isLpr: false, isTandem: false, isHomestay: false, isMobileQr: false,
         effectiveDate: "", expiryDate: "",
@@ -206,7 +206,7 @@ export default function EditQrPage() {
                 plateNo3: formData.plate3 || null,
                 
                 packageId: Number(formData.seasonPackage),
-                userType: formData.type,
+                userType: formData.userType,
                 unitId: Number(formData.unitNo) || 0, 
                 bayNo: formData.bayNo,
                 isReserved: formData.parkingMode === "Reserved",

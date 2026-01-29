@@ -60,7 +60,7 @@ export function StatCard({
                             animate={{ y: 0 }}
                             whileHover={{ y: -2 }} 
                         >
-                            <motion.p className={cn("text-2xl font-semibold truncate", valueColor)}>
+                            <motion.p className={cn("text-2xl font-semibold leading-none tracking-tight", valueColor)}>
                                 {displayValue}
                             </motion.p>
 

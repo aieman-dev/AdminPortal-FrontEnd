@@ -189,7 +189,7 @@ export default function NewRegistrationPage() {
         <div className="flex flex-col h-[calc(100vh-80px)] w-full max-w-[1400px] mx-auto overflow-hidden bg-gray-50/50 dark:bg-zinc-950/50">
             
             {/* 1. STICKY HEADER (SEARCH) */}
-            <div className="flex-shrink-0 px-8 py-5 bg-background/80 backdrop-blur-md border-b z-20 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in slide-in-from-top-2 duration-500">
+            <div className="flex-shrink-0 px-4 md:px-8 py-4 md:py-5 bg-background/80 backdrop-blur-md border-b z-20 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in slide-in-from-top-2 duration-500">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-foreground">New Registration</h1>
                     <p className="text-sm text-muted-foreground mt-1">Manage parking access and user details</p>
@@ -241,7 +241,7 @@ export default function NewRegistrationPage() {
             </div>
 
             {/* 2. REUSABLE FORM CONTENT */}
-            <div className="flex-1 overflow-y-auto p-6 md:p-8 scrollbar-hide">
+            <div className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-hide">
                 <div className="max-w-5xl mx-auto space-y-8 pb-10">
                     
                     {/* Pass Form and Lists to Shared Component */}
