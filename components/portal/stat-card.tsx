@@ -6,6 +6,7 @@ import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion, useSpring, useTransform } from "framer-motion"
 import { useEffect } from "react"
+import { on } from "events"
 
 interface StatCardProps {
   title: string
@@ -17,6 +18,7 @@ interface StatCardProps {
     positive: boolean
   }
   valueColor?: string
+  onClick?: () => void
 }
 
 export function StatCard({ 
@@ -25,7 +27,8 @@ export function StatCard({
   description, 
   icon: Icon, 
   trend,
-  valueColor = "text-foreground"
+  valueColor = "text-foreground",
+  onClick
 }: StatCardProps) {
     const isCurrency = value.includes("RM");
     const isSplit = value.includes("/");
@@ -44,8 +47,13 @@ export function StatCard({
         spring.set(numericValue);
     }, [spring, numericValue]);
 
+    const activeColorClass = valueColor === "text-foreground" ? "text-primary" : valueColor;
+
   return (
-    <div className="relative h-28 w-full z-0 group/wrapper">
+    <div 
+        className={cn("relative h-28 w-full z-0 group/wrapper", onClick && "cursor-pointer")}
+        onClick={onClick}
+        >
         <Card className="absolute inset-x-0 top-0 h-full hover:h-auto min-h-full flex flex-col overflow-hidden hover:shadow-xl transition-all duration-300 border-border/50 bg-gradient-to-br from-card to-card/50 p-6 hover:z-50">
             <div className="flex items-start justify-between w-full relative z-10">
                 <div className="space-y-1 flex-1 min-w-0 pr-2">
@@ -60,7 +68,7 @@ export function StatCard({
                             animate={{ y: 0 }}
                             whileHover={{ y: -2 }} 
                         >
-                            <motion.p className={cn("text-2xl font-semibold leading-none tracking-tight", valueColor)}>
+                            <motion.p className={cn("text-2xl font-semibold leading-none tracking-tight", activeColorClass)}>
                                 {displayValue}
                             </motion.p>
 
@@ -87,13 +95,14 @@ export function StatCard({
                     </div>
                 </div>
 
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover/wrapper:bg-primary/20 transition-colors">
-                    <Icon className="h-6 w-6 text-primary" />
+                <div className={cn("h-12 w-12 rounded-lg flex items-center justify-center shrink-0 relative transition-all group-hover/wrapper:scale-110 duration-300", activeColorClass)}>
+                    <div className="absolute inset-0 bg-current opacity-10 rounded-lg" />
+                    <Icon className="h-6 w-6 relative z-10" />
                 </div>
             </div>
 
-            {/* Hover Background Effect */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover/wrapper:opacity-100 transition-opacity duration-500 pointer-events-none" />
+            {/* Hover Background Effect (Subtle matching tint) */}
+            <div className={cn("absolute inset-0 bg-gradient-to-br from-current to-transparent opacity-0 group-hover/wrapper:opacity-5 transition-opacity duration-500 pointer-events-none", activeColorClass)} />
         </Card>
     </div>
   )

@@ -1,6 +1,6 @@
 // config/dashboard.ts
 import { 
-  ShoppingCart, Clock, Ticket, Users, Monitor, 
+  ShoppingCart, Clock, Ticket, Users, Monitor, SquareTerminal, Car,
   Settings, PlusCircle, ShieldAlert, ClipboardList, Database, 
   RefreshCw, TrendingUp, Activity, FileText, Server, Wallet,
   LucideIcon, AppWindow, FileClock, User, CreditCard, UserCog,
@@ -38,6 +38,7 @@ export const DASHBOARD_CONFIG: Record<string, RoleConfig> = {
   [ROLES.MIS_SUPER]: {
     stats: [
       { id: "revenue", label: "Total Revenue", icon: ShoppingCart, trend: true, color: "default" },
+      { id: "kiosk_status", label: "Kiosk Status", icon: SquareTerminal, color: "dynamic" },
       { id: "pending_pkgs", label: "Pending Packages", icon: Clock, color: "text-yellow-500" },
       { id: "package_sync", label: "Package Sync", icon: RefreshCw, color: "dynamic" },
       { id: "active_terminals", label: "Active Terminals", icon: Monitor, color: "text-blue-600" },
@@ -48,8 +49,8 @@ export const DASHBOARD_CONFIG: Record<string, RoleConfig> = {
       { label: "Create Pkg", icon: PlusCircle, path: "/portal/packages/form", color: "text-indigo-600" },
       { label: "Activity Audit", icon: FileClock, path: "/portal/staff-management?tab=audit", color: "text-amber-600" },
       { label: "My Profile", icon: User, path: "/portal/setting", color: "text-slate-500" },
-      { label: "Software A", icon: AppWindow, path: "#", color: "text-slate-400" },
-      { label: "Software B", icon: AppWindow, path: "#", color: "text-slate-400" },
+      { label: "New Reg.", icon: Car, path: "/portal/car-park/registration", color: "text-blue-600" },
+      { label: "Season Parking", icon: Ticket, path: "/portal/car-park/season-parking", color: "text-indigo-600" }
     ]
   },
 
@@ -90,6 +91,7 @@ export const DASHBOARD_CONFIG: Record<string, RoleConfig> = {
     stats: [
       { id: "package_sync", label: "Unsynced Items", icon: RefreshCw, color: "dynamic" },
       { id: "active_terminals", label: "Active Terminals", icon: Server, color: "text-blue-600" },
+      { id: "kiosk_status", label: "Kiosk Status", icon: SquareTerminal, color: "dynamic" },
       { id: "system_load", label: "System Load", icon: Activity, color: "default" },
       { id: "system_health", label: "System Status", icon: Database, color: "dynamic" },
     ],

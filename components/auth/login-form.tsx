@@ -129,7 +129,7 @@ export function LoginForm() {
                 </FormControl>
                 <div className="space-y-1 leading-none">
                   <FormLabel className="text-sm font-medium leading-none text-muted-foreground cursor-pointer">
-                    Keep me signed in
+                    Remember Me
                   </FormLabel>
                 </div>
               </FormItem>
