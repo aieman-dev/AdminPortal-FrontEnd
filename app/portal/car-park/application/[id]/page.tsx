@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { 
-    Save, CheckCircle2, XCircle, ArrowLeft, Loader2, AlertCircle
+    Save, CheckCircle2, XCircle, ArrowLeft, Loader2, AlertCircle, MoreVertical
 } from "lucide-react"
 import { SYSTEM_TERMINAL_ID } from "@/lib/constants"
 import { Button } from "@/components/ui/button"
@@ -19,6 +19,12 @@ import { carParkService } from "@/services/car-park-services"
 import { carParkFormSchema, CarParkFormValues } from "@/lib/schemas/car-park"
 import { CarParkForm } from "@/components/car-park/CarParkForm"
 import { CarParkPhase, CarParkUnit, CarParkPackage, CarParkDepartment } from "@/type/car-park"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export default function ApplicationReviewPage() {
     const router = useRouter()
@@ -267,11 +273,11 @@ export default function ApplicationReviewPage() {
     }
 
     return (
-        <div className="flex flex-col h-[calc(100vh-80px)] w-full max-w-[1400px] mx-auto bg-gray-50/50 dark:bg-zinc-950/50">
+        <div className="flex flex-col h-[calc(100dvh-80px)] w-full max-w-[1400px] mx-auto bg-gray-50/50 dark:bg-zinc-950/50">
             
             {/* HEADER */}
-            <div className="flex-shrink-0 px-8 py-5 bg-background/80 backdrop-blur-md border-b z-20 flex items-center justify-between">
-                <div className="flex items-center gap-4">
+            <div className="flex-shrink-0 px-8 bg-background/80 backdrop-blur-md border-b z-20 flex items-center justify-between">
+                <div className="flex items-center gap-3">
                     <Button variant="outline" size="icon" onClick={() => router.back()}>
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
@@ -285,8 +291,8 @@ export default function ApplicationReviewPage() {
             </div>
 
             {/* FORM CONTENT (REUSING COMPONENT) */}
-            <div className="flex-1 overflow-y-auto p-6 md:p-8 scrollbar-hide">
-                <div className="max-w-5xl mx-auto space-y-8 pb-4">
+            <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-32 scrollbar-hide">
+                <div className="max-w-5xl mx-auto space-y-8">
                     <CarParkForm 
                         form={form} 
                         phases={phases} 
@@ -300,39 +306,61 @@ export default function ApplicationReviewPage() {
                 </div>
             </div>
 
-            <div className="flex-shrink-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 py-4 md:px-8 md:py-5 pb-8 z-30">
-                <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-                    
-                    <p className="text-sm text-muted-foreground hidden sm:block">
-                        Please ensure all details are correct before approving.
-                    </p>
+            {/* FIXED ACTION BAR */}
+            <div className="fixed bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur px-4 py-3 md:px-8 md:py-4 z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                <div className="max-w-5xl mx-auto">
+                    {/* DESKTOP LAYOUT (Hidden on mobile) */}
+                    <div className="hidden md:flex items-center justify-between gap-4">
+                        <p className="text-sm text-muted-foreground">
+                            Please ensure all details are correct before approving.
+                        </p>
+                        <div className="flex gap-3">
+                            <Button variant="outline" onClick={handleSubmit(handleSave)} disabled={isSubmitting}>
+                                <Save className="mr-2 h-4 w-4" /> Save Changes
+                            </Button>
+                            <Button variant="destructive" onClick={() => setIsRejectOpen(true)} disabled={isSubmitting} className="bg-red-600 hover:bg-red-700">
+                                <XCircle className="mr-2 h-4 w-4" /> Reject
+                            </Button>
+                            <Button onClick={handleApprove} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700 text-white min-w-[140px]">
+                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                                Approve
+                            </Button>
+                        </div>
+                    </div>
 
-                    <div className="flex gap-3 w-full sm:w-auto">
-                        <Button 
-                            variant="outline" 
-                            onClick={handleSubmit(handleSave)} 
-                            disabled={isSubmitting}
-                            className="flex-1 sm:flex-none"
-                        >
-                            <Save className="mr-2 h-4 w-4" /> Save Changes
-                        </Button>
-                        
+                    {/* MOBILE LAYOUT (Compact, Hamburger for secondary) */}
+                    <div className="flex md:hidden items-center gap-3">
+                        {/* 1. Hamburger for "Save" and other options */}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="icon" className="h-11 w-11 shrink-0 bg-background border-input shadow-sm">
+                                    <MoreVertical className="h-5 w-5 text-muted-foreground" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" side="top" className="w-48 mb-2">
+                                <DropdownMenuItem onClick={handleSubmit(handleSave)} disabled={isSubmitting}>
+                                    <Save className="mr-2 h-4 w-4" /> Save Changes
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        {/* 2. Reject Button (Flex 1) */}
                         <Button 
                             variant="destructive" 
                             onClick={() => setIsRejectOpen(true)} 
                             disabled={isSubmitting} 
-                            className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700"
+                            className="flex-1 h-11 bg-red-600/10 text-red-600 hover:bg-red-600/20 border border-red-600/20 shadow-sm"
                         >
                             <XCircle className="mr-2 h-4 w-4" /> Reject
                         </Button>
-                        
+
+                        {/* 3. Approve Button (Flex 2 - More prominent) */}
                         <Button 
                             onClick={handleApprove} 
                             disabled={isSubmitting} 
-                            className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white min-w-[140px]"
+                            className="flex-[1.5] h-11 bg-green-600 hover:bg-green-700 text-white shadow-md font-semibold"
                         >
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-                            Approve
+                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve"}
                         </Button>
                     </div>
                 </div>

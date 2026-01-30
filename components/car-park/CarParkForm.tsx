@@ -74,7 +74,7 @@ export function CarParkForm({
                         <Input 
                             {...register("userEmail")} 
                             readOnly 
-                            className={cn(inputClass, "bg-muted/30 border-dashed text-muted-foreground")} 
+                            className={cn(inputClass, "bg-muted/30 border-border text-muted-foreground")} 
                         />
                         {errors.userEmail && <span className="text-[10px] text-red-500 font-medium mt-1">{errors.userEmail.message}</span>}
                     </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import { 
-    Save, Trash2, Ban, User, Unlock, Loader2
+    Save, Trash2, Ban, User, Unlock, Loader2, MoreVertical
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +9,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
 import { formatDateTime } from "@/lib/formatter"
 import { cn } from "@/lib/utils"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 // --- Sub-Components ---
 import { SeasonConfigForm } from "./forms/SeasonConfigForm"
@@ -82,34 +88,67 @@ export function ParkingStatusDetail({
                         <h1 className="text-2xl font-bold text-foreground tracking-tight">{data.name || "Unknown User"}</h1>
                         <StatusBadge status={status.recordStatus} className="h-6 text-xs px-2.5" />
                     </div>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                        <span className="bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-xs border font-mono">{data.email}</span>
-                        <span className="text-border">|</span>
-                        <span>SuperApp {mode === "season" ? "Season" : "Visitor"}</span>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span className="bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-xs border font-mono truncate">{data.email}</span>
+                        <span className="text-border hidden md:inline">|</span>
+                        <span className="hidden md:inline">SuperApp {mode === "season" ? "Season" : "Visitor"}</span>
                     </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                    {mode === "season" && (
-                        <>
-                            <Button variant="ghost" onClick={onDelete} className="text-red-600 hover:bg-red-50">
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                            </Button>
-                            {isBlocked ? (
-                                <Button variant="outline" onClick={onUnblock} className="text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100 ring-2 ring-emerald-100 shadow-sm">
-                                    <Unlock className="mr-2 h-4 w-4" /> Unblock
-                                </Button>
-                            ) : (
-                                <Button variant="outline" onClick={onBlock} className="text-amber-600 border-amber-200 hover:bg-amber-50">
-                                    <Ban className="mr-2 h-4 w-4" /> Block
-                                </Button>
-                            )}
-                        </>
-                    )}
-                    <Button onClick={onSave} disabled={isSaving || isBlocked} className="bg-indigo-600 hover:bg-indigo-700 text-white min-w-[120px] shadow-sm">
+                {/* ACTIONS - Responsive */}
+                <div className="flex items-center gap-2 w-full md:w-auto">
+                    
+                    {/* PRIMARY ACTION (Always Visible) */}
+                    <Button onClick={onSave} disabled={isSaving || isBlocked} className="flex-1 md:flex-none bg-indigo-600 hover:bg-indigo-700 text-white h-10 shadow-sm">
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Save Changes
                     </Button>
+
+                    {/* SECONDARY ACTIONS (Desktop: Buttons, Mobile: Dropdown) */}
+                    {mode === "season" && (
+                        <>
+                            {/* Desktop View */}
+                            <div className="hidden md:flex gap-2">
+                                {isBlocked ? (
+                                    <Button variant="outline" onClick={onUnblock} className="text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100">
+                                        <Unlock className="mr-2 h-4 w-4" /> Unblock
+                                    </Button>
+                                ) : (
+                                    <Button variant="outline" onClick={onBlock} className="text-amber-600 border-amber-200 hover:bg-amber-50">
+                                        <Ban className="mr-2 h-4 w-4" /> Block
+                                    </Button>
+                                )}
+                                <Button variant="ghost" onClick={onDelete} className="text-red-600 hover:bg-red-50">
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+
+                            {/* Mobile View - Dropdown */}
+                            <div className="md:hidden">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" size="icon" className="h-10 w-10">
+                                            <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        {isBlocked ? (
+                                            <DropdownMenuItem onClick={onUnblock} className="text-emerald-600">
+                                                <Unlock className="mr-2 h-4 w-4" /> Unblock Access
+                                            </DropdownMenuItem>
+                                        ) : (
+                                            <DropdownMenuItem onClick={onBlock} className="text-amber-600">
+                                                <Ban className="mr-2 h-4 w-4" /> Block Access
+                                            </DropdownMenuItem>
+                                        )}
+                                        <DropdownMenuItem onClick={onDelete} className="text-red-600 focus:text-red-600">
+                                            <Trash2 className="mr-2 h-4 w-4" /> Delete Pass
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 

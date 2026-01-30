@@ -493,23 +493,15 @@ export const carParkService = {
                 return [];
             }
 
-            // 1. Extract the array from { content: [...] }
-            const rawList = getContent<string>(response.data);
+            const rawList = getContent<any>(response.data);
 
-            return rawList.map((rawCode, index) => {
-                // "report_CarPark_BlockedList" -> "CarPark BlockedList"
-                const cleanName = rawCode
-                    .replace(/^report_/i, "") 
-                    .replace(/_/g, " ");       
-
-                return {
-                    id: index + 1,
-                    code: rawCode,
-                    name: cleanName,
-                    description: `System generated report: ${cleanName}`,
-                    path: `/${rawCode}` 
-                };
-            });
+            return rawList.map((item, index) => ({
+                id: index + 1,
+                code: item.reportName,
+                name: item.friendlyName,
+                description: item.description || "System generated report",
+                path: `/${item.reportName}` 
+            }));
         },
 
         generateReport: async (payload: ReportPayload): Promise<ReportResponse> => {
