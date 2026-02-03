@@ -17,13 +17,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
-import { BalanceCard } from "@/components/themepark-support/it-poswf/balance-card"
+import { StatusBadge } from "@/components/shared-components/status-badge"
+import { BalanceCard } from "@/components/shared-components/balance-card"
 import { CheckCircle2, Wallet, Clock, SearchX, FileText, User, ShieldAlert, ArrowLeft, Mail, ArrowRightLeft, Power } from "lucide-react"
 import type { Account, BalanceDetail, BalanceTransaction } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
 import { useToast } from "@/hooks/use-toast"
-import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
+import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
 import {
   Breadcrumb,
   BreadcrumbItem,

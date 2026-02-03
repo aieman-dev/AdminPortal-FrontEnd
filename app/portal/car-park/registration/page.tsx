@@ -3,17 +3,19 @@
 import React, { useState, useEffect } from "react"
 import { useForm, SubmitHandler } from "react-hook-form" 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Mail, QrCode, RefreshCw, Loader2, ArrowRight, CheckCircle2 } from "lucide-react"
+import { Mail, QrCode, RefreshCw, Loader2, ArrowRight, CheckCircle2, User, Car } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { useAppToast } from "@/hooks/use-app-toast"
+import { useBeforeUnload } from "@/hooks/use-before-unload";
 import { CarParkPhase, CarParkUnit, CarParkPackage, CarParkDepartment } from "@/type/car-park"
 import { carParkService } from "@/services/car-park-services"
 import { cn } from "@/lib/utils"
 import { carParkFormSchema, CarParkFormValues } from "@/lib/schemas/car-park"
-import { CarParkForm } from "@/components/car-park/CarParkForm"
+import { CarParkForm } from "@/components/modules/car-park/forms/CarParkForm"
 
 export default function NewRegistrationPage() {
     const { user } = useAuth()
@@ -25,6 +27,7 @@ export default function NewRegistrationPage() {
     const [units, setUnits] = useState<CarParkUnit[]>([])
     const [seasonPackages, setSeasonPackages] = useState<CarParkPackage[]>([])
     const [departments, setDepartments] = useState<CarParkDepartment[]>([])
+    const [hasPlateConflict, setHasPlateConflict] = useState(false);
     
     const [loadingPhases, setLoadingPhases] = useState(true)
     const [loadingUnits, setLoadingUnits] = useState(false)
@@ -99,6 +102,9 @@ export default function NewRegistrationPage() {
             department: ""
         }
     })
+
+    const { isDirty } = form.formState;
+    useBeforeUnload(isDirty);
 
     const { register, handleSubmit, watch, setValue, reset, getValues } = form
     const searchType = watch("searchType")
@@ -176,6 +182,7 @@ export default function NewRegistrationPage() {
             const adminId = user?.id || 0
             await carParkService.submitRegistration(formDataToSubmit, adminId)
             toast.success("Registration Successful", "New season pass created.")
+            form.reset()
             setIsConfirmOpen(false)
             handleClear()
         } catch (error) {
@@ -254,6 +261,7 @@ export default function NewRegistrationPage() {
                         loadingUnits={loadingUnits} 
                         loadingPhases={loadingPhases}
                         onPhaseChange={handlePhaseChange}
+                        onPlateConflict={setHasPlateConflict}
                     />
 
                     {/* ACTIONS */}
@@ -261,8 +269,13 @@ export default function NewRegistrationPage() {
                         <Button type="button" variant="outline" onClick={handleClear} className="h-11 px-8 rounded-xl border-gray-300 hover:bg-gray-100 text-gray-600">
                             <RefreshCw className="mr-2 h-4 w-4" /> Clear Form
                         </Button>
-                        <Button type="submit" onClick={handleSubmit(onPreSubmit)} disabled={isSubmitting} className="h-11 px-10 rounded-xl bg-black hover:bg-gray-800 text-white shadow-lg transition-all hover:scale-[1.02] active:scale-95">
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-2 h-4 w-4" />} Proceed to Registration
+                        <Button 
+                            type="submit" 
+                            onClick={handleSubmit(onPreSubmit)} 
+                            disabled={isSubmitting || hasPlateConflict} 
+                            className={cn("h-11 px-10 rounded-xl bg-black hover:bg-gray-800 text-white shadow-lg transition-all hover:scale-[1.02] active:scale-95",hasPlateConflict )}>
+                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-2 h-4 w-4" />} 
+                            Proceed to Registration
                         </Button>
                     </div>
 
@@ -280,16 +293,49 @@ export default function NewRegistrationPage() {
                     </DialogHeader>
                     
                     {formDataToSubmit && (
-                        <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div><p className="text-xs text-muted-foreground font-semibold uppercase">Full Name</p><p className="font-medium">{formDataToSubmit.name}</p></div>
-                                <div><p className="text-xs text-muted-foreground font-semibold uppercase">NRIC</p><p className="font-medium">{formDataToSubmit.nric}</p></div>
-                                <div><p className="text-xs text-muted-foreground font-semibold uppercase">Email</p><p className="font-medium">{formDataToSubmit.userEmail}</p></div>
-                                <div><p className="text-xs text-muted-foreground font-semibold uppercase">Unit</p><p className="font-medium">{formDataToSubmit.phase} - {formDataToSubmit.unitNo}</p></div>
+                       <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto scrollbar-hide">
+                            {/* Section 1: User Profile */}
+                            <div className="space-y-3">
+                                <h4 className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                                    <User className="h-3 w-3" /> Personal Information
+                                </h4>
+                                <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-xl border border-border/50">
+                                    <div><p className="text-[10px] text-muted-foreground uppercase font-bold">Full Name</p><p className="font-medium text-sm">{formDataToSubmit.name}</p></div>
+                                    <div><p className="text-[10px] text-muted-foreground uppercase font-bold">NRIC</p><p className="font-medium text-sm">{formDataToSubmit.nric}</p></div>
+                                    <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase font-bold">Email</p><p className="font-medium text-sm truncate">{formDataToSubmit.userEmail}</p></div>
+                                </div>
+                            </div>
+
+                            {/* Section 2: Parking Plan */}
+                            <div className="space-y-3">
+                                <h4 className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                                    <Car className="h-3 w-3" /> Parking & Location
+                                </h4>
+                                <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-xl border border-border/50">
+                                    <div>
+                                        <p className="text-[10px] text-muted-foreground uppercase font-bold">Unit</p>
+                                        <p className="font-medium text-sm">
+                                            {/* Map ID to Name */}
+                                            {phases.find(p => String(p.id) === formDataToSubmit.phase)?.name || "N/A"} - {formDataToSubmit.unitNo}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-muted-foreground uppercase font-bold">Package</p>
+                                        <p className="font-medium text-sm truncate">
+                                            {seasonPackages.find(pkg => String(pkg.id) === formDataToSubmit.seasonPackage)?.name || "N/A"}
+                                        </p>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <p className="text-[10px] text-muted-foreground uppercase font-bold">Registered Plates</p>
+                                        <div className="flex flex-wrap gap-2 mt-1">
+                                            <Badge variant="secondary" className="font-mono text-xs px-2 py-0.5">{formDataToSubmit.plate1}</Badge>
+                                            {formDataToSubmit.plate2 && <Badge variant="outline" className="font-mono text-xs px-2 py-0.5">{formDataToSubmit.plate2}</Badge>}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    )}
-
+)}
                     <DialogFooter className="p-4 border-t bg-muted/10 gap-2">
                         <Button variant="outline" onClick={() => setIsConfirmOpen(false)} disabled={isSubmitting}>Back to Edit</Button>
                         <Button onClick={handleFinalSubmit} disabled={isSubmitting} className="min-w-[140px] bg-black hover:bg-gray-800 text-white shadow-lg">

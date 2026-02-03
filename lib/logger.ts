@@ -49,6 +49,8 @@ class Logger {
       console.debug(`[DEBUG] ${entry.timestamp} - ${message}`, data || "")
     }
   }
+  
+
 }
 
 export const logger = new Logger()

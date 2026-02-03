@@ -8,11 +8,11 @@ import dynamic from "next/dynamic"
 
 
 const AccountManagementTab = dynamic(
-  () => import("@/components/themepark-support/tabs/Account/AccountManagementTab"), 
+  () => import("@/components/modules/themepark-support/Account/AccountManagementTab"), 
   { loading: () => <LoaderState message="Loading account module..." className="h-[300px]" /> }
 )
 const SearchHistoryRecordTab = dynamic(
-  () => import("@/components/themepark-support/tabs/Account/SearchHistoryRecordTab"), 
+  () => import("@/components/modules/themepark-support/Account/SearchHistoryRecordTab"), 
   { loading: () => <LoaderState message="Loading search history module..." className="h-[300px]"  /> }
 )
 

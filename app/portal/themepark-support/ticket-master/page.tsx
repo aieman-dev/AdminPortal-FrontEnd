@@ -7,19 +7,19 @@ import { LoaderState } from "@/components/ui/loader-state"
 import dynamic from "next/dynamic"
 
 const DeactivateTicketTab = dynamic(
-  () => import("@/components/themepark-support/tabs/Ticket/DeactivateTicketTab"), 
+  () => import("@/components/modules/themepark-support/Ticket/DeactivateTicketTab"), 
   { loading: () => <LoaderState /> }
 )
 const ExtendExpiryTab = dynamic(
-  () => import("@/components/themepark-support/tabs/Ticket/ExtendExpiryTab"), 
+  () => import("@/components/modules/themepark-support/Ticket/ExtendExpiryTab"), 
   { loading: () => <LoaderState /> }
 )
 const UpdateQrPasswordTab = dynamic(
-  () => import("@/components/themepark-support/tabs/Ticket/UpdateQrPasswordTab"), 
+  () => import("@/components/modules/themepark-support/Ticket/UpdateQrPasswordTab"), 
   { loading: () => <LoaderState /> }
 )
 const ManualConsumeTab = dynamic(
-  () => import("@/components/themepark-support/tabs/Ticket/ManualConsumeTab"), 
+  () => import("@/components/modules/themepark-support/Ticket/ManualConsumeTab"), 
   { loading: () => <LoaderState /> }
 )
 

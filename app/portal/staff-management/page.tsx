@@ -4,8 +4,8 @@ import { useState, useEffect, useMemo, useCallback } from "react"
 import { PageHeader } from "@/components/portal/page-header"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
-import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
+import { SearchField } from "@/components/shared-components/search-field"
+import { StatusBadge } from "@/components/shared-components/status-badge"
 import { UserPlus, Users, Activity, Shield } from "lucide-react"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { usePagination } from "@/hooks/use-pagination"
@@ -13,10 +13,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PaginationControls } from "@/components/ui/pagination-controls"
 
 // Components
-import { StaffAccountModal } from "@/components/staff-management/StaffAccountModal" 
-import { StaffDrawer } from "@/components/staff-management/StaffDrawer" 
-import { ActivityDrawer } from "@/components/staff-management/ActivityDrawer" 
-import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
+import { StaffAccountModal } from "@/components/modules/staff-management/StaffAccountModal" 
+import { StaffDrawer } from "@/components/modules/staff-management/StaffDrawer" 
+import { ActivityDrawer } from "@/components/modules/staff-management/ActivityDrawer" 
+import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
 
 // Config & Services
 import { formatDate, formatDateTime } from "@/lib/formatter";

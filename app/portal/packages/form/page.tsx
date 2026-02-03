@@ -9,14 +9,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { packageFormSchema, PackageFormValues } from "@/lib/schemas/package-management";
 
 // Components
-import StepIndicator from "@/components/StepIndicator";
-import PackageFormStep1 from "@/components/PackageFormStep1";
-import PackageFormStep2 from "@/components/PackageFormStep2";
-import PackageFormStep3 from "@/components/PackageFormStep3";
-import { ConfirmationModal, DraftModal, SuccessModal, WarningModal } from '@/components/PackageModals';
+import StepIndicator from "@/components/modules/packages/StepIndicator";
+import PackageFormStep1 from "@/components/modules/packages/PackageFormStep1";
+import PackageFormStep2 from "@/components/modules/packages/PackageFormStep2";
+import PackageFormStep3 from "@/components/modules/packages/PackageFormStep3";
+import { ConfirmationModal, DraftModal, SuccessModal, WarningModal } from '@/components/modules/packages/PackageModals';
 import { PackageFormData } from "@/type/packages";
 import { packageService } from "@/services/package-services"; 
 import { useAppToast } from "@/hooks/use-app-toast";
+import { useBeforeUnload } from "@/hooks/use-before-unload";
+
+const STORAGE_KEY = "package_form_draft"
 
 const PackageFormPage = () => {
   const router = useRouter();
@@ -54,6 +57,11 @@ const PackageFormPage = () => {
     mode: "onChange"
   });
 
+  const { isDirty } = form.formState;
+  const watchedValues = form.watch();
+  
+  useBeforeUnload(isDirty);
+
   // ---  CONDITIONAL SCROLL LOCK ---
   // Only lock scroll on Desktop (md breakpoint ~768px). 
   // On mobile, we want native body scrolling.
@@ -75,10 +83,26 @@ const PackageFormPage = () => {
     };
   }, []);
 
+  useEffect(()=>{
+    if(isDirty && !editId){
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(watchedValues));
+    }
+  }, [watchedValues, isDirty, editId])
+
   useEffect(() => {
     const fetchPackageData = async () => {
-        if (!editId) return;
-        
+        if (!editId) {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    form.reset(JSON.parse(saved));
+                    toast.info("Draft Restored", "Your unsaved progress has been recovered.");
+                } catch (e) {
+                    console.error("Restore failed", e);
+                }
+            }
+            return;
+        }
         setIsLoadingData(true);
         try {
             let data = await packageService.getPackageById(Number(editId), "pending");
@@ -136,9 +160,22 @@ const PackageFormPage = () => {
   const handleCreateNew = () => {
     setShowSuccess(false);
     setShowDraft(false);
-    form.reset(); 
+    form.reset({
+        packageName: "",
+        packageType: "",
+        nationality: "",
+        ageCategory: "",
+        effectiveDate: "",
+        lastValidDate: "",
+        tpremark: "",
+        imageID: null,
+        packageitems: [],
+        dayPass: "",
+        totalPrice: 0,
+    });
+    sessionStorage.removeItem(STORAGE_KEY);
     setStep(1);
-  };
+  }
 
   const handleViewStatus = () => {
     setShowSuccess(false);
@@ -172,6 +209,7 @@ const PackageFormPage = () => {
           await packageService.saveDraft(servicePayload, finalImageID || "");
         }
         
+        form.reset(formData);
         console.log("Package saved as draft successfully");
         setShowDraft(true);
 
@@ -230,6 +268,7 @@ const PackageFormPage = () => {
         await packageService.createPackage(servicePayload, finalImageID || "");
       }
       
+      form.reset(formData);
       console.log("Package created successfully");
       setShowSuccess(true);
 

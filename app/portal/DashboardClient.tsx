@@ -1,7 +1,7 @@
 //app/portal/DashboardClient.tsx
 "use client"
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { motion } from "framer-motion";
@@ -22,11 +22,11 @@ import { dashboardService } from "@/services/dashboard-service";
 
 // Modular Components
 import { StatCard } from "@/components/portal/stat-card";
-import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
-import { TopPackagesCard } from "@/components/dashboard/TopPackagesCard";
-import { PendingPackagesList } from "@/components/dashboard/PendingPackagesList";
-import { QuickAccess } from "@/components/dashboard/QuickAccess";
-import { KioskModal } from "@/components/dashboard/KioskModal";
+import { PerformanceChart } from "@/components/modules/dashboard/PerformanceChart";
+import { TopPackagesCard } from "@/components/modules/dashboard/TopPackagesCard";
+import { PendingPackagesList } from "@/components/modules/dashboard/PendingPackagesList";
+import { QuickAccess } from "@/components/modules/dashboard/QuickAccess";
+import { KioskModal } from "@/components/modules/dashboard/KioskModal";
 import { SystemDiagnostics } from "@/components/portal/system-diagnostics";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 
@@ -59,6 +59,17 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
   
   const roleConfig = viewMode ? DASHBOARD_CONFIG[viewMode] : undefined;
 
+  const fetchKiosksOnly = useCallback(async (isInitial = false) => {
+    try {
+        if (!isInitial) {
+        }
+        const kiosks = await dashboardService.getKioskStatus();
+        setKioskData(kiosks);
+    } catch (e) {
+        console.error("Kiosk heartbeat failed", e);
+    }
+}, [])
+
   // Unified Data Fetching
   useEffect(() => {
     if (!roleConfig) { setLoading(false); return; }
@@ -66,27 +77,19 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
     const loadData = async () => {
         setLoading(true);
         try {
-            // 1. Core Summary (Always needed)
-            const summaryData = await dashboardService.getSummary(filter);
+            // Run all primary data fetches in parallel so slow pings don't block fast ones
+            const [summaryData, recentPkgs, unsynced, initialKiosks] = await Promise.all([
+                dashboardService.getSummary(filter),
+                viewMode !== ROLES.IT_ADMIN ? dashboardService.getRecentPendingPackages() : Promise.resolve([]),
+                roleConfig.stats.some(s => s.id === 'package_sync') ? dashboardService.getUnsyncedCount() : Promise.resolve(0),
+                roleConfig.stats.some(s => s.id === 'kiosk_status') ? dashboardService.getKioskStatus() : Promise.resolve([])
+            ]);
+
             setSummary(summaryData);
+            setPendingPackages(recentPkgs);
+            setUnsyncedCount(unsynced);
+            setKioskData(initialKiosks); 
             setSystemStatus("200 OK");
-
-            // 2. Pending Packages (If not IT Admin)
-            if (viewMode !== ROLES.IT_ADMIN) {
-                const recent = await dashboardService.getRecentPendingPackages();
-                setPendingPackages(recent);
-            }
-            // 3. Kiosk Status (If MIS or IT Admin)
-            if (roleConfig.stats.some(s => s.id === 'kiosk_status')) {
-                const kiosks = await dashboardService.getKioskStatus();
-                setKioskData(kiosks);
-            }
-            // 4. Conditional: Unsynced Count
-            if (roleConfig.stats.some(s => s.id === 'package_sync')) {
-                const count = await dashboardService.getUnsyncedCount();
-                setUnsyncedCount(count);
-            }
-
         } catch (e) {
             console.error(e);
             setSystemStatus("Connection Failed");
@@ -97,7 +100,7 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
     };
 
     loadData();
-  }, [viewMode, roleConfig, filter]);
+}, [viewMode, roleConfig, filter]);
 
   if (!roleConfig) return 
   <div className="h-[60vh] flex items-center justify-center">
@@ -140,38 +143,34 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
   };
 
   // --- RESTORED: STAT CARD ITEM LOGIC ---
-  const StatCardItem = ({ stat }: { stat: any }) => {
-      let finalColor = stat.color;
-      let description = "";
-      
-      // Dynamic Color Logic
-      if (stat.id === "package_sync") {
-          finalColor = unsyncedCount > 0 ? "text-orange-600" : "text-green-600";
-          description = unsyncedCount > 0 ? `${unsyncedCount} unsynced` : "All Synced";
-      }
-      if (stat.id === "system_health") {
-          finalColor = systemStatus.startsWith("200") ? "text-green-600" : "text-red-600";
-      }
-      if (stat.id === "kiosk_status") {
-          const down = kioskData.filter(k => !k.isActive).length;
-          finalColor = down > 0 ? "text-red-600" : "text-green-600";
-          description = down > 0 ? `${down} kiosks offline` : "All systems normal";
-      }
+  const StatCardItem = ({ stat, value, description, systemStatus, kioskData, setIsKioskOpen 
+}: { stat: any, value: string, description: string, systemStatus: string, kioskData: any[], setIsKioskOpen: (val: boolean) => void }) => {
+    let finalColor = stat.color;
+    let finalDescription = description;
+    
+    if (stat.id === "system_health") {
+        finalColor = systemStatus.startsWith("200") ? "text-green-600" : "text-red-600";
+    }
+    if (stat.id === "kiosk_status") {
+        const down = kioskData.filter((k: any) => !k.isActive).length;
+        finalColor = down > 0 ? "text-red-600" : "text-green-600";
+        finalDescription = down > 0 ? `${down} kiosks offline` : "All systems normal";
+    }
 
-      if (finalColor === "default") finalColor = undefined; 
+    if (finalColor === "default") finalColor = undefined; 
 
-      return (
-        <StatCard 
-            title={stat.label} 
-            value={getStatValue(stat.id)} 
-            description={description}
-            icon={stat.icon} 
-            valueColor={finalColor} 
-            trend={stat.trend ? { value: "Live", positive: true } : undefined} 
-            onClick={stat.id === "kiosk_status" ? () => setIsKioskOpen(true) : undefined}
-        />
-      );
-  }
+    return (
+      <StatCard 
+          title={stat.label} 
+          value={value} 
+          description={finalDescription}
+          icon={stat.icon} 
+          valueColor={finalColor} 
+          trend={stat.trend ? { value: "Live", positive: true } : undefined} 
+          onClick={stat.id === "kiosk_status" ? () => setIsKioskOpen(true) : undefined}
+      />
+    );
+};
 
   return (
     <motion.div className="space-y-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -180,7 +179,15 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
         {/* Stats Grid (Desktop) */}
         <div className="hidden md:grid grid-cols-4 gap-4">
             {roleConfig.stats.map(stat => (
-                <StatCardItem key={stat.id} stat={stat} />
+                <StatCardItem 
+                        key={stat.id} 
+                        stat={stat} 
+                        value={getStatValue(stat.id)} 
+                        description={stat.id === "package_sync" ? (unsyncedCount > 0 ? `${unsyncedCount} unsynced` : "All Synced") : ""}
+                        systemStatus={systemStatus}
+                        kioskData={kioskData}
+                        setIsKioskOpen={setIsKioskOpen}
+                    />
             ))}
         </div>
 
@@ -190,7 +197,15 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
                 <CarouselContent>
                     {roleConfig.stats.map(stat => (
                         <CarouselItem key={stat.id} className="basis-[85%] pl-4">
-                            <StatCardItem stat={stat} />
+                            {/* Pass all required props exactly like the desktop grid */}
+                            <StatCardItem 
+                                stat={stat} 
+                                value={getStatValue(stat.id)} 
+                                description={stat.id === "package_sync" ? (unsyncedCount > 0 ? `${unsyncedCount} unsynced` : "All Synced") : ""}
+                                systemStatus={systemStatus}
+                                kioskData={kioskData}
+                                setIsKioskOpen={setIsKioskOpen}
+                            />
                         </CarouselItem>
                     ))}
                 </CarouselContent>
@@ -207,7 +222,11 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
                     onFilterChange={setFilter} 
                 />
                 <TopPackagesCard data={summary?.bestSellingPackages || []} />
-                {viewMode === ROLES.MIS_SUPER && <SystemDiagnostics />}
+                {viewMode === ROLES.MIS_SUPER && (
+                    <div className="mt-2">
+                        <SystemDiagnostics autoRun={true} />
+                    </div>
+                )}
             </div>
             
             <div className="col-span-7 lg:col-span-3 flex flex-col gap-6 h-full">
@@ -220,7 +239,7 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
             isOpen={isKioskOpen} 
             onClose={() => setIsKioskOpen(false)} 
             data={kioskData} 
-            onRefresh={refreshKiosks}
+            onRefresh={() =>fetchKiosksOnly(false)}
             />
     </motion.div>
   )

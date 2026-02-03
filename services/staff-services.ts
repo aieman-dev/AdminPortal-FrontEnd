@@ -1,6 +1,6 @@
 // services/staff-services.ts
 
-import { apiClient, ApiResponse } from "@/lib/api-client";
+import { apiClient, ApiResponse, getContent, getDataObject } from "@/lib/api-client";
 import { 
   StaffMember, 
   SearchedUser, 
@@ -25,17 +25,6 @@ const ENDPOINTS = {
   AUDIT_LOG_USER: "AuditLog/user",
 };
 
-// --- HELPER: Safely extract array from new wrapper format ---
-const getContent = <T>(data: any): T[] => {
-    if (data?.content && Array.isArray(data.content)) return data.content;
-    if (data?.data && Array.isArray(data.data)) return data.data; // Legacy fallback
-    if (Array.isArray(data)) return data;
-    return [];
-};
-
-const getDataObject = <T>(data: any): T => {
-    return data?.content || data?.data || data || {};
-};
 
 // MAPPERS: Normalize Data here
 const mapToStaff = (raw: BackendStaffDTO): StaffMember => ({

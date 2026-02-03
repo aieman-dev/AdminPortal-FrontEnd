@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Search, PackageX, Send, Loader2 } from "lucide-react"; 
-import PackageFilters from "@/components/PackageFilters";
-import { ConfirmationModal } from '@/components/PackageModals';
-import PackageCard from "@/components/PackageCard";
+import PackageFilters from "@/components/modules/packages/PackageFilters";
+import { ConfirmationModal } from '@/components/modules/packages/PackageModals';
+import PackageCard from "@/components/modules/packages/PackageCard";
 import { packageService } from "@/services/package-services"; 
 import { Package } from "@/type/packages"; 
 import { useAuth } from "@/hooks/use-auth";
@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/portal/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PaginationControls } from "@/components/ui/pagination-controls";
+import { ModuleErrorBoundary } from "@/components/portal/module-error-boundary";
 
 interface PackageListItem {
   id: number;

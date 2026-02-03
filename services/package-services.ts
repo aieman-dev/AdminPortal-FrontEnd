@@ -1,6 +1,6 @@
 // services/package-services.ts
 
-import { apiClient } from "@/lib/api-client";
+import { apiClient, ApiResponse, getContent, getDataObject } from "@/lib/api-client";
 import { getAuthToken } from "@/lib/auth";
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
 import { DashboardSummaryDTO } from "@/type/packages";
@@ -49,24 +49,6 @@ const ENDPOINTS = {
   UPDATE_ITPOSWF: "package/extend",
   BCOMPARE_SEARCH: "Package/unsynced",
   BCOMPARE_SYNC: "package/sync",
-};
-
-// --- HELPERS ---
-const getContent = <T>(data: any): T[] => {
-    if (data?.content?.content && Array.isArray(data.content.content)) {
-        return data.content.content;
-    }
-        if (data?.content && Array.isArray(data.content)) {
-        return data.content;
-    }
-    if (Array.isArray(data)) {
-        return data;
-    }
-    return []
-};
-
-const getDataObject = <T>(data: any): T => {
-    return data?.content || data?.data || data || {};
 };
 
 // --- CACHING & HELPERS ---

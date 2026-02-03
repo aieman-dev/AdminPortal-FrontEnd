@@ -1,7 +1,7 @@
 // components/ui/mobile-card.tsx
 import React, { ReactNode } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import { TableColumn } from "@/components/themepark-support/it-poswf/data-table"
+import { TableColumn } from "@/components/shared-components/data-table"
 
 interface MobileCardProps<T> {
     row: T

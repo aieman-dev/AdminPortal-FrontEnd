@@ -51,7 +51,7 @@ export const SIDEBAR_NAVIGATION = [
         href: "/portal/car-park/superapp-visitor",
       },
       {
-        name: "Reports",
+        name: "Reports Center",
         href: "/portal/car-park/reports",
       },
       {
@@ -59,7 +59,7 @@ export const SIDEBAR_NAVIGATION = [
         href: "/portal/car-park/application",
       },
       {
-        name: "Whitelist / Blacklist",
+        name: "Blacklist / Whitelist",
         href: "/portal/car-park/access-control",
       },
     ],

@@ -2,6 +2,7 @@
 
 import { apiClient, ApiResponse } from "@/lib/api-client";
 import { SYSTEM_TERMINAL_ID } from "@/lib/constants";
+import { getContent, getDataObject} from "@/lib/api-client"
 import { 
     Account,
     CarParkAccount,
@@ -19,6 +20,7 @@ import {
     ParkingHistoryResponse,
     ParkingActivity,
     ManualEntryPayload,
+    ReportMetadata,
     ReportDefinition,
     ReportPayload,
     ReportResponse,
@@ -56,6 +58,7 @@ const ENDPOINTS = {
 
     //Reports
     GET_REPORTS: "CarPark/report/list",
+    GET_REPORT_META: "CarPark/report",
     EXECUTE_REPORT: "CarPark/report",
 
     // Application new SuperApp 
@@ -68,17 +71,6 @@ const ENDPOINTS = {
     // Access Control - placeholders
     GET_BLACKLIST: "CarPark/access/blacklist", 
     GET_WHITELIST: "CarPark/access/whitelist"
-};
-
-const getContent = <T>(data: any): T[] => {
-    if (data?.content && Array.isArray(data.content)) return data.content;
-    if (data?.data && Array.isArray(data.data)) return data.data; 
-    if (Array.isArray(data)) return data;
-    return [];
-};
-
-const getDataObject = <T>(data: any): T => {
-    return data?.content || data?.data || data || {};
 };
 
 // Ensure this mapper matches your Account interface
@@ -503,6 +495,20 @@ export const carParkService = {
                 path: `/${item.reportName}` 
             }));
         },
+
+        getReportMetadata: async (reportName: string): Promise<ReportMetadata | null> => {
+        // Construct URL: CarPark/report/{reportName}/meta
+        const url = `${ENDPOINTS.GET_REPORT_META}/${reportName}/meta`;
+        
+        const response = await apiClient.get<any>(url);
+        
+        if (!response.success || !response.data) return null;
+
+        const rootContent = response.data?.content || response.data;
+        const actualData = rootContent?.content || rootContent;
+
+        return actualData as ReportMetadata;
+    },
 
         generateReport: async (payload: ReportPayload): Promise<ReportResponse> => {
         const response = await apiClient.post<any>(ENDPOINTS.EXECUTE_REPORT, payload);

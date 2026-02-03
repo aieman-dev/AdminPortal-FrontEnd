@@ -17,7 +17,7 @@ import { useAppToast } from "@/hooks/use-app-toast"
 import { useAuth } from "@/hooks/use-auth"
 import { carParkService } from "@/services/car-park-services"
 import { carParkFormSchema, CarParkFormValues } from "@/lib/schemas/car-park"
-import { CarParkForm } from "@/components/car-park/CarParkForm"
+import { CarParkForm } from "@/components/modules/car-park/CarParkForm"
 import { CarParkPhase, CarParkUnit, CarParkPackage, CarParkDepartment } from "@/type/car-park"
 import {
   DropdownMenu,

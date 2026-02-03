@@ -9,19 +9,19 @@ import dynamic from "next/dynamic"
 // --- LAZY LOADING COMPONENTS ---
 // This splits the code into small chunks. They are only fetched when needed.
 const PackageListingTab = dynamic(
-  () => import("@/components/themepark-support/tabs/Attraction/PackageListingTab"),
+  () => import("@/components/modules/themepark-support/Attraction/PackageListingTab"),
   { loading: () => <LoaderState /> }
 )
 const UpdateTerminalTab = dynamic(
-  () => import("@/components/themepark-support/tabs/Attraction/UpdateTerminalTab"),
+  () => import("@/components/modules/themepark-support/Attraction/UpdateTerminalTab"),
   { loading: () => <LoaderState /> }
 )
 const ConsumeHistoryByTerminalTab = dynamic(
-  () => import("@/components/themepark-support/tabs/Attraction/ConsumeHistoryByTerminalTab"),
+  () => import("@/components/modules/themepark-support/Attraction/ConsumeHistoryByTerminalTab"),
   { loading: () => <LoaderState /> }
 )
 const BComparePackageTab = dynamic(
-  () => import("@/components/themepark-support/tabs/Attraction/BComparePackageTab"),
+  () => import("@/components/modules/themepark-support/Attraction/BComparePackageTab"),
   { loading: () => <LoaderState /> }
 )
 

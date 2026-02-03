@@ -247,6 +247,29 @@ export interface ParkingHistoryResponse {
 }
 
 // --- REPORTS ---
+export interface ReportParamOption {
+    label: string;
+    value: string | number | null;
+}
+
+// 2. Structure for a Single Parameter
+export interface ReportParameter {
+    name: string;
+    label: string;
+    type: "date" | "select" | "text" | "number";
+    required?: boolean;
+    options?: ReportParamOption[]; 
+    placeholder?: string;
+}
+
+// 3. The Full Metadata Response Object
+export interface ReportMetadata {
+    reportName: string;
+    friendlyName: string;
+    description: string;
+    parameters: ReportParameter[];
+}
+
 export interface ReportDefinition {
     id: number;
     code: string; 
@@ -261,6 +284,7 @@ export interface ReportPayload {
     pageSize: number;
     parameters?: {
         AccID?: string | number | null;
+        LocationID?: number | null;
         StartDate?: string | null;
         EndDate?: string | null;
         [key: string]: any; 

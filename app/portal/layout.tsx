@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/portal/protected-route"
 import { cn } from "@/lib/utils"
 import { Toaster } from "@/components/ui/toaster"
 import { CommandMenu } from "@/components/portal/command-menu"
+import { SessionTimer } from "@/components/portal/session-timer"
 import { useAutoLogout } from "@/hooks/use-auto-logout";
 import { SystemAnnouncement } from "@/components/portal/system-annoucement";
 import { SystemOffline } from "@/components/portal/system-offline";
@@ -155,6 +156,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             onMarkAllRead={handleMarkAllRead}
           />
             <CommandMenu />
+            <SessionTimer/>
+
           <main className="flex-1 overflow-y-auto bg-background">
             <div className="container mx-auto p-6">{children}</div>
           </main>

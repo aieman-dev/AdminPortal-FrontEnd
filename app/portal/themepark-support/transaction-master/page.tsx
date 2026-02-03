@@ -9,23 +9,23 @@ import dynamic from "next/dynamic"
 
 // --- LAZY LOADING COMPONENTS ---
 const VoidTransactionTab = dynamic(
-    () => import("@/components/themepark-support/tabs/Transaction/voidTransactionTab"),
+    () => import("@/components/modules/themepark-support/Transaction/voidTransactionTab"),
     { loading: () => <LoaderState /> }
 )
 const RetailManualConsumeTab = dynamic(
-    () => import("@/components/themepark-support/tabs/Transaction/RetailManualConsumeTab"),
+    () => import("@/components/modules/themepark-support/Transaction/RetailManualConsumeTab"),
     { loading: () => <LoaderState /> }
 )
 const ResyncTransactionTab = dynamic(
-    () => import("@/components/themepark-support/tabs/Transaction/ResyncTransactionTab"),
+    () => import("@/components/modules/themepark-support/Transaction/ResyncTransactionTab"),
     { loading: () => <LoaderState /> }
 )
 const ShopifyOrderTab = dynamic(
-    () => import("@/components/themepark-support/tabs/Transaction/ShopifyOrderTab"),
+    () => import("@/components/modules/themepark-support/Transaction/ShopifyOrderTab"),
     { loading: () => <LoaderState /> }
 )
 const ConsumeTerminalTab = dynamic(
-    () => import("@/components/themepark-support/tabs/Transaction/ConsumeTerminalTab"),
+    () => import("@/components/modules/themepark-support/Transaction/ConsumeTerminalTab"),
     { loading: () => <LoaderState /> }
 )
 

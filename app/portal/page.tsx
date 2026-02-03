@@ -3,6 +3,7 @@ import DashboardClient from "./DashboardClient";
 import { Package } from "@/type/packages";
 import { ROLES } from "@/lib/constants";
 import { getServerUserRole } from "@/lib/server-auth";
+import { ModuleErrorBoundary } from "@/components/portal/module-error-boundary";
 
 export default async function DashboardPage() {
   //  Get the role safely
@@ -47,5 +48,9 @@ export default async function DashboardPage() {
     }
   } 
 
-  return <DashboardClient initialPendingPackages={pendingPackages} />;
+  return (
+    <ModuleErrorBoundary>
+      <DashboardClient initialPendingPackages={pendingPackages} />;
+    </ModuleErrorBoundary>
+  )
 }

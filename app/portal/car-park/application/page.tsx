@@ -6,8 +6,8 @@ import { ArrowRight } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/portal/page-header"
-import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
-import { DataTable, type TableColumn } from "@/components/themepark-support/it-poswf/data-table"
+import { SearchField } from "@/components/shared-components/search-field"
+import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
 import { PaginationControls } from "@/components/ui/pagination-controls" 
 import { useAppToast } from "@/hooks/use-app-toast"
 import { useAutoSearch } from "@/hooks/use-auto-search" 
@@ -113,7 +113,7 @@ export default function ApplicationsPage() {
                 <CardContent>
                     <SearchField 
                         label="Search Applications"
-                        placeholder="Search by name, email or package..."
+                        placeholder="Search by name or email"
                         value={searchTerm}
                         onChange={setSearchTerm}
                         onSearch={handleSearchClick}

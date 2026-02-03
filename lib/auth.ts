@@ -94,8 +94,8 @@ export function getAuthToken(): string | null {
 
 export function canViewPackageManagement(department?: string): boolean {
   if (!department) return false;
-  const deptUpper = department.toUpperCase();
-  return deptUpper !== ROLES.IT_ADMIN;
+  const allowed = [ROLES.MIS_SUPER, ROLES.TP_ADMIN, ROLES.FINANCE];
+  return allowed.includes(department as any);
 }
 
 export function canViewThemeParkSupport(department?: string): boolean {

@@ -1,5 +1,5 @@
 // services/dashboard-service.ts
-import { apiClient } from "@/lib/api-client";
+import { apiClient, ApiResponse, getContent, getDataObject } from "@/lib/api-client";
 import { DashboardSummary, KioskStatus } from "@/type/dashboard";
 import { packageService } from "./package-services"; // Import peer service
 
@@ -9,34 +9,26 @@ const ENDPOINTS = {
     UNSYNCED_PACKAGES: "Package/unsynced", 
 };
 
-const getData = <T>(data: any): T => data?.content || data?.data || data || {};
-const getList = <T>(data: any): T[] => {
-    if (!data) return [];
-    if (Array.isArray(data.content)) return data.content;
-    if (Array.isArray(data.data)) return data.data;
-    if (Array.isArray(data)) return data;
-    return [];
-};
 
 export const dashboardService = {
     /** Main Summary Data */
     getSummary: async (filter: string = "ThisWeek"): Promise<DashboardSummary | null> => {
         const response = await apiClient.get<any>(`${ENDPOINTS.DASHBOARD_SUMMARY}?filter=${filter}`);
         if (!response.success) throw new Error(response.error);
-        return getData<DashboardSummary>(response.data);
+        return getDataObject<DashboardSummary>(response.data);
     },
 
     /** Kiosk Status */
     getKioskStatus: async (): Promise<KioskStatus[]> => {
         const response = await apiClient.get<any>(ENDPOINTS.KIOSK_STATUS);
-        return response.success ? getList<KioskStatus>(response.data) : [];
+        return response.success ? getContent<KioskStatus>(response.data) : [];
     },
 
     /** Unsynced Count (IT Admin) */
     getUnsyncedCount: async (): Promise<number> => {
         try {
             const response = await apiClient.post<any>(ENDPOINTS.UNSYNCED_PACKAGES, {});
-            return response.success && response.data ? getList(response.data).length : 0;
+            return response.success && response.data ? getContent(response.data).length : 0;
         } catch { return 0; }
     },
 

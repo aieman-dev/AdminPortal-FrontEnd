@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/api-client";
+import { apiClient, getDataObject } from "@/lib/api-client";
 
 const ENDPOINTS = {
   BROADCAST : "account/create-broadcast",
@@ -30,9 +30,6 @@ export interface DashboardAlertsDTO {
     unreadCount: number;
 }
 
-const getDataObject = <T>(data: any): T => {
-    return data?.content || data?.data || data || {};
-};
 
 export const settingService = {
   getSetting: async <T>(key: string): Promise<T | null> => {

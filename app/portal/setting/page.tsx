@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea" 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
+import { StatusBadge } from "@/components/shared-components/status-badge"
 import { 
     User, Mail, Building, Shield, Bell, Info, 
     AlertTriangle, CheckCircle2, XCircle, Calendar, 

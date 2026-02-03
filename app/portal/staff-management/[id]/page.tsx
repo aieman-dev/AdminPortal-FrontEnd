@@ -1,6 +1,6 @@
 // app/portal/page-3/[id]/page.tsx
 
-import { StaffDetailsPage } from "@/components/staff-management/StaffDetailsPage";
+import { StaffDetailsPage } from "@/components/modules/staff-management/StaffDetailsPage";
 
 interface PageProps {
   params: { id: string };

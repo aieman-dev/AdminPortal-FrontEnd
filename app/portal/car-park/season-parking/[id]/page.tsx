@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { ChevronRight, Ban, Unlock, ArrowRightLeft, Loader2, LogIn, LogOut } from "lucide-react"
+import { Breadcrumb, BreadcrumbItem, BreadcrumbSeparator, BreadcrumbList, BreadcrumbLink, BreadcrumbPage } from "@/components/ui/breadcrumb"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -18,8 +19,9 @@ import { carParkService } from "@/services/car-park-services"
 import { CarParkPackage,  ParkingDetailData, ParkingDetailStatus, CarParkPhase, CarParkUnit } from "@/type/car-park"
 
 // Import the extracted component
-import { ParkingStatusDetail } from "@/components/car-park/ParkingStatusDetail"
-import { ParkingActivityHistory } from "@/components/car-park/ParkingActivityHistory"
+import { ParkingStatusDetail } from "@/components/modules/car-park/ParkingStatusDetail"
+import { ParkingActivityHistory } from "@/components/modules/car-park/ParkingActivityHistory"
+import { SystemDiagnostics } from "@/components/portal/system-diagnostics"
 
 export default function EditQrPage() {
     const router = useRouter()
@@ -313,17 +315,17 @@ export default function EditQrPage() {
 
     return (
         <div className="max-w-[1600px] mx-auto p-6">
-             <div className="flex flex-wrap items-center text-sm text-muted-foreground mb-4 gap-y-2">
-                <span className="hover:text-foreground cursor-pointer">Car Park</span>
-                <ChevronRight className="h-4 w-4 mx-2" />
-                <Button variant="link" className="p-0 h-auto text-muted-foreground hover:text-foreground" onClick={() => router.push('/portal/car-park/season-parking')}>
-                    Season Parking
-                </Button>
-                <ChevronRight className="h-4 w-4 mx-2" />
-                <span className="font-medium text-foreground flex items-center gap-2 whitespace-nowrap">
-                    Account Detail <Badge variant="outline">ID: {accId}</Badge>
-                </span>
-            </div>
+             <div className="shrink-0 flex items-center justify-between border-b px-0 lg:px-4 py-3 bg-background/95 backdrop-blur z-20 lg:mb-4">
+                <Breadcrumb>
+                    <BreadcrumbList>
+                        <BreadcrumbItem>Car Park</BreadcrumbItem>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem><BreadcrumbLink href="/portal/car-park/season-parking">Season Parking</BreadcrumbLink></BreadcrumbItem>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem><BreadcrumbPage>Account Detail | <Badge variant="outline"> ( {accId} ) </Badge></BreadcrumbPage></BreadcrumbItem>
+                    </BreadcrumbList>
+                </Breadcrumb>
+                </div>
 
             <ParkingStatusDetail 
                 mode="season"
@@ -347,7 +349,10 @@ export default function EditQrPage() {
 
             <div className="w-full mt-0"> 
                     {formData.accId ? (
+                        <>
                         <ParkingActivityHistory accId={formData.accId} />
+                        <SystemDiagnostics className="mt-4" />
+                        </>
                     ) : (
                         <div className="h-64 border rounded-xl bg-muted/10 animate-pulse" />
                     )}

@@ -1,5 +1,5 @@
 // app/portal/packages/[id]/page.tsx
-import PackageDetailView from "@/components/PackageDetailView";
+import PackageDetailView from "@/components/modules/packages/PackageDetailView";
 
 interface PageProps {
   params: Promise<{ id: string }>;

@@ -133,3 +133,18 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient()
+
+
+export function getContent<T>(data: any): T[] {
+    if (data?.content && Array.isArray(data.content)) return data.content;
+    if (data?.data && Array.isArray(data.data)) return data.data; 
+    if (Array.isArray(data)) return data;
+    return [];
+}
+
+/**
+ * Safely extracts an object from the backend wrapper.
+ */
+export function getDataObject<T>(data: any): T {
+    return data?.content || data?.data || data || ({} as T);
+}

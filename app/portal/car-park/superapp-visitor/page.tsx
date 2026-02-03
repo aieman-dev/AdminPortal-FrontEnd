@@ -9,15 +9,16 @@ import { Pencil, Users } from "lucide-react"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { useAutoSearch } from "@/hooks/use-auto-search"
 import { usePagination } from "@/hooks/use-pagination"
+import { PageHeader } from "@/components/portal/page-header"
 
 // Services & Types
 import { carParkService } from "@/services/car-park-services" 
 import { Account } from "@/type/car-park" 
 
 // Components
-import { StatusBadge } from "@/components/themepark-support/it-poswf/status-badge"
-import { type TableColumn, DataTable } from "@/components/themepark-support/it-poswf/data-table"
-import { SearchField } from "@/components/themepark-support/it-poswf/search-field"
+import { StatusBadge } from "@/components/shared-components/status-badge"
+import { type TableColumn, DataTable } from "@/components/shared-components/data-table"
+import { SearchField } from "@/components/shared-components/search-field"
 import { formatDateTime } from "@/lib/formatter"
 
 const LOCAL_STORAGE_KEY = 'superAppVisitorSearch';
@@ -129,16 +130,13 @@ export default function SuperAppVisitor() {
     <div className="space-y-6">
 
       {/* Header */}
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">SuperApp Visitor</h2>
-        <p className="text-muted-foreground">
-          Manage SuperApp visitor accounts, check status, and update details.
-        </p>
-      </div>
+      <PageHeader 
+        title="SuperApp Visitor" 
+        description="Manage SuperApp visitor accounts, check status, and update details." 
+      />
 
       <Card>
         <CardContent>
-          <div>
             <SearchField 
                 label="Search Account"
                 placeholder="Search by Email"
@@ -147,7 +145,6 @@ export default function SuperAppVisitor() {
                 onSearch={handleSearchClick}
                 isSearching={isSearching}
             />
-          </div>
         </CardContent>
       </Card>
 
@@ -158,15 +155,15 @@ export default function SuperAppVisitor() {
             data={data}
             keyExtractor={(row) => row.accId}
             isLoading={isSearching}
-            emptyTitle="No Records Found"
             emptyIcon={Users}
+            emptyTitle="No Records Found"
             emptyMessage={
-                isSearching 
-                ? "Searching..." 
-                : searchTerm 
-                    ? `No records found matching "${searchTerm}"`
-                    : "Enter a keyword to search."
-            }
+                  isSearching 
+                  ? "Searching..." 
+                  : searchTerm 
+                      ? `No records found matching "${searchTerm}"`
+                      : "Enter a keyword to search."
+              }
           />
         </CardContent>
       </Card>

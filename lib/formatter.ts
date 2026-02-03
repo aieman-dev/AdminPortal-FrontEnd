@@ -1,5 +1,6 @@
 // lib/formatter.ts
 
+import { STATUS_STYLES } from "./constants";
 /**
  * Helper to determine if a package type implies points vs currency.
  */
@@ -100,3 +101,30 @@ export const getRelativeTime = (dateStr: string) => {
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
     return `${Math.floor(diffInSeconds / 86400)}d ago`;
 }
+
+/**
+ * Returns the CSS classes for a given status key.
+ * Used by StatusBadge and PackageCard.
+ */
+export function getStatusStyle(status: string): string {
+    const key = status?.toLowerCase().trim() || "default";
+    return STATUS_STYLES[key] || "bg-gray-100 text-gray-600 border-gray-200";
+}
+
+// Formatter Helpers
+export const formatNRIC = (val: string) => {
+    const clean = val.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    // If it's pure numbers and 12 chars, treat as NRIC
+    if (/^\d{12}$/.test(clean)) {
+        return `${clean.slice(0, 6)}-${clean.slice(6, 8)}-${clean.slice(8, 12)}`;
+    }
+    // Otherwise return clean alphanumeric for Passports
+    return clean.slice(0, 15); 
+};
+
+export const formatMobile = (val: string) => {
+    let digits = val.replace(/\D/g, "");
+    // Only prefix if it's a local number starting with '0' or '1'
+    if (digits.startsWith("0")) digits = "6" + digits;
+    return digits.slice(0, 13);
+};

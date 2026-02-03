@@ -1,9 +1,7 @@
 // services/themepark-support.ts
 
-import { 
-    apiClient, 
-    ApiResponse 
-} from "@/lib/api-client";
+import { apiClient, ApiResponse, getContent, getDataObject } from "@/lib/api-client";
+import { parseAmount } from "@/lib/transformers/wallet";
 import { 
     // Domain Models
     Account,
@@ -79,27 +77,6 @@ const ENDPOINTS = {
     ACTIVATE_BALANCE: "it/activatebalance/activate",
     BALANCE_DETAILS: "support/activatebalance/details",
     SEARCH_HISTORY: "support/history/search",
-};
-
-// --- HELPERS ---
-
-const getContent = <T>(data: any): T[] => {
-    if (data?.content && Array.isArray(data.content)) return data.content;
-    if (data?.data && Array.isArray(data.data)) return data.data; 
-    if (Array.isArray(data)) return data;
-    return [];
-};
-
-// FIX: Helper to unwrap response.content -> Object
-const getDataObject = <T>(data: any): T => {
-    return data?.content || data?.data || data || {};
-};
-
-const parseAmount = (val: string | number): number => {
-    if (typeof val === 'number') return val;
-    if (!val) return 0;
-    const clean = val.toString().replace(/[^0-9.-]+/g, "");
-    return parseFloat(clean) || 0;
 };
 
 // --- MAPPERS (Backend DTO -> Frontend Model) ---

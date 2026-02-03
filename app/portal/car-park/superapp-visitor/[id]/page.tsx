@@ -12,17 +12,19 @@ import { SYSTEM_TERMINAL_ID } from "@/lib/constants"
 // Services & Types
 import { carParkService } from "@/services/car-park-services"
 import { CarParkPackage, ParkingDetailData, ParkingDetailStatus } from "@/type/car-park"
-import { cn } from "@/lib/utils"
+import { cn, extractBackendError } from "@/lib/utils"
 
 // Import Components
-import { ParkingStatusDetail } from "@/components/car-park/ParkingStatusDetail"
-import { ParkingActivityHistory } from "@/components/car-park/ParkingActivityHistory"
+import { ParkingStatusDetail } from "@/components/modules/car-park/ParkingStatusDetail"
+import { ParkingActivityHistory } from "@/components/modules/car-park/ParkingActivityHistory"
+import { Breadcrumb, BreadcrumbItem, BreadcrumbSeparator, BreadcrumbList, BreadcrumbLink, BreadcrumbPage } from "@/components/ui/breadcrumb"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
-import { SeasonPassConflictOverlay } from "@/components/car-park/overlays/SeasonPassConflictoverlay"
+import { SeasonPassConflictOverlay } from "@/components/modules/car-park/overlays/SeasonPassConflictoverlay"
+import { SystemDiagnostics } from "@/components/portal/system-diagnostics"
 
 const DEFAULT_VISITOR_DATA: ParkingDetailData = {
     accId: 0,
@@ -200,11 +202,10 @@ export default function SuperAppVisitorDetail() {
                 direction: manualDirection,
                 terminalId: parseInt(manualTerminalId) || SYSTEM_TERMINAL_ID, 
                 amount: amount,
-                rParkingId: 0, // Should be fetched if needed, but 0 is safe for generic entry
+                rParkingId: 0, 
                 remarks: manualRemarks || `Manual ${manualDirection} via Portal`
             };
 
-            // Cast to any to align with generic service payload type if strictly checking casing
             await carParkService.assignManualEntry(payload as any);
             
             toast.success("Success", `Manual ${manualDirection} assigned successfully.`);
@@ -214,20 +215,9 @@ export default function SuperAppVisitorDetail() {
             setTimeout(() => { fetchData(); }, 800);
 
         } catch (error :any) {
-            let displayError = error.message || "Failed to assign entry.";
-            try {
-                if (error.content && error.content.error) {
-                    displayError = error.content.error;
-                } else if (displayError.includes("error =")) {
-                    const match = displayError.match(/error\s*=\s*([^,}]+)/);
-                    if (match && match[1]) {
-                        displayError = match[1].trim();
-                    }
-                }
-            } catch (e) {
-                // Keep original
-            }
-            toast.error("Action Failed", displayError);
+            const cleanMsg = extractBackendError(error.message);
+            toast.error("Action Failed", cleanMsg);
+            
             setSubmittingTarget(null);
         } finally {
             setIsProcessingEntry(false);
@@ -242,17 +232,17 @@ export default function SuperAppVisitorDetail() {
 
     return (
         <div className="max-w-[1600px] mx-auto p-6">
-             <div className="flex flex-wrap items-center text-sm text-muted-foreground mb-4 gap-y-2">
-                <span className="hover:text-foreground cursor-pointer">Car Park</span>
-                <ChevronRight className="h-4 w-4 mx-2" />
-                <Button variant="link" className="p-0 h-auto text-muted-foreground hover:text-foreground" onClick={() => router.push('/portal/car-park/superapp-visitor')}>
-                    SuperApp Visitor
-                </Button>
-                <ChevronRight className="h-4 w-4 mx-2" />
-                <span className="font-medium text-foreground flex items-center gap-2 whitespace-nowrap">
-                    Account Detail <Badge variant="outline">ID: {accId}</Badge>
-                </span>
-            </div>
+            <div className="shrink-0 flex items-center justify-between border-b px-0 lg:px-4 py-3 bg-background/95 backdrop-blur z-20 lg:mb-4">
+                <Breadcrumb>
+                    <BreadcrumbList>
+                        <BreadcrumbItem>Car Park</BreadcrumbItem>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem><BreadcrumbLink href="/portal/car-park/superapp-visitor">SuperApp Visitor</BreadcrumbLink></BreadcrumbItem>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem><BreadcrumbPage>Account Detail | <Badge variant="outline"> ({accId}) </Badge></BreadcrumbPage></BreadcrumbItem>
+                    </BreadcrumbList>
+                </Breadcrumb>
+                </div>
 
             {/* --- WRAP CONTENT IN RELATIVE DIV FOR OVERLAY --- */}
             <div className="relative min-h-[600px] rounded-xl">
@@ -287,7 +277,10 @@ export default function SuperAppVisitorDetail() {
                     
                     <div className="w-full mt-4"> 
                         {formData.accId ? (
+                            <>
                             <ParkingActivityHistory accId={formData.accId} />
+                            <SystemDiagnostics className="opacity-100 pointer-events-auto" />
+                        </>
                         ) : (
                             <div className="h-64 border rounded-xl bg-muted/10 animate-pulse" />
                         )}
