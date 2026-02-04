@@ -167,8 +167,54 @@ export default function PackageFilters({
             </SheetHeader>
             
             <div className="overflow-y-auto max-h-[calc(85vh-140px)]">
-                <MobileFilterContent />
-            </div>
+                <div className="space-y-6 py-6 px-6"> 
+                  {/* Status Selection */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium leading-none text-foreground/80">Status</h4>
+                    <div className="flex flex-wrap gap-3">
+                      {visibleFilters.map((filter) => {
+                        const isActive = activeFilter === filter.value;
+                        return (
+                          <button
+                            key={filter.value}
+                            onClick={() => setActiveFilter(filter.value)}
+                            className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
+                              isActive 
+                                ? "bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-300 shadow-sm"
+                                : "bg-background border-input text-muted-foreground hover:bg-muted"
+                            }`}
+                          >
+                            {filter.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Package Type */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium leading-none text-foreground/80">Package Type</h4>
+                    <Select value={packageTypeFilter} onValueChange={setPackageTypeFilter}>
+                        <SelectTrigger className="w-full h-12"><SelectValue placeholder="All Types" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="All">All Types</SelectItem>
+                            <SelectItem value="Entry">Entry</SelectItem>
+                            <SelectItem value="Point">Point</SelectItem>
+                            <SelectItem value="RewardP">Reward Point</SelectItem>
+                        </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Date Range */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium leading-none text-foreground/80">Date Range</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                        <DatePicker date={startDate} setDate={setStartDate} placeholder="Start" className="h-12" />
+                        <DatePicker date={endDate} setDate={setEndDate} placeholder="End" className="h-12" />
+                    </div>
+                  </div>
+                </div>
+              </div>
 
             <SheetFooter className="flex-row gap-3 pt-4 px-6 border-t mt-auto absolute bottom-6 w-full">
                <Button variant="outline" className="flex-1 h-12" onClick={handleReset}>Reset</Button>

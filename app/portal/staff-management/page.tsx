@@ -26,10 +26,11 @@ import { type StaffMember, type AuditLog } from "@/type/staff"
 // --- HELPERS (Formatting) ---
 const formatActionName = (technicalName: string): string => {
     if (!technicalName) return "Unknown Action";
-    let clean = technicalName.replace(/^(POST|GET|PUT|DELETE)\s?-\s?/i, "");
+    let clean = technicalName.replace(/^(POST|GET|PUT|DELETE|PATCH)\s?-\s?/i, "");
     clean = clean.replace(/([a-z])([A-Z])/g, '$1 $2');
     return clean.trim();
 };
+
 
 const parseDescription = (rawDesc: string) => {
     if (!rawDesc) return "No details provided";
@@ -51,10 +52,53 @@ const parseDescription = (rawDesc: string) => {
 
 const getActionStyle = (actionType: string) => {
     const lower = actionType.toLowerCase();
-    if (lower.includes("insert") || lower.includes("create")) return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800";
-    if (lower.includes("update")) return "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800";
-    if (lower.includes("delete") || lower.includes("void")) return "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800";
-    if (lower.includes("sync")) return "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400";
+    
+    // RED: Destructive or blocking actions
+    if (
+        lower.includes("void") || 
+        lower.includes("block") || 
+        lower.includes("deactivate") || 
+        lower.includes("reject") || 
+        lower.includes("remove") ||
+        lower.includes("delete")
+    ) {
+        return "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800";
+    }
+
+    // GREEN: Positive/Creation actions
+    if (
+        lower.includes("create") || 
+        lower.includes("register") || 
+        lower.includes("approve") || 
+        lower.includes("activate") || 
+        lower.includes("unblock") ||
+        lower.includes("reactivate") || 
+        lower.includes("upload")
+    ) {
+        return "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400";
+    }
+
+    // BLUE: Updates and syncs
+    if (
+        lower.includes("update") || 
+        lower.includes("sync") || 
+        lower.includes("assign") || 
+        lower.includes("exchange") ||
+        lower.includes("link")
+    ) {
+        return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800";
+    }
+
+    // AMBER: Security/Manual overrides
+    if (
+        lower.includes("reset") || 
+        lower.includes("toggle") ||
+        lower.includes("generate")
+    ) {
+        return "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800";
+    }
+
+    // DEFAULT
     return "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"; 
 };
 

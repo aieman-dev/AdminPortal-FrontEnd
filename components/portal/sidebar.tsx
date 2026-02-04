@@ -3,7 +3,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { cn } from "@/lib/utils"
 import { LogOut, ChevronDown } from "lucide-react" 
@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { useState, useEffect } from "react" 
 import { canViewThemeParkSupport, canViewPackageManagement, canViewCarParkSupport } from "@/lib/auth"
 import { SIDEBAR_NAVIGATION } from "@/config/navigation"
+import { useNavigation } from "@/context/navigation-context"
 
 const LOCAL_STORAGE_KEY_TO_CLEAR = 'accountMasterEmailSearch';
 
@@ -23,9 +24,19 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
   const pathname = usePathname()
   const { user, logout } = useAuth()
   const { resolvedTheme } = useTheme()
+
+  const { isDirty, setPendingPath } = useNavigation() 
+  const router = useRouter()
   
   const [openDropdowns, setOpenDropdowns] = useState<string[]>([]) 
   const [mounted, setMounted] = useState(false)
+
+  const handleNavClick = (e: React.MouseEvent, href: string) => {
+    if (isDirty) {
+      e.preventDefault()
+      setPendingPath(href) 
+    }
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -87,8 +98,10 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
   return (
     <div
       className={cn(
-        "flex h-full flex-col border-r bg-card transition-[width] duration-300 ease-in-out overflow-hidden z-50 shadow-xl",
-        collapsed ? "w-20" : "w-64"
+        "flex h-full flex-col border-r bg-sidebar text-sidebar-foreground",
+        // Change: Use 'linear' or 'step' easing for the width to prevent the 'jiggle' 
+        "transition-[width] duration-200 ease-in-out overflow-hidden z-50 border-r border-border shadow-sm will-change-[width]",
+        collapsed ? "w-20" : "w-72"
       )}
     >
       {/* Logo Section */}
@@ -154,6 +167,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
               ) : (
                 <Link
                   href={item.href}
+                  onClick={(e) => handleNavClick(e, item.href)}
                   className={itemBaseClass(pathname === item.href)}
                   title={collapsed ? item.name : undefined}
                 >
@@ -187,6 +201,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
                         <Link
                           key={child.href}
                           href={child.href}
+                          onClick={(e) => handleNavClick(e, child.href)}
                           className={cn(
                             "block py-2 px-3 rounded-md text-sm transition-colors truncate",
                             isChildActive

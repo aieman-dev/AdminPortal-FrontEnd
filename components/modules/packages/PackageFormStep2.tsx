@@ -4,7 +4,8 @@ import React, { useState, useMemo, useEffect } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { PackageFormValues } from "@/lib/schemas/package-management";
 import { PackageItem } from "@/type/packages"; 
-import { ShoppingCart, List, Trash2, PlusCircle, AlertTriangle } from "lucide-react"; 
+import { EmptyState } from "@/components/portal/empty-state"
+import { ShoppingCart, List, Trash2, PlusCircle, AlertTriangle,  } from "lucide-react"; 
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose 
 } from "@/components/ui/dialog";
@@ -301,8 +302,12 @@ const PackageFormStep2: React.FC<Props> = ({ form, onNext, onBack }) => {
           
           <div className="flex-1 overflow-y-auto space-y-2 pr-2">
               {packageItems.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-10 text-sm italic">
-                      No items selected.<br/>Go to Browse to add items.
+                  <div className="h-full flex flex-col items-center justify-center border-2 border-dashed rounded-xl bg-muted/10 p-6">
+                      <EmptyState 
+                          icon={ShoppingCart} 
+                          title="Cart is Empty" 
+                          description="Browse items on the left and click to add them to your package." 
+                      />
                   </div>
               ) : (
                   packageItems.map((item) => (

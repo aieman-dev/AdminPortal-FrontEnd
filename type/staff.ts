@@ -43,6 +43,11 @@ export interface AuditLog {
   description: string;
   userId: string;
   userName: string;
+  userEmail?: string;
+  userRole?: string;
+  oldValue?: string | null;
+  newValue?: string | null;
+  tableAffected?: string | null;
   timestamp: string;
 }
 

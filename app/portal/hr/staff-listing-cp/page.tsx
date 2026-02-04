@@ -15,8 +15,8 @@ import { formatDate, formatDateTime } from "@/lib/formatter"
 import { cn } from "@/lib/utils"
 
 // Services & Types
-import { carParkService } from "@/services/car-park-services" 
-import { CarParkPass } from "@/type/car-park"
+import { hrService } from "@/services/hr-services" 
+import { CarParkPass } from "@/type/hr"
 import { useAuth } from "@/hooks/use-auth"
 
 // Components
@@ -57,7 +57,7 @@ export default function SeasonParkingPage() {
     if (page !== pagination.currentPage) pagination.setCurrentPage(page);
 
     try {
-      const { items, totalCount, totalPages } = await carParkService.getQrListing(page, pagination.pageSize, query.trim())
+      const { items, totalCount, totalPages } = await hrService.getQrListing(page, pagination.pageSize, query.trim())
 
       setData(items)
       pagination.setMetaData(totalPages, totalCount)
@@ -198,7 +198,7 @@ export default function SeasonParkingPage() {
 
       {/* Header */}
       <PageHeader 
-        title="Season Parking" 
+        title="Staff Parking List" 
         description="Manage season pass, check validity status, and update user details." 
       />
 

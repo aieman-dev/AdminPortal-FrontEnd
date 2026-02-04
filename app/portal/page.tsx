@@ -50,7 +50,7 @@ export default async function DashboardPage() {
 
   return (
     <ModuleErrorBoundary>
-      <DashboardClient initialPendingPackages={pendingPackages} />;
+      <DashboardClient initialPendingPackages={pendingPackages} />
     </ModuleErrorBoundary>
   )
 }

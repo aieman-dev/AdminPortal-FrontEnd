@@ -59,22 +59,23 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
   
   const roleConfig = viewMode ? DASHBOARD_CONFIG[viewMode] : undefined;
 
-  const fetchKiosksOnly = useCallback(async (isInitial = false) => {
+  // 1. Define the lightweight Kiosk fetcher
+  const fetchKioskHeartbeat = useCallback(async () => {
+    if (!roleConfig?.stats.some(s => s.id === 'kiosk_status')) return;
+
     try {
-        if (!isInitial) {
-        }
         const kiosks = await dashboardService.getKioskStatus();
-        setKioskData(kiosks);
+        setKioskData(kiosks); 
     } catch (e) {
         console.error("Kiosk heartbeat failed", e);
     }
-}, [])
+  }, [roleConfig]);
 
   // Unified Data Fetching
   useEffect(() => {
     if (!roleConfig) { setLoading(false); return; }
 
-    const loadData = async () => {
+    const loadFullDashboard = async () => {
         setLoading(true);
         try {
             // Run all primary data fetches in parallel so slow pings don't block fast ones
@@ -99,8 +100,19 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
         }
     };
 
-    loadData();
+    loadFullDashboard();
 }, [viewMode, roleConfig, filter]);
+
+// Independent Interval for Kiosk (Runs every 30s)
+  useEffect(() => {
+      const intervalId = setInterval(() => {
+          if (!document.hidden) {
+              fetchKioskHeartbeat();
+          }
+      }, 30000);
+
+      return () => clearInterval(intervalId);
+  }, [fetchKioskHeartbeat]);
 
   if (!roleConfig) return 
   <div className="h-[60vh] flex items-center justify-center">
@@ -239,7 +251,7 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
             isOpen={isKioskOpen} 
             onClose={() => setIsKioskOpen(false)} 
             data={kioskData} 
-            onRefresh={() =>fetchKiosksOnly(false)}
+            onRefresh={fetchKioskHeartbeat}
             />
     </motion.div>
   )

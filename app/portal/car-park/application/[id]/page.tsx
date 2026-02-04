@@ -8,6 +8,7 @@ import {
     Save, CheckCircle2, XCircle, ArrowLeft, Loader2, AlertCircle, MoreVertical
 } from "lucide-react"
 import { SYSTEM_TERMINAL_ID } from "@/lib/constants"
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -17,7 +18,7 @@ import { useAppToast } from "@/hooks/use-app-toast"
 import { useAuth } from "@/hooks/use-auth"
 import { carParkService } from "@/services/car-park-services"
 import { carParkFormSchema, CarParkFormValues } from "@/lib/schemas/car-park"
-import { CarParkForm } from "@/components/modules/car-park/CarParkForm"
+import { CarParkForm } from "@/components/modules/car-park/forms/CarParkForm"
 import { CarParkPhase, CarParkUnit, CarParkPackage, CarParkDepartment } from "@/type/car-park"
 import {
   DropdownMenu,
@@ -265,12 +266,45 @@ export default function ApplicationReviewPage() {
     };
 
     if (isLoadingData) {
-        return (
-            <div className="flex h-screen items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+    return (
+        <div className="flex flex-col h-[calc(100dvh-80px)] w-full max-w-[1400px] mx-auto bg-gray-50/50 dark:bg-zinc-950/50">
+            {/* Header Skeleton */}
+            <div className="px-8 py-4 border-b bg-background flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                    <Skeleton className="h-10 w-10 rounded-md" /> {/* Back Button */}
+                    <div className="space-y-2">
+                        <Skeleton className="h-6 w-48" />
+                        <Skeleton className="h-4 w-32" />
+                    </div>
+                </div>
             </div>
-        );
-    }
+
+            {/* Form Content Skeleton */}
+            <div className="flex-1 p-8 space-y-8">
+                <div className="max-w-5xl mx-auto space-y-6">
+                    {/* Mimic the Cards in CarParkForm */}
+                    <div className="rounded-xl border bg-card p-6 space-y-6">
+                        <Skeleton className="h-6 w-40" /> {/* Card Title */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-full" /></div>
+                            <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-full" /></div>
+                            <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-full" /></div>
+                            <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-full" /></div>
+                        </div>
+                    </div>
+                    
+                    <div className="rounded-xl border bg-card p-6 space-y-6">
+                        <Skeleton className="h-6 w-40" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-full" /></div>
+                            <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-full" /></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
 
     return (
         <div className="flex flex-col h-[calc(100dvh-80px)] w-full max-w-[1400px] mx-auto bg-gray-50/50 dark:bg-zinc-950/50">

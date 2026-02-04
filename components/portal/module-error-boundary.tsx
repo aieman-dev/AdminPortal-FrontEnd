@@ -1,3 +1,4 @@
+//components/portal/module-error-boundary
 "use client"
 
 import React from "react"

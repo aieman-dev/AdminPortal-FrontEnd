@@ -1,9 +1,10 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useForm, SubmitHandler } from "react-hook-form" 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Mail, QrCode, RefreshCw, Loader2, ArrowRight, CheckCircle2, User, Car } from "lucide-react"
+import { Mail, QrCode, RefreshCw, Loader2, ArrowRight, CheckCircle2, User, Car, Save } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -16,10 +17,14 @@ import { carParkService } from "@/services/car-park-services"
 import { cn } from "@/lib/utils"
 import { carParkFormSchema, CarParkFormValues } from "@/lib/schemas/car-park"
 import { CarParkForm } from "@/components/modules/car-park/forms/CarParkForm"
+import { NavigationGuard } from "@/components/portal/navigation-guard" 
+import { useNavigation } from "@/context/navigation-context"
 
 export default function NewRegistrationPage() {
+    const router = useRouter()
     const { user } = useAuth()
     const toast = useAppToast()
+    const { setIsDirty, pendingPath, setPendingPath } = useNavigation()
     const [isVerifying, setIsVerifying] = useState(false)
 
     // Lookup Data
@@ -36,6 +41,7 @@ export default function NewRegistrationPage() {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isConfirmOpen, setIsConfirmOpen] = useState(false)
     const [formDataToSubmit, setFormDataToSubmit] = useState<CarParkFormValues | null>(null)
+    const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
     // Prevent body scroll on mount (legacy requirement)
     useEffect(() => {
@@ -104,8 +110,14 @@ export default function NewRegistrationPage() {
     })
 
     const { isDirty } = form.formState;
-    useBeforeUnload(isDirty);
 
+    useEffect(() => {
+        setIsDirty(isDirty)
+        return () => setIsDirty(false) 
+    }, [isDirty, setIsDirty])
+
+    useBeforeUnload(isDirty);
+    
     const { register, handleSubmit, watch, setValue, reset, getValues } = form
     const searchType = watch("searchType")
 
@@ -249,7 +261,7 @@ export default function NewRegistrationPage() {
 
             {/* 2. REUSABLE FORM CONTENT */}
             <div className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-hide">
-                <div className="max-w-5xl mx-auto space-y-8 pb-10">
+                <div className="max-w-5xl mx-auto space-y-8 pb-24 md:pb-10">
                     
                     {/* Pass Form and Lists to Shared Component */}
                     <CarParkForm 
@@ -264,21 +276,58 @@ export default function NewRegistrationPage() {
                         onPlateConflict={setHasPlateConflict}
                     />
 
-                    {/* ACTIONS */}
-                    <div className="flex justify-end gap-4 pt-4 pb-12">
-                        <Button type="button" variant="outline" onClick={handleClear} className="h-11 px-8 rounded-xl border-gray-300 hover:bg-gray-100 text-gray-600">
+                    {/* --- DESKTOP ACTIONS (Original Way) --- */}
+                    {/* Hidden on mobile, Flex on medium screens and up */}
+                    <div className="hidden md:flex justify-end gap-4 pt-4 border-t">
+                        <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={handleClear} 
+                            className="h-11 px-8 rounded-xl border-gray-300 hover:bg-gray-100 text-gray-600"
+                        >
                             <RefreshCw className="mr-2 h-4 w-4" /> Clear Form
                         </Button>
                         <Button 
                             type="submit" 
                             onClick={handleSubmit(onPreSubmit)} 
                             disabled={isSubmitting || hasPlateConflict} 
-                            className={cn("h-11 px-10 rounded-xl bg-black hover:bg-gray-800 text-white shadow-lg transition-all hover:scale-[1.02] active:scale-95",hasPlateConflict )}>
+                            className={cn(
+                                "h-11 px-10 rounded-xl bg-black hover:bg-gray-800 text-white shadow-lg transition-all hover:scale-[1.02] active:scale-95",
+                                hasPlateConflict && "opacity-50 cursor-not-allowed" 
+                            )}
+                        >
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-2 h-4 w-4" />} 
                             Proceed to Registration
                         </Button>
                     </div>
 
+                </div>
+            </div>
+
+            {/* --- MOBILE STICKY ACTION BAR (New) --- */}
+            {/* Visible on mobile, Hidden on medium screens and up */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur px-4 py-3 z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                <div className="flex gap-3">
+                    <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={handleClear} 
+                        className="flex-1 h-11 border-gray-300 text-gray-600"
+                    >
+                        <RefreshCw className="mr-2 h-4 w-4" /> Clear
+                    </Button>
+                    <Button 
+                        type="submit" 
+                        onClick={handleSubmit(onPreSubmit)} 
+                        disabled={isSubmitting || hasPlateConflict} 
+                        className={cn(
+                            "flex-[2] h-11 bg-black hover:bg-gray-800 text-white shadow-lg transition-all",
+                            hasPlateConflict && "opacity-50 cursor-not-allowed"
+                        )}
+                    >
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-2 h-4 w-4" />} 
+                        Proceed
+                    </Button>
                 </div>
             </div>
 
@@ -337,13 +386,34 @@ export default function NewRegistrationPage() {
                         </div>
 )}
                     <DialogFooter className="p-4 border-t bg-muted/10 gap-2">
-                        <Button variant="outline" onClick={() => setIsConfirmOpen(false)} disabled={isSubmitting}>Back to Edit</Button>
-                        <Button onClick={handleFinalSubmit} disabled={isSubmitting} className="min-w-[140px] bg-black hover:bg-gray-800 text-white shadow-lg">
-                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="mr-2 h-4 w-4" />} Confirm Submit
+                        <Button 
+                            variant="outline" 
+                            onClick={() => setIsConfirmOpen(false)} 
+                            disabled={isSubmitting}>
+                            Back to Edit
+                        </Button>
+
+                        <Button 
+                            onClick={handleFinalSubmit} 
+                            disabled={isSubmitting} 
+                            className="min-w-[140px] bg-black hover:bg-gray-800 text-white shadow-lg">
+                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="mr-2 h-4 w-4" />} 
+                            Confirm Submit
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <NavigationGuard 
+                isOpen={!!pendingPath} 
+                onConfirm={() => {
+                    const path = pendingPath;
+                    setPendingPath(null); 
+                    setIsDirty(false); 
+                    router.push(path!); 
+                }}
+                onCancel={() => setPendingPath(null)} 
+            />
         </div>
     )
 }

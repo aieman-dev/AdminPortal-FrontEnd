@@ -2,7 +2,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Sidebar } from "@/components/portal/sidebar"
 import { Header } from "@/components/portal/header"
 import { ProtectedRoute } from "@/components/portal/protected-route"
@@ -13,9 +13,15 @@ import { SessionTimer } from "@/components/portal/session-timer"
 import { useAutoLogout } from "@/hooks/use-auto-logout";
 import { SystemAnnouncement } from "@/components/portal/system-annoucement";
 import { SystemOffline } from "@/components/portal/system-offline";
+import { SystemTips } from "@/components/portal/system-tips"
 import { settingService, type BroadcastItem } from "@/services/setting-services";
 
+import { AnimatePresence } from "framer-motion"
+import { PageWrapper } from "@/components/portal/page-wrapper"
+import { usePathname } from "next/navigation"
+
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
 
@@ -29,26 +35,27 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const [unreadCount, setUnreadCount] = useState(0);
   const [showSystemNews, setShowSystemNews] = useState(true);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
       try {
         const response: any = await settingService.getDashboardAlerts();
+        if (!response) return
         
-        if (response) {
-            const data = response.content || response;
+        const data = response.content || response;
+        
+        setBroadcasts((prev) => 
+          JSON.stringify(prev) === JSON.stringify(data.broadcasts) ? prev : (data.broadcasts || [])
+        )
             
-            if (data.broadcasts) {
-                const sortedBroadcasts = [...data.broadcasts].sort((a: any, b: any) => 
-                    new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime()
-                );
-                setBroadcasts(sortedBroadcasts);
-            }
-            if (data.personalNotifications) setPersonalNotifications(data.personalNotifications);
-            if (typeof data.unreadCount === 'number') setUnreadCount(data.unreadCount);
-        }
+        setPersonalNotifications((prev) => 
+          JSON.stringify(prev) === JSON.stringify(data.personalNotifications) ? prev : (data.personalNotifications || [])
+        )
+
+        setUnreadCount((prev) => (prev === data.unreadCount ? prev : data.unreadCount))
+        
       } catch (error) {
         console.error("Dashboard Poll Error:", error);
       }
-  };
+  }, [])
 
   const handleMarkAllRead = async () => {
       try {
@@ -58,8 +65,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           setBroadcasts(prev => prev.map(b => ({ ...b, isRead: true })));
           setPersonalNotifications(prev => prev.map(p => ({ ...p, isRead: true })));
 
-          await fetchDashboardData();
-          
+          await fetchDashboardData();  
       } catch (error) {
           console.error("Failed to mark all read:", error);
       }
@@ -78,11 +84,30 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     initPreferences();
     fetchDashboardData();
 
-    const intervalId = setInterval(fetchDashboardData, 30000); 
-    return () => clearInterval(intervalId);
-  }, []);
+    // 1. Polling: Only fetch if the tab is visible
+  const intervalId = setInterval(() => {
+    if (!document.hidden) {
+      fetchDashboardData();
+    }
+  }, 30000);
 
-  useAutoLogout();
+  // 2. Revalidation: Fetch immediately when user returns to the tab
+  const handleVisibilityChange = () => {
+    if (!document.hidden) {
+      console.log("Tab active: Revalidating dashboard...");
+      fetchDashboardData();
+    }
+  };
+
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+
+  // Cleanup
+  return () => {
+    clearInterval(intervalId);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+  };
+}, [fetchDashboardData]);
+
 
   useEffect(() => {
     const handleGlobalError = (event: Event) => {
@@ -106,6 +131,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     };
   }, []);
 
+    useAutoLogout();
+
   if (isSystemLocked) {
     return (
         <div className="h-screen w-screen bg-background flex items-center justify-center p-4">
@@ -124,7 +151,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
   return (
     <ProtectedRoute>
-      <div className="h-screen flex overflow-hidden">
+      <div className="h-screen flex overflow-hidden bg-background">
         {/* Mobile sidebar backdrop */}
         {sidebarOpen && (
           <div
@@ -146,20 +173,30 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         </aside>
 
         {/* Main content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <SystemAnnouncement broadcasts={visibleBroadcasts} />
-          <Header 
-            onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
-            unreadCount={unreadCount}
-            broadcasts={broadcasts}
-            personal={personalNotifications} 
-            onMarkAllRead={handleMarkAllRead}
-          />
+        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+            <div className="flex flex-col shrink-0 z-30">
+              <SystemAnnouncement broadcasts={visibleBroadcasts} />
+              <Header 
+                  onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
+                  unreadCount={unreadCount}
+                  broadcasts={broadcasts}
+                  personal={personalNotifications} 
+                  onMarkAllRead={handleMarkAllRead}
+                />
+            </div>
+
             <CommandMenu />
             <SessionTimer/>
+            <SystemTips />
 
-          <main className="flex-1 overflow-y-auto bg-background">
-            <div className="container mx-auto p-6">{children}</div>
+          <main className="flex-1 overflow-y-auto bg-background overscroll-contain">
+            <div className="container mx-auto p-4 md:p-6 pb-24">
+              <AnimatePresence mode="wait">
+                <PageWrapper key={pathname}>
+                  {children}
+                </PageWrapper>
+              </AnimatePresence>
+            </div>
           </main>
         </div>
       </div>

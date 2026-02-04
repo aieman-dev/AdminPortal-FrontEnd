@@ -95,7 +95,7 @@ export function SystemOffline({ onRetry, message = "Unknown Error", errorDetails
                    System Integrity Check
                 </h3>
               </div>
-              <SystemDiagnostics autoRun={true} errorDetails={errorDetails} className="bg-transparent border-0 shadow-none p-0" />
+              <SystemDiagnostics autoRun={false} errorDetails={errorDetails} className="bg-transparent border-0 shadow-none p-0" />
             </div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-4">

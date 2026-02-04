@@ -430,7 +430,7 @@ export default function PackagesPage() {
       {canCreate && (
         <button
           onClick={handleAddNew}
-          className="fixed bottom-8 right-8 bg-indigo-500 hover:bg-indigo-600 dark:bg-white dark:hover:bg-gray-200 text-primary-foreground px-6 py-3 rounded-full shadow-lg flex items-center gap-2 font-semibold transition-all hover:shadow-xl z-10"
+          className="fixed bottom-8 right-8 bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-3 rounded-full shadow-lg flex items-center gap-2 font-semibold transition-all hover:shadow-xl z-10"
         >
           <Plus size={20} />
           Add New

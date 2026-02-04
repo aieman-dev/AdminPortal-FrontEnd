@@ -6,6 +6,7 @@ import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { Suspense } from "react"
 import { ThemeProvider } from "@/components/theme-provider"
+import { NavigationProvider } from "@/context/navigation-context"
 
 
 export const metadata: Metadata = {
@@ -29,18 +30,20 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Suspense 
-              fallback={
-                <div className="min-h-screen flex flex-col items-center justify-center bg-background text-muted-foreground gap-3">
-                  {/* Use your branding color here */}
-                  <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
-                  <p className="text-sm font-medium animate-pulse">Initializing Portal...</p>
-                </div>
-              }
-            >
-              {children}
-            </Suspense>
-          <Analytics />
+          <NavigationProvider>
+              <Suspense 
+                  fallback={
+                    <div className="min-h-screen flex flex-col items-center justify-center bg-background text-muted-foreground gap-3">
+                      {/* Use your branding color here */}
+                      <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+                      <p className="text-sm font-medium animate-pulse">Initializing Portal...</p>
+                    </div>
+                  }
+                >
+                  {children}
+                </Suspense>
+              <Analytics />
+            </NavigationProvider>
         </ThemeProvider>
       </body>
     </html>

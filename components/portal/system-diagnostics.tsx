@@ -2,6 +2,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { cn } from "@/lib/utils"
 import { Activity, CheckCircle2, XCircle, Server, Wifi, Play, Loader2, AlertTriangle, Copy, RefreshCw, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -152,9 +153,17 @@ export function SystemDiagnostics({ autoRun = false, className, errorDetails }: 
                         {result.checks && result.checks.map((check: any) => (
                             <div key={check.id} className="flex items-center justify-between p-2 rounded-md bg-card border shadow-sm">
                                 <div className="flex items-center gap-3">
-                                    <div className={`p-1.5 rounded-full ${check.status === "UP" ? "bg-green-100" : "bg-red-100"}`}>
-                                        {check.id === 'backend' ? <Server className={`h-3.5 w-3.5 ${check.status === "UP" ? "text-green-600" : "text-red-600"}`} /> 
-                                        : <Wifi className={`h-3.5 w-3.5 ${check.status === "UP" ? "text-green-600" : "text-red-600"}`} />}
+                                    <div 
+                                        className={cn(
+                                            "h-8 w-8 rounded-full flex items-center justify-center shrink-0 shadow-sm", // Fixed size and flex centering
+                                            check.status === "UP" ? "bg-green-100" : "bg-red-100"
+                                        )}
+                                    >
+                                        {check.id === 'backend' ? (
+                                            <Server className={cn("h-4 w-4", check.status === "UP" ? "text-green-600" : "text-red-600")} />
+                                        ) : (
+                                            <Wifi className={cn("h-4 w-4", check.status === "UP" ? "text-green-600" : "text-red-600")} />
+                                        )}
                                     </div>
                                     <div className="flex flex-col">
                                         <span className="text-xs font-semibold">{check.name}</span>

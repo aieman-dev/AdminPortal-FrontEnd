@@ -1,5 +1,5 @@
 // config/navigation.ts
-import { LayoutDashboard, Ticket, ServerCog, Users, Settings, Car } from "lucide-react"
+import { LayoutDashboard, Ticket, ServerCog, Users, Settings, Car, FileUser } from "lucide-react"
 
 export const SIDEBAR_NAVIGATION = [
   {
@@ -61,6 +61,32 @@ export const SIDEBAR_NAVIGATION = [
       {
         name: "Blacklist / Whitelist",
         href: "/portal/car-park/access-control",
+      },
+    ],
+  },
+  {
+    name: "HR Management",
+    icon: FileUser,
+    children: [
+      {
+        name: "New Staff Registration",
+        href: "/portal/hr/new-staff-non-cp",
+      },
+      {
+        name: "All Staff Directory",
+        href: "/portal/hr/staff-listing",
+      },
+      {
+        name: "New Staff + Season Pass",
+        href: "/portal/hr/new-staff-cp",
+      },
+      {
+        name: "Staff Parking List",
+        href: "/portal/hr/staff-listing-cp",
+      },
+      {
+        name: "Parking Usage Report",
+        href: "/portal/hr/report-cp",
       },
     ],
   },

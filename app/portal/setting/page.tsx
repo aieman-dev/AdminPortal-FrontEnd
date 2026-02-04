@@ -18,7 +18,7 @@ import {
 } from "lucide-react"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { useAuth } from "@/hooks/use-auth"
-import { canViewPackageManagement, canViewThemeParkSupport, canCreatePackage, isFinanceApprover } from "@/lib/auth"
+import { canViewPackageManagement, canViewThemeParkSupport, canCreatePackage, isFinanceApprover, canViewCarParkSupport } from "@/lib/auth"
 import { staffService } from "@/services/staff-services" 
 import { StaffMember } from "@/type/staff" 
 import { formatDate } from "@/lib/formatter"
@@ -156,6 +156,7 @@ export default function SettingsPage() {
       { label: "Create/Draft Packages", allowed: canCreatePackage(user?.department) },
       { label: "Approve/Reject Packages", allowed: isFinanceApprover(user?.department) },
       { label: "View Themepark Support", allowed: canViewThemeParkSupport(user?.department) },
+      { label: "View Car Park Management", allowed: canViewCarParkSupport(user?.department) },
   ];
 
   const showPackageAlerts = user?.department 
@@ -201,17 +202,17 @@ export default function SettingsPage() {
       <Tabs defaultValue="account" className="space-y-3">
         
         <div className="w-full overflow-x-auto scrollbar-hide pb-1">
-            <TabsList className="flex w-max h-auto p-1 bg-muted rounded-lg gap-2">
+            <TabsList className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground w-auto">
                 <TabsTrigger 
                     value="account" 
-                    className="flex-1 min-w-[120px] gap-2 px-4 py-2">
+                    className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm gap-2 min-w-[140px]">
                     <User className="h-4 w-4" /> My Account
                 </TabsTrigger>
                 
                 {isSuperAdmin && (
                     <TabsTrigger 
                         value="system" 
-                        className="flex-1 min-w-[170px] gap-2 px-4 py-2">
+                        className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm gap-2 min-w-[180px]">
                         <Megaphone className="h-4 w-4" /> System Announcement
                     </TabsTrigger>
                 )}
@@ -310,20 +311,20 @@ export default function SettingsPage() {
 
        {/* === TAB 2: SYSTEM CONTROL (Modified for Compactness) === */}
         {isSuperAdmin && (
-            <TabsContent value="system" className="flex-1 min-w-[190px] gap-2 px-4 py-2 flex items-center justify-center">
-                <div className="grid gap-4 lg:grid-cols-3 items-stretch">
+            <TabsContent value="system" className="space-y-4 animate-in fade-in-50 duration-300">
+                <div className="grid gap-6 lg:grid-cols-12 items-start">
                     
-                    <div className="lg:col-span-2 flex flex-col">
-                         <Card className="border-muted bg-card h-full flex flex-col">
-                            <CardHeader className="pb-2">
+                    <div className="lg:col-span-8 flex flex-col h-full">
+                         <Card className="border-muted bg-card h-full flex flex-col shadow-sm">
+                            <CardHeader className="pb-4 border-b">
                                 <CardTitle className="flex items-center gap-2">
                                     <Megaphone className="h-5 w-5 text-indigo-600" /> Create Broadcast
                                 </CardTitle>
                                 <CardDescription>Post a new system-wide announcement.</CardDescription>
                             </CardHeader>
-                            <CardContent className="flex-1 space-y-3">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="md:col-span-2 space-y-1.5">
+                            <CardContent className="flex-1 space-y-6 pt-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="md:col-span-2 space-y-2">
                                         <Label>Title <span className="text-red-500">*</span></Label>
                                         <Input 
                                             placeholder="e.g. System Maintenance" 
@@ -332,7 +333,7 @@ export default function SettingsPage() {
                                             className="h-9" // Compact Input
                                         />
                                     </div>
-                                    <div className="space-y-1.5">
+                                    <div className="space-y-2">
                                         <Label>Severity Type <span className="text-red-500">*</span></Label>
                                         <Select 
                                             value={broadcastForm.type} 
@@ -350,7 +351,7 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
 
-                                <div className="space-y-1.5">
+                                <div className="space-y-2">
                                     <Label>Message Content <span className="text-red-500">*</span></Label>
                                     <Textarea 
                                         placeholder="Enter the detailed announcement message..."
@@ -360,16 +361,15 @@ export default function SettingsPage() {
                                     />
                                 </div>
 
-                                <div className="space-y-1.5">
-                                    {/* The ExpirySelector is mostly self-contained, but it fits better with space-y-3 */}
+                                <div className="space-y-2">
                                     <ExpirySelector onExpiryChange={handleExpiryUpdate} />
                                 </div>
 
-                                <div className="pt-2 flex justify-end mt-auto">
+                                <div className="pt-4 flex justify-end mt-auto border-t">
                                     <Button 
                                         onClick={handlePostBroadcast} 
                                         disabled={isPosting} 
-                                        className="w-full md:w-auto h-9" // Compact Button
+                                        className="w-full md:w-auto h-10 px-8"
                                     >
                                         {isPosting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />} 
                                         {isPosting ? "Broadcasting..." : "Send Broadcast"}
@@ -381,18 +381,18 @@ export default function SettingsPage() {
                     </div>
                     
                     {/* Preview Sidebar */}
-                    <div className="space-y-4">
+                    <div className="lg:col-span-4 space-y-6 sticky top-6">
                          <Card>
-                            <CardHeader className="pb-3"><CardTitle className="text-sm">Live Preview</CardTitle></CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className={`text-sm p-3 rounded-lg border ${getPreviewStyles(broadcastForm.type)}`}>
-                                    <div className="font-bold flex items-center gap-2 mb-1">
+                            <CardHeader className="pb-3 border-b"><CardTitle className="text-sm">Live Preview</CardTitle></CardHeader>
+                            <CardContent className="space-y-4 pt-4">
+                                <div className={`text-sm p-4 rounded-lg border shadow-sm ${getPreviewStyles(broadcastForm.type)}`}>
+                                    <div className="font-bold flex items-center gap-2 mb-2">
                                         {getBroadcastIcon(broadcastForm.type)}
                                         {broadcastForm.title || "Announcement Title"}
                                     </div>
                                     <p className="opacity-90">{broadcastForm.message || "Message content will appear here..."}</p>
                                 </div>
-                                <div className="text-xs text-muted-foreground">
+                                <div className="text-xs text-muted-foreground px-1">
                                     Preview of dashboard banner.
                                 </div>
                             </CardContent>

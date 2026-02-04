@@ -144,15 +144,14 @@ export function QuickAccess({ actions: defaultActions }: Props) {
 
             {/* EDIT DIALOG */}
             <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-                {/* FIX: Increased width to 600px for better spacing */}
-                <DialogContent className="sm:max-w-4xl h-[80vh] sm:h-auto flex flex-col">
-                    <DialogHeader>
+                <DialogContent className="w-[95vw] sm:max-w-4xl h-[90dvh] sm:h-auto flex flex-col p-0 overflow-hidden">
+                    <DialogHeader className="p-6 pb-4 shrink-0 border-b">
                         <DialogTitle>Customize Quick Access</DialogTitle>
                         <DialogDescription>Select up to {MAX_ITEMS} items to display on your dashboard.</DialogDescription>
                     </DialogHeader>
                     
-                    <ScrollArea className="flex-1 pr-4 -mr-4">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-4">
+                    <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 py-2">
                             {allOptions.map((option) => {
                                 const isSelected = selectedPaths.includes(option.path);
                                 const displayName = SHORT_NAMES[option.label] || option.label;
@@ -176,14 +175,26 @@ export function QuickAccess({ actions: defaultActions }: Props) {
                                             </div>
                                         </div>
                                     </div>
-                                )
-                            })}
+                                    )
+                                 })}
+                            </div>
                         </div>
-                    </ScrollArea>
 
-                    <DialogFooter className="gap-2 sm:gap-2 mt-2">
-                        <Button variant="outline" onClick={handleReset} className="gap-2"><RotateCcw className="h-4 w-4" /> Reset Default</Button>
-                        <Button onClick={handleSave} disabled={selectedPaths.length === 0} className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"><Save className="h-4 w-4" /> Save Changes ({selectedPaths.length}/{MAX_ITEMS})</Button>
+                    <DialogFooter className="p-4 shrink-0 border-t bg-muted/20 flex flex-col sm:flex-row gap-2">
+                        <Button 
+                        variant="outline" 
+                        onClick={handleReset} 
+                        className="w-full sm:w-auto gap-2 order-2 sm:order-1"
+                        >
+                        <RotateCcw className="h-4 w-4" /> Reset Default
+                        </Button>
+                        <Button 
+                        onClick={handleSave} 
+                        disabled={selectedPaths.length === 0} 
+                        className="w-full sm:w-auto gap-2 bg-indigo-600 hover:bg-indigo-700 text-white order-1 sm:order-2"
+                        >
+                        <Save className="h-4 w-4" /> Save Changes ({selectedPaths.length}/{MAX_ITEMS})
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

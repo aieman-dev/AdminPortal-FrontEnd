@@ -29,7 +29,7 @@ export function Header({
   const { user } = useAuth()
 
   return (
-    <header className="h-16 border-b bg-card flex items-center justify-between px-6">
+    <header className="sticky top-0 z-30 h-16 border-b bg-card flex items-center justify-between px-6">
       {/* LEFT SIDE: Hamburger & Title */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuClick}>

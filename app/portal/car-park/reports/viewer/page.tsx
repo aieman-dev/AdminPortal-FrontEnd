@@ -45,6 +45,30 @@ export default function ReportViewerPage() {
     
     const pagination = usePagination({ pageSize: 50 });
 
+    // Add this helper at the top or inside the component
+const validateFilters = () => {
+    if (!meta) return false;
+    
+    const missing = meta.parameters
+        .filter(p => p.required && !dynamicFilters[p.name]) // Check if required & empty
+        .map(p => p.label);
+
+    if (missing.length > 0) {
+        toast.error("Missing Requirements", `Please fill in: ${missing.join(", ")}`);
+        return false;
+    }
+    
+    // Optional: Date Range Logic Check
+    const start = dynamicFilters["StartDate"];
+    const end = dynamicFilters["EndDate"];
+    if (start && end && new Date(start) > new Date(end)) {
+        toast.error("Invalid Date Range", "Start Date cannot be after End Date.");
+        return false;
+    }
+
+    return true;
+};
+
     // --- 1. FETCH METADATA (LOOP FIX APPLIED) ---
     useEffect(() => {
         if (!reportCode) return;
@@ -92,6 +116,8 @@ export default function ReportViewerPage() {
 
     // --- 3. ACTIONS ---
     const runReport = async (page: number = 1) => {
+        if (!validateFilters()) return;
+
         setLoading(true);
         if (page !== pagination.currentPage) pagination.setCurrentPage(page);
 
@@ -125,10 +151,17 @@ export default function ReportViewerPage() {
         const labelClass = "text-[11px] font-bold uppercase text-muted-foreground tracking-wider mb-1.5 block";
         const inputClass = "h-11 bg-background border-input shadow-sm focus:border-indigo-500 focus:ring-indigo-500/20 transition-all";
 
+        const LabelWithRequired = () => (
+        <Label className={labelClass}>
+            {param.label} 
+            {param.required && <span className="text-red-500 ml-1">*</span>}
+        </Label>
+        );
+
         if (param.type === 'date') {
             return (
                 <div key={param.name} className="space-y-1 w-full">
-                    <Label className={labelClass}>{param.label}</Label>
+                    <LabelWithRequired />
                     <DatePicker 
                         date={value ? new Date(value) : undefined}
                         setDate={(d) => setDynamicFilters(prev => ({ ...prev, [param.name]: d ? format(d, "yyyy-MM-dd") : null }))}
