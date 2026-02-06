@@ -206,7 +206,7 @@ export default function HRRegistrationPage() {
                         className="h-9 border-0 bg-transparent focus-visible:ring-0 w-full md:w-[250px] text-sm shadow-none pl-0"
                         onKeyDown={(e) => e.key === "Enter" && handleVerify()}
                     />
-                    <Button type="button" onClick={handleVerify} disabled={isVerifying} size="sm" className="h-8 bg-black text-white hover:bg-gray-800">
+                    <Button type="button" onClick={handleVerify} disabled={isVerifying} size="sm" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90">
                         {isVerifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Verify"}
                     </Button>
                 </div>
@@ -232,9 +232,9 @@ export default function HRRegistrationPage() {
                         <Button type="button" variant="outline" onClick={handleClear} className="h-11 px-8">
                             <RefreshCw className="mr-2 h-4 w-4" /> Clear Form
                         </Button>
-                        <Button type="submit" onClick={handleSubmit(onPreSubmit)} disabled={isSubmitting || hasPlateConflict} className="h-11 px-10 bg-black text-white hover:bg-gray-800 shadow-lg">
+                        <Button type="submit" onClick={handleSubmit(onPreSubmit)} disabled={isSubmitting || hasPlateConflict} className="h-11 px-10 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg">
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-2 h-4 w-4" />} 
-                            Proceed to Registration
+                            Proceed 
                         </Button>
                     </div>
                 </div>

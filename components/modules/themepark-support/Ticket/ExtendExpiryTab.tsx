@@ -191,12 +191,14 @@ export default function ExtendExpiryTab() {
       </Card>
 
       <Card>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-2 text-lg font-semibold">
-            <Calendar className="h-5 w-5 text-muted-foreground" />
-            Ticket Information
-          </div>
+        <div className="p-6 border-b">
+            <div className="flex items-center gap-2 text-lg font-semibold">
+                <Calendar className="h-5 w-5 text-muted-foreground" />
+                Ticket Information
+            </div>
+        </div>
           
+          <CardContent className="p-0">
           <DataTable
             columns={columns}
             data={extendSearchResult}

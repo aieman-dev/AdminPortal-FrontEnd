@@ -252,7 +252,7 @@ export default function NewRegistrationPage() {
 
                     <Button 
                         type="button" onClick={handleVerify} disabled={isVerifying} size="sm" 
-                        className="h-8 px-5 bg-black hover:bg-gray-800 text-white font-medium rounded-lg shadow-sm transition-transform active:scale-95"
+                        className="h-8 px-5 bg-primary text-primary-foreground hover:bg-primary/90 font-medium rounded-lg shadow-sm transition-transform active:scale-95"
                     >
                         {isVerifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Verify"}
                     </Button>
@@ -292,12 +292,12 @@ export default function NewRegistrationPage() {
                             onClick={handleSubmit(onPreSubmit)} 
                             disabled={isSubmitting || hasPlateConflict} 
                             className={cn(
-                                "h-11 px-10 rounded-xl bg-black hover:bg-gray-800 text-white shadow-lg transition-all hover:scale-[1.02] active:scale-95",
+                                "h-11 px-10 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg transition-all hover:scale-[1.02] active:scale-95",
                                 hasPlateConflict && "opacity-50 cursor-not-allowed" 
                             )}
                         >
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-2 h-4 w-4" />} 
-                            Proceed to Registration
+                            Proceed
                         </Button>
                     </div>
 

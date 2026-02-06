@@ -152,20 +152,22 @@ export default function VoidTransactionTab() {
 
       {(isVoidSearching || voidSearchResult.length > 0) && (
         <Card>
-          <CardContent className="space-y-4 pt-6">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <XCircle className="h-4 w-4" />
-              Transaction Details
+          <div className="p-6 border-b">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <XCircle className="h-4 w-4" />
+                Transaction Details
+              </div>
             </div>
-            <DataTable
-              columns={columns}
-              data={voidSearchResult}
-              keyExtractor={(row) => String(row.trxID)}
-              isLoading={isVoidSearching}
-              emptyIcon={SearchX}
-              emptyTitle="No Transactions Found"
-              emptyMessage="No voidable transactions found for this invoice."
-            />
+            <CardContent className="p-0">
+              <DataTable
+                columns={columns}
+                data={voidSearchResult}
+                keyExtractor={(row) => String(row.trxID)}
+                isLoading={isVoidSearching}
+                emptyIcon={SearchX}
+                emptyTitle="No Transactions Found"
+                emptyMessage="No voidable transactions found for this invoice."
+              />
           </CardContent>
         </Card>
       )}

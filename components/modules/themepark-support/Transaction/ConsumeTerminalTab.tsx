@@ -150,7 +150,7 @@ export default function ConsumeTerminalTab() {
 
                         <TabsContent value="purchase" className="mt-0">
                             <Card className="rounded-tl-none">
-                                <CardContent className="space-y-4 pt-6">
+                                <CardContent className="p-0">
                                     <DataTable
                                         columns={commonColumns}
                                         data={paginatedPurchase}
@@ -158,20 +158,22 @@ export default function ConsumeTerminalTab() {
                                         emptyMessage={isHistorySearching ? "Loading..." : "No purchase records found."}
                                         isLoading={isHistorySearching}
                                     />
-                                    <PaginationControls
-                                        currentPage={purchasePager.currentPage}
-                                        totalPages={Math.ceil(purchaseHistory.length / purchasePager.pageSize)}
-                                        totalRecords={purchaseHistory.length}
-                                        pageSize={purchasePager.pageSize}
-                                        onPageChange={purchasePager.setCurrentPage}
-                                    />
+                                    <div className="p-6 border-t bg-muted/5">
+                                        <PaginationControls
+                                            currentPage={purchasePager.currentPage}
+                                            totalPages={Math.ceil(purchaseHistory.length / purchasePager.pageSize)}
+                                            totalRecords={purchaseHistory.length}
+                                            pageSize={purchasePager.pageSize}
+                                            onPageChange={purchasePager.setCurrentPage}
+                                        />
+                                    </div>
                                 </CardContent>
                             </Card>
                         </TabsContent>
 
                         <TabsContent value="consume" className="mt-0">
                             <Card className="rounded-tl-none">
-                                <CardContent className="space-y-4 pt-6">
+                                <CardContent className="p-0">
                                     <DataTable
                                         columns={commonColumns}
                                         data={paginatedConsume}
@@ -179,13 +181,15 @@ export default function ConsumeTerminalTab() {
                                         emptyMessage={isHistorySearching ? "Loading..." : "No consumption records found."}
                                         isLoading={isHistorySearching}
                                     />
-                                    <PaginationControls
-                                        currentPage={consumePager.currentPage}
-                                        totalPages={Math.ceil(consumeHistory.length / consumePager.pageSize)}
-                                        totalRecords={consumeHistory.length}
-                                        pageSize={consumePager.pageSize}
-                                        onPageChange={consumePager.setCurrentPage}
-                                    />
+                                    <div className="p-6 border-t bg-muted/5">
+                                        <PaginationControls
+                                            currentPage={consumePager.currentPage}
+                                            totalPages={Math.ceil(consumeHistory.length / consumePager.pageSize)}
+                                            totalRecords={consumeHistory.length}
+                                            pageSize={consumePager.pageSize}
+                                            onPageChange={consumePager.setCurrentPage}
+                                        />
+                                    </div>
                                 </CardContent>
                             </Card>
                         </TabsContent>

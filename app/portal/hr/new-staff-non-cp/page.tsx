@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Search, RotateCcw, Save, User, Briefcase, Mail, Loader2, CheckCircle2 } from "lucide-react"
+import { Search, RotateCcw, Save, User, Briefcase, Mail, Loader2, CheckCircle2, UserPlus } from "lucide-react"
 
 import { PageHeader } from "@/components/portal/page-header"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -13,12 +13,15 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAppToast } from "@/hooks/use-app-toast"
+import { hrService } from "@/services/hr-services"
+import { CarParkDepartment } from "@/type/hr"
 
 // Validation Schema
 const staffTagSchema = z.object({
     email: z.string().email("Invalid email address"),
     fullName: z.string().min(1, "Name is required"),
-    staffId: z.string().min(1, "Staff ID is required"),
+    accId: z.number().optional(),
+    staffNo: z.string().min(1, "Staff ID is required"),
     department: z.string().min(1, "Department is required"),
 })
 
@@ -29,13 +32,14 @@ export default function NewStaffNonCPPage() {
     const [isVerifying, setIsVerifying] = useState(false)
     const [isVerified, setIsVerified] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [departments, setDepartments] = useState<CarParkDepartment[]>([])
 
     const form = useForm<StaffTagValues>({
         resolver: zodResolver(staffTagSchema),
         defaultValues: {
             email: "",
             fullName: "",
-            staffId: "",
+            staffNo: "",
             department: ""
         }
     })
@@ -43,7 +47,22 @@ export default function NewStaffNonCPPage() {
     const { register, setValue, watch, handleSubmit, reset, formState: { errors } } = form
     const emailValue = watch("email")
 
-    // Mock Verify Action
+    //Fetch Departments on Mount
+    useEffect(() => {
+        const loadDepartments = async () => {
+            try {
+                const data = await hrService.getDepartments();
+                setDepartments(data);
+            } catch (error) {
+                console.error("Failed to load departments", error);
+                toast.error("Error", "Could not load departments");
+            }
+        };
+        loadDepartments();
+    }, []);
+
+
+    //Verify Action
     const handleVerify = async () => {
         if (!emailValue) {
             toast.error("Input Required", "Please enter an email address first.")
@@ -52,33 +71,50 @@ export default function NewStaffNonCPPage() {
 
         setIsVerifying(true)
         
-        // Simulate API call delay
-        setTimeout(() => {
-            setIsVerifying(false)
+        try {
+            const result = await hrService.verifyUser("email", emailValue);
             
-            // Hardcoded Mock Data (Simulating success)
-            setValue("fullName", "Aimeen Intern") 
-            setIsVerified(true)
-            toast.success("User Verified", "Account details found.")
-        }, 800)
+            if (result.success && result.data) {
+                setValue("fullName", result.data.name);
+                setValue("accId", Number(result.data.accId));
+                setIsVerified(true);
+                toast.success("User Verified", `Account verified: ${result.data.name}`);
+            }
+        } catch (error) {
+            toast.error("Verification Failed", "User account not found or invalid.");
+            setIsVerified(false);
+        } finally {
+            setIsVerifying(false)
+        }
     }
 
-    const handleClear = () => {
+
+    const handleClear = (showToast = true) => {
         reset()
         setIsVerified(false)
-        toast.info("Reset", "Form cleared.")
+        if (showToast) {
+            toast.info("Reset", "Form cleared.")
+        }
     }
 
+
     const onSubmit = async (data: StaffTagValues) => {
+        if (!isVerified) {
+             toast.error("Verification Required", "Please verify the account first.");
+             return;
+        }
         setIsSubmitting(true)
         
-        // Simulate Submission
-        setTimeout(() => {
-            console.log("Submitting:", data);
+        try {
+            await hrService.submitStaffTag(data)
+
+            toast.success("Success", "Staff created successfully.")
+            handleClear(false)
+        } catch (error) {
+            toast.error("Error", error instanceof Error ? error.message : "Failed to create staff.")
+        } finally {
             setIsSubmitting(false)
-            toast.success("Success", "Staff tag created successfully.")
-            handleClear()
-        }, 1500)
+        }
     }
 
     return (
@@ -120,7 +156,7 @@ export default function NewStaffNonCPPage() {
                                     type="button"
                                     onClick={handleVerify} 
                                     disabled={isVerifying || isVerified || !emailValue}
-                                    className="h-11 min-w-[120px] bg-black hover:bg-gray-800 text-white shadow-sm"
+                                    className="h-11 min-w-[120px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                                 >
                                     {isVerifying ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
                                     {isVerifying ? "Verifying..." : "Verify"}
@@ -128,7 +164,7 @@ export default function NewStaffNonCPPage() {
                                 <Button 
                                     type="button"
                                     variant="outline" 
-                                    onClick={handleClear}
+                                    onClick={() => handleClear()}
                                     className="h-11 min-w-[100px]"
                                 >
                                     <RotateCcw className="h-4 w-4 mr-2" /> Clear
@@ -152,7 +188,7 @@ export default function NewStaffNonCPPage() {
                                 <Label>Staff Full Name <span className="text-red-500">*</span></Label>
                                 <Input 
                                     {...register("fullName")} 
-                                    placeholder="Name retrieved from account..." 
+                                    placeholder="Name retrieved from account" 
                                     readOnly 
                                     className="bg-muted/40 h-11 border-dashed" 
                                 />
@@ -163,12 +199,12 @@ export default function NewStaffNonCPPage() {
                                 <div className="relative">
                                     <Briefcase className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
                                     <Input 
-                                        {...register("staffId")} 
-                                        placeholder="e.g. S12345" 
+                                        {...register("staffNo")} 
+                                        placeholder="ICITY-1234" 
                                         className="pl-9 h-11" 
                                     />
                                 </div>
-                                {errors.staffId && <p className="text-xs text-red-500 font-medium">{errors.staffId.message}</p>}
+                                {errors.staffNo && <p className="text-xs text-red-500 font-medium">{errors.staffNo.message}</p>}
                             </div>
                         </div>
 
@@ -179,11 +215,11 @@ export default function NewStaffNonCPPage() {
                                     <SelectValue placeholder="Select Department" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="hr">Human Resources</SelectItem>
-                                    <SelectItem value="it">IT / MIS</SelectItem>
-                                    <SelectItem value="finance">Finance</SelectItem>
-                                    <SelectItem value="ops">Operations</SelectItem>
-                                    <SelectItem value="sales">Sales & Marketing</SelectItem>
+                                    {departments.map((dept, idx) => (
+                                        <SelectItem key={`${dept.code}-${idx}`} value={dept.code}>
+                                            {dept.name}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                              {errors.department && <p className="text-xs text-red-500 font-medium">{errors.department.message}</p>}
@@ -197,10 +233,10 @@ export default function NewStaffNonCPPage() {
                         size="lg" 
                         onClick={handleSubmit(onSubmit)} 
                         disabled={!isVerified || isSubmitting}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white min-w-[180px] h-12 shadow-lg transition-transform active:scale-95"
+                        className="h-11 px-10 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg transition-transform active:scale-95"
                     >
-                        {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Save className="h-5 w-5 mr-2" />}
-                        Submit Tag
+                        {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <UserPlus className="h-5 w-5 mr-2" />}
+                        Confirm Registration
                     </Button>
                 </div>
             </div>

@@ -158,7 +158,7 @@ export default function UpdateTerminalTab() {
       </Card>
 
       <Card>
-        <CardContent>
+        <CardContent className="p-0">
           <DataTable 
             columns={terminalColumns}
             data={terminals}

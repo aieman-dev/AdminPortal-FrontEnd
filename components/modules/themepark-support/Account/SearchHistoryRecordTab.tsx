@@ -309,7 +309,7 @@ export default function SearchHistoryRecordTab() {
 
         <TabsContent value="ticket" className="mt-0">
           <Card className="rounded-tl-none">
-            <CardContent>
+            <CardContent className="p-0">
               <DataTable
                 columns={ticketColumns}
                 data={paginatedTickets}

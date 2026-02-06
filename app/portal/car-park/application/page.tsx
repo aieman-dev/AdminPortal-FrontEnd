@@ -123,7 +123,7 @@ export default function ApplicationsPage() {
             </Card>
 
             <Card>
-                <CardContent>
+                <CardContent className="p-0">
                     <DataTable 
                         columns={columns}
                         data={applications}

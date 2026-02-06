@@ -216,7 +216,7 @@ export default function SeasonParkingPage() {
       </Card>
 
       <Card>
-        <CardContent className="space-y-4">
+        <CardContent className="p-0">
           <DataTable
             columns={columns}
             data={data}

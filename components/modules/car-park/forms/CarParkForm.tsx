@@ -276,17 +276,17 @@ export function CarParkForm({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                         <div>
                             <Label className={labelClass}>Parking Mode</Label>
-                            <div className="flex bg-muted p-1 rounded-md h-11">
+                            <div className="flex bg-muted/50 dark:bg-zinc-950 p-1 rounded-md h-11 border border-border/50">
                                 {["Normal", "Reserved"].map((m) => (
                                     <button 
                                         key={m}
                                         type="button" 
                                         onClick={() => setValue("parkingType", m as any)}
                                         className={cn(
-                                            "flex-1 text-xs font-medium rounded-sm transition-all",
-                                                parkingType === m 
-                                                ? "bg-background shadow-sm text-foreground" 
-                                                : "text-muted-foreground hover:text-foreground"
+                                            "flex-1 text-xs font-medium rounded-sm transition-all duration-200",
+                                            parkingType === m 
+                                                ? "bg-white dark:bg-indigo-600 text-black dark:text-white shadow-md" 
+                                                : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
                                         )}
                                     >
                                         {m}

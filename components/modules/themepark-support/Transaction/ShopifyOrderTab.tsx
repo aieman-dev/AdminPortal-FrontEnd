@@ -130,20 +130,22 @@ export default function ShopifyOrderTab() {
 
       {(isSearching || dataForTable.length > 0) && (
         <Card>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-2">
-              <ShoppingBag className="h-5 w-5" />
-              <div className="text-lg font-semibold">Transaction Details</div>
+          <div className="p-6 border-b">
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="h-5 w-5" />
+                <div className="text-lg font-semibold">Transaction Details</div>
+              </div>
             </div>
-            <DataTable
-              columns={orderTrxColumns}
-              data={dataForTable}
-              keyExtractor={() => "shopify-trx-detail-row"} 
-              isLoading={isSearching}
-              emptyIcon={SearchX}
-              emptyTitle="No Order Found"
-              emptyMessage={`No transaction found for order #${orderName}`}
-            />
+            <CardContent className="p-0">
+              <DataTable
+                columns={orderTrxColumns}
+                data={dataForTable}
+                keyExtractor={() => "shopify-trx-detail-row"} 
+                isLoading={isSearching}
+                emptyIcon={SearchX}
+                emptyTitle="No Order Found"
+                emptyMessage={`No transaction found for order #${orderName}`}
+              />
           </CardContent>
         </Card>
       )}

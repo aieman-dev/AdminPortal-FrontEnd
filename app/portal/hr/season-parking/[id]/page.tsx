@@ -4,15 +4,15 @@ interface PageProps {
   params: Promise<{ id: string }>
 }
 
-export default async function CarParkSeasonParkingPage({ params }: PageProps) {
+export default async function HRSeasonParkingPage({ params }: PageProps) {
   const { id } = await params
   
   return (
     <SeasonParkingDetailView 
       qrId={id}
-      backPath="/portal/car-park/season-parking"
-      backLabel="Season Parking"
-      moduleName="Car Park"
+      backPath="/portal/hr/staff-listing-cp"   // <--- Points back to HR list
+      backLabel="Staff Parking List"
+      moduleName="HR Management"
     />
   )
 }

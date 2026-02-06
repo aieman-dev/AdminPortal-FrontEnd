@@ -252,22 +252,24 @@ export default function DeactivateTicketTab() {
 
       {(isSearching || ticketDetails.length > 0 || consumptionHistory.length > 0) && (
         <Card>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-2 text-lg font-semibold">
-                <Ticket className="h-5 w-5 text-muted-foreground" />
-                Ticket & Consumption Details
+          <div className="p-6 border-b">
+                <div className="flex items-center gap-2 text-lg font-semibold">
+                    <Ticket className="h-5 w-5 text-muted-foreground" />
+                    Ticket & Consumption Details
+                </div>
             </div>
-            <DataTable 
-                columns={masterColumns}
-                data={ticketDetails}
-                keyExtractor={(row) => row.ticketNo}
-                isLoading={isSearching}
-                emptyIcon={SearchX}
-                emptyTitle="No Ticket Headers Found"
-                emptyMessage="If you see this, we found consumption records but no parent ticket headers."
-                renderSubComponent={isMobile ? undefined : renderDetailRow}
-                onRowClick={isMobile ? handleRowClick : undefined}
-            />
+            <CardContent className="p-0">
+                <DataTable 
+                    columns={masterColumns}
+                    data={ticketDetails}
+                    keyExtractor={(row) => row.ticketNo}
+                    isLoading={isSearching}
+                    emptyIcon={SearchX}
+                    emptyTitle="No Ticket Headers Found"
+                    emptyMessage="If you see this, we found consumption records but no parent ticket headers."
+                    renderSubComponent={isMobile ? undefined : renderDetailRow}
+                    onRowClick={isMobile ? handleRowClick : undefined}
+                />
           </CardContent>
         </Card>
       )}

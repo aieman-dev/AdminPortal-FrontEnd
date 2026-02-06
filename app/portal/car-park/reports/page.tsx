@@ -134,7 +134,7 @@ export default function ReportsPage() {
             </Card>
 
             <Card>
-                <CardContent>
+                <CardContent className="p-0">
                     <DataTable 
                         columns={columns}
                         data={filteredReports}

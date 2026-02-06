@@ -125,11 +125,13 @@ export default function ConsumeHistoryByTerminalTab() {
 
             {hasSearched && (
                 <Card className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                    <CardContent className="space-y-4 ">
+                    <div className="space-y-4 ">
                         <div className="flex items-center gap-2 text-lg font-semibold">
                             <History className="h-5 w-5 text-muted-foreground" />
                             Consume History ({consumeHistory.length})
                         </div>
+                    </div>
+                    <CardContent className="p-0">
                         <DataTable
                             columns={commonColumns}
                             data={consumeHistory}

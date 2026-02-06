@@ -270,19 +270,20 @@ export default function BlacklistTab() {
 
             {/* === CARD 2: DATA TABLE === */}
             <Card>
-                <CardContent className="pt-6">
-                    {/* Context Banner */}
-                    {viewMode === 'blacklist' ? (
-                        <div className="mb-4 flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-100 animate-in fade-in slide-in-from-top-1">
-                            <Ban className="h-4 w-4" />
-                            <span className="font-medium">Current Blacklist ({totalRecords})</span>
-                        </div>
-                    ) : (
-                        <div className="mb-4 flex items-center gap-2 text-sm text-blue-600 bg-blue-50 p-3 rounded-lg border border-blue-100 animate-in fade-in slide-in-from-top-1">
-                            <CreditCard className="h-4 w-4" />
-                            <span className="font-medium">Active Card Search Results</span>
-                        </div>
-                    )}
+                <CardContent className="p-0">
+                    <div className="p-4 md:p-6 pb-2">
+                        {viewMode === 'blacklist' ? (
+                            <div className="mb-4 flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-100 animate-in fade-in slide-in-from-top-1">
+                                <Ban className="h-4 w-4" />
+                                <span className="font-medium">Current Blacklist ({totalRecords})</span>
+                            </div>
+                        ) : (
+                            <div className="mb-4 flex items-center gap-2 text-sm text-blue-600 bg-blue-50 p-3 rounded-lg border border-blue-100 animate-in fade-in slide-in-from-top-1">
+                                <CreditCard className="h-4 w-4" />
+                                <span className="font-medium">Active Card Search Results</span>
+                            </div>
+                        )}
+                    </div>
 
                     {/* Table Render */}
                     {viewMode === 'blacklist' ? (

@@ -125,7 +125,7 @@ export default function AccountManagementTab() {
       </Card>
 
       <Card>
-        <CardContent>
+        <CardContent className="p-0">
           <DataTable
             columns={accountColumns}
             data={accounts}

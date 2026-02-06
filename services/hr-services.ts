@@ -1,4 +1,4 @@
-// services/car-park-service.ts
+// services/hr-services.ts
 
 import { apiClient, ApiResponse } from "@/lib/api-client";
 import { SYSTEM_TERMINAL_ID } from "@/lib/constants";
@@ -8,34 +8,57 @@ import {
     ActivePassesPayload, 
     ActivePassesResponse, 
     CarParkDepartment,
-    ParkingActivity,
-    ReportMetadata,
-    ReportDefinition,
     ReportPayload,
     ReportResponse,
+    StaffListItem,
+    StaffDetail,
+    PassDetailResult,
+    ParkingDetailData,
+    ParkingDetailStatus,
+    ManualEntryPayload,
+    ParkingHistoryPayload,
+    ParkingHistoryResponse
  } from "@/type/hr";
 
 const ENDPOINTS = {
+    // Shared / Account Lookup
     SEARCH_ACCOUNTS: "support/account/search",
     GET_ACCOUNT_DETAILS: "support/account/details",
 
-    //new registration 
-    VERIFY_USER: "CarPark/verify-account",
+    //metadata
+    GET_DEPARTMENTS: "CarPark/metadata/departments",
     GET_PHASES: "CarPark/metadata/phases", 
     GET_UNITS: "CarPark/metadata/units",
     GET_PACKAGES: "CarPark/metadata/packages",
-    GET_DEPARTMENTS: "CarPark/metadata/departments",
+    
+    // Feature 1: New Staff Tagging (Non-CP)
+    VERIFY_USER: "CarPark/verify-account",
+    SUBMIT_TAG: "staff/create",
+
+    // Feature 2: Staff Listing (Directory)
+    STAFF_LIST: "staff/list",
+    STAFF_DETAIL: "staff", 
+    STAFF_UPDATE: "staff/update",
+    STAFF_DELETE: "staff/delete",
+
+    // Feature 3: New Staff Registration (With Car Park)
     REGISTER: "CarPark/register",
 
-    //qr listing
+    // Feature 4: Staff Parking List (Season Pass / Visitor)
     QR_LISTING: "Carpark/cards/active",
-    QR_ID : "Carpark/pass/detail",
+    CHECK_STATUS: "Carpark/pass/detail",
+    MANUAL_ENTRY: "CarPark/access/manual-entry",
+    CHECK_BALANCE: "support/balance/check",
+    PARKING_HISTORY: "CarPark/history",
+    UPDATE_PASS: "CarPark/pass/update",
+    DELETE_PASS: "CarPark/pass/delete",
+    BLOCK_PASS: "CarPark/pass/block",
    
-    //Reports
+    // Feature 5: Reports
     EXECUTE_REPORT: "CarPark/report",
 };
 
-// Ensure this mapper matches your Account interface
+// --- MAPPERS ---
 const mapToAccount = (raw: any): Account => ({
     id: String(raw.accID),
     accId: String(raw.accID),
@@ -47,41 +70,27 @@ const mapToAccount = (raw: any): Account => ({
     transactions: raw.transactionHistory || [], 
 });
 
-// FIX: Mapper for Parking Activity to handle response keys (camelCase from your JSON)
-const mapToParkingActivity = (raw: any): ParkingActivity => ({
-    accId: raw.accId || raw.AccId,
-    rParkingID: String(raw.rParkingID || raw.RParkingID || raw.id), 
-    plateNo: raw.plateNo || raw.PlateNo,
-    entryTime: raw.entryTime || raw.EntryTime,
-    exitTime: raw.exitTime || raw.ExitTime,
-    entryGate: raw.entryGate || raw.EntryGate,
-    exitGate: raw.exitGate || raw.ExitGate,
-    status: raw.status || raw.Status,
-    duration: raw.duration || raw.Duration
-});
-
 const cleanAccessDate = (str: string | undefined) => {
     if (!str) return "-";
     return str.replace(/^(Last (Exit|Entry):\s*)/i, "").trim();
 };
 
+
+{/*--------------------- Hr POSWF -------------------------------*/}
 export const hrService = {
+
+    // SHARED UTILITIES & ACCOUNT LOOKUP
     searchSuperAppAccounts: async (query: string): Promise<Account[]> => {
         const payload = { email: query }; 
         const response = await apiClient.post<any>(ENDPOINTS.SEARCH_ACCOUNTS, payload);
 
-        if (!response.success) {
-             return [];
-        }
+        if (!response.success) return [];
 
         const content = response.data?.content || response.data?.data || response.data;
         let items = [];
         
-        if (Array.isArray(content)) {
-            items = content;
-        } else if (content && content.accID) {
-            items = [content];
-        }
+        if (Array.isArray(content)) items = content;
+        else if (content && content.accID) items = [content];
 
         return items.map(mapToAccount);
     },
@@ -94,13 +103,10 @@ export const hrService = {
         return mapToAccount(data);
     },
 
-//-------------- Car Park POSWF---------------
+    // =========================================================
+    //  NEW STAFF TAGGING (NON-CP)
     verifyUser: async (type: "qr" | "email", term: string) => {
-        const payload = {
-            searchValue: term,
-            isEmail: type === "email"
-        };
-
+        const payload = { searchValue: term, isEmail: type === "email" };
         const response = await apiClient.post<any>(ENDPOINTS.VERIFY_USER, payload);
         
         if (!response.success) throw new Error(response.error || "User verification failed");
@@ -119,6 +125,79 @@ export const hrService = {
         };
     },
 
+    getDepartments: async (): Promise<CarParkDepartment[]> => {
+        const response = await apiClient.get<any>(ENDPOINTS.GET_DEPARTMENTS);
+        if (!response.success) return [];
+        return response.data?.content || response.data || [];
+    },
+
+    submitStaffTag: async (data: { email: string, fullName: string, hp?: string, staffNo: string, department: string }) => {
+        const payload = {
+            email: data.email,
+            name: data.fullName,
+            staffNo: data.staffNo,
+            departmentCode: data.department,
+        };
+
+        const response = await apiClient.post<any>(ENDPOINTS.SUBMIT_TAG, payload);
+
+        if (!response.success) {
+             const content = response.data?.content;
+             const errorMessage = content?.message || response.error || "Staff tagging failed";
+             throw new Error(errorMessage);
+        }
+        return response.data;
+    },
+
+
+    // =========================================================
+    // STAFF LISTING (DIRECTORY)
+    getStaffList: async (pageNumber: number = 1, pageSize: number = 20, searchQuery: string = "") => {
+        const payload = {
+            searchQuery: searchQuery || "", 
+            pageNumber: pageNumber,
+            pageSize: pageSize
+        };
+
+        const response = await apiClient.post<any>(ENDPOINTS.STAFF_LIST, payload);
+        
+        if (!response.success || !response.data) {
+            return { items: [], totalCount: 0, totalPages: 0 };
+        }
+        
+        const content = getDataObject<any>(response.data);
+        
+        return {
+            items: content.staff || [],
+            totalCount: content.totalRecords || 0,
+            totalPages: Math.ceil((content.totalRecords || 0) / pageSize),
+            pageNumber: content.pageNumber || 1
+        };
+    },
+
+    getStaffDetail: async (staffId: number): Promise<StaffDetail | null> => {
+        const response = await apiClient.get<any>(`${ENDPOINTS.STAFF_DETAIL}/${staffId}`);
+        if (!response.success || !response.data) return null;
+        return getDataObject<StaffDetail>(response.data);
+    },
+
+    
+    //updateStaff: async (payload: UpdateStaffPayload) => {
+    //    const response = await apiClient.put(ENDPOINTS.STAFF_UPDATE, payload);
+    //    if (!response.success) throw new Error(response.error || "Update failed");
+    //    return response.data;
+    //},
+
+    //deleteStaff: async (staffId: number) => {
+    //    const response = await apiClient.delete(`${ENDPOINTS.STAFF_DELETE}/${staffId}`);
+    //    if (!response.success) throw new Error(response.error || "Delete failed");
+    //    return response.data;
+    //},
+    
+
+
+    // =========================================================
+    // NEW STAFF REGISTRATION (WITH PARKING)
     getPhases: async () => {
         const response = await apiClient.get<any>(ENDPOINTS.GET_PHASES);
         if (!response.success) return [];
@@ -137,15 +216,8 @@ export const hrService = {
         if (!response.success) return [];
         return response.data?.content || [];
     },
-
-    getDepartments: async (): Promise<CarParkDepartment[]> => {
-        const response = await apiClient.get<any>(ENDPOINTS.GET_DEPARTMENTS);
-        if (!response.success) return [];
-        return response.data?.content || response.data || [];
-    },
     
     submitRegistration: async (form: any, adminStaffId: string | number) => {
-
         const cleanPlate = (p: string) => p ? p.toUpperCase().replace(/\s/g, "") : null;
         
         const payload = {
@@ -188,43 +260,30 @@ export const hrService = {
             tandemHP: form.isTandem ? form.tandemMobile : null,
             tandemEmail: null 
         };
-
-        console.log("Submitting Payload:", payload); 
-        console.log("Payload Data:", JSON.stringify(payload, null, 2));
         
         const response = await apiClient.post<any>(ENDPOINTS.REGISTER, payload);
 
         if (!response.success) {
-            console.error("RAW RESPONSE:", JSON.stringify(response, null, 2));
-
             const content = response.data?.content;
-
             if (content?.errors) {
                 const firstField = Object.keys(content.errors)[0];
                 const firstMsg = content.errors[firstField][0];
                 throw new Error(`${firstField}: ${firstMsg}`);
             }
-
             const specificError = response.data?.content?.error;
-            const errorMessage = specificError  || response.error || "Registration failed";
-
-            throw new Error(errorMessage);
+            throw new Error(specificError || response.error || "Registration failed");
         }
         return response.data;
     },
 
+    // =========================================================
+    // STAFF PARKING LIST (SEASON PASS & VISITOR)
+    
     getQrListing: async (pageNumber: number, pageSize: number, searchQuery: string = "") => {
-        const payload: ActivePassesPayload = {
-            pageNumber,
-            pageSize,
-            searchQuery
-        };
-
+        const payload: ActivePassesPayload = { pageNumber, pageSize, searchQuery };
         const response = await apiClient.post<any>(ENDPOINTS.QR_LISTING, payload);
 
-        if (!response.success) {
-            return { items: [], totalCount: 0, totalPages: 0 };
-        }
+        if (!response.success) return { items: [], totalCount: 0, totalPages: 0 };
         const data = response.data?.content || response.data;
         
         return {
@@ -235,16 +294,162 @@ export const hrService = {
         } as ActivePassesResponse;
     },
 
-//-------------- Car Park Reports ---------------
-        generateReport: async (payload: ReportPayload): Promise<ReportResponse> => {
-        const response = await apiClient.post<any>(ENDPOINTS.EXECUTE_REPORT, payload);
+    getQrListingID: async (params: { qrId?: string | number; accId?: string | number }): Promise<PassDetailResult> => {
+        const payload: Record<string, string> = {};
+        if (params.qrId) payload.QrID = String(params.qrId);
+        else if (params.accId) payload.AccID = String(params.accId);
+
+        try {
+            const response = await apiClient.post<any>(ENDPOINTS.CHECK_STATUS, payload);
+
+            if (!response.success) {
+                const errorData = response.data; 
+                const errContent = errorData?.content || errorData;
+                const errMsg = response.error || errContent?.error || "";
+                
+                if (!params.qrId && (errMsg.includes("Conflict") || errMsg.includes("Active Pass Found"))) {
+                    return { error: "CONFLICT_SEASON_PASS", qrId: errContent?.qrId }; 
+                }
+                return null;
+            }
+
+            const raw = response.data.content || response.data;
+
+            const data: ParkingDetailData = {
+                accId: raw.accId,
+                name: raw.name,
+                email: raw.email,
+                nric: raw.cardNo || "",
+                mobile: raw.mobileNo || "",
+                company: raw.company || "",
+                qrId: raw.qrId || 0,
+                message: raw.Message || "",
+                userType: raw.userType || "", 
+                staffId: raw.staffNo || "",
+                contactOffice: raw.officeNo || "",
+                contactHp: raw.mobileNo || "",
+                seasonPackage: String(raw.packageId || ""),
+                bayNo: raw.bayNo || "",
+                parkingMode: raw.bayNo ? "Reserved" : "Normal",
+                remarks: raw.remarks || "",
+                phase: "", 
+                unitNo: "", 
+                isLpr: raw.isLPR || false,
+                isTandem: raw.isTandem || false,
+                isHomestay: raw.isHomestay || false,
+                isMobileQr: raw.isTransfer || false,
+                effectiveDate: raw.effectiveDate || "",
+                expiryDate: raw.expiryDate || "",
+                plate1: raw.plateNo1 || "",
+                plate2: raw.plateNo2 || "",
+                plate3: raw.plateNo3 || "",
+                amanoCardNo: raw.amanoCardNo || "",
+                amanoExpiryDate: "", 
+                walletBalance: 0 
+            };
+
+            const status: ParkingDetailStatus = {
+                recordStatus: raw.recordStatus || "Active",
+                seasonStatus: raw.seasonStatus || "N/A",
+                iPointStatus: raw.iPointStatus || "N/A",
+                lastExitSeason: cleanAccessDate(raw.seasonLastAccess),
+                lastExitIPoint: cleanAccessDate(raw.IPointLastAccess),
+                createdOn: raw.createdDate,
+                createdBy: raw.createdByName || "System",
+                modifiedOn: raw.modifiedDate || "-",
+                modifiedBy: raw.modifiedByName || "-"
+            };
+
+            return { data, status };
+
+        } catch (error) {
+            console.error("getPassDetail Error:", error);
+            return null;
+        }
+    },
+
+    // Wallet & History
+    checkBalance: async (email: string): Promise<number> => {
+        try {
+            const payload = { email };
+            const response = await apiClient.post<any>(ENDPOINTS.CHECK_BALANCE, payload);
+            if (response.success && response.data) {
+                const content = response.data.content || response.data;
+                return content.balance || 0;
+            }
+            return 0;
+        } catch (error) {
+            return 0;
+        }
+    },
+
+    getParkingHistory: async (payload: ParkingHistoryPayload): Promise<ParkingHistoryResponse> => {
+        const apiPayload = {
+            pageNumber: payload.pageNumber,
+            pageSize: payload.pageSize,
+            accId: payload.accId,
+            startDate: payload.startDate,
+            endDate: payload.endDate
+        };
+        const response = await apiClient.post<any>(ENDPOINTS.PARKING_HISTORY, apiPayload);
+        if (!response.success) return { items: [], totalCount: 0, pageNumber: 1, pageSize: 10, totalPages: 0 };
         
+        const data = response.data?.content || response.data;
+        return {
+            items: data.items || [],
+            totalCount: data.totalCount || 0,
+            pageNumber: data.pageNumber || 1,
+            pageSize: data.pageSize || 10,
+            totalPages: data.totalPages || 0
+        };
+    },
+
+    // Pass Actions
+    assignManualEntry: async (payload: ManualEntryPayload) => {
+        const response = await apiClient.post<any>(ENDPOINTS.MANUAL_ENTRY, payload);
+        if (!response.success) {
+            const errorObj: any = new Error(response.error || "Failed to assign manual entry.");
+            errorObj.content = response.data?.content || response.data; 
+            throw errorObj;
+        }
+        return response.data;
+    },
+
+    updateSeasonPass: async (payload: any) => {
+        const response = await apiClient.put<any>(ENDPOINTS.UPDATE_PASS, payload);
+        if (!response.success) throw new Error(response.error || "Failed to update pass.");
+        return response.data;
+    },
+
+    blockSeasonPass: async (cardId: number, reason: string) => {
+        const payload = { cardId, reason, isBlocked: true };
+        const response = await apiClient.post<any>(ENDPOINTS.BLOCK_PASS, payload);
+        if (!response.success) throw new Error(response.error || "Failed to block pass.");
+        return response.data;
+    },
+
+    unblockSeasonPass: async (cardId: number, adminStaffId: number, reason: string = "Manual Unblock") => {
+        const payload = { cardId, adminStaffId, reason, isBlocked: false };
+        const response = await apiClient.post<any>(ENDPOINTS.BLOCK_PASS, payload);
+        if (!response.success) throw new Error(response.error || "Failed to unblock pass.");
+        return response.data;
+    },
+
+    deleteSeasonPass: async (cardId: number, adminStaffId: number, reason: string) => {
+        const payload = { cardId, adminStaffId, reason };
+        const response = await apiClient.post<any>(ENDPOINTS.DELETE_PASS, payload);
+        if (!response.success) throw new Error(response.error || "Failed to delete pass.");
+        return response.data;
+    },
+
+    // =========================================================
+    //  REPORTS
+    generateReport: async (payload: ReportPayload): Promise<ReportResponse> => {
+        const response = await apiClient.post<any>(ENDPOINTS.EXECUTE_REPORT, payload);
         if (!response.success || !response.data) {
              return { items: [], totalCount: 0, pageNumber: 1, pageSize: 10, totalPages: 0 };
         }
-
         const content = getDataObject<any>(response.data);
-        
         return {
             items: content.items || [],
             totalCount: content.totalCount || 0,
@@ -253,6 +458,4 @@ export const hrService = {
             totalPages: content.totalPages || 0
         };
     },
-
-
 };
