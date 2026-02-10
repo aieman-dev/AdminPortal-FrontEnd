@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { History, Search } from "lucide-react"
 import { Label } from "@/components/ui/label"
@@ -68,7 +68,7 @@ export default function ConsumeHistoryByTerminalTab() {
         }
     }
 
-    const commonColumns: TableColumn<TerminalTransaction>[] = [
+    const commonColumns: TableColumn<TerminalTransaction>[] = useMemo(() => [
         { header: "Transaction ID", accessor: "trxID", className: "pl-6", cell: (value) => <span className="font-medium">{value}</span> },
         { header: "Invoice No", accessor: "invoiceNo" },
         { header: "Transaction Type", accessor: "trxType", cell: (value) => <StatusBadge status={value} /> },
@@ -76,7 +76,7 @@ export default function ConsumeHistoryByTerminalTab() {
         { header: "Created Date", accessor: "createdDate", cell: (value) => formatDateTime(value) },
         { header: "Status", accessor: "recordStatus", cell: (value) => <StatusBadge status={value} /> },
         { header: "Created By", accessor: "createdBy" },
-    ];
+    ], []);
 
     return (
         <div className="space-y-6">

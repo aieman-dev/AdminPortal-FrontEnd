@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { StatusBadge } from "@/components/shared-components/status-badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
-import { PaginationControls } from "@/components/ui/pagination-controls"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { hrService } from "@/services/hr-services" 
 import { PageHeader } from "@/components/portal/page-header"
@@ -21,10 +21,10 @@ const STATIC_META = {
     description: "View staff parking records by Account ID.",
     parameters: [
         {
-            name: "AccID",
-            label: "Account ID",
+            name: "SearchQuery",
+            label: "search",
             type: "text",
-            placeholder: "Enter Account ID (e.g. 1025)"
+            placeholder: "Search by Name, Staff ID, or Plate No"
         }
     ]
 };
@@ -48,11 +48,13 @@ export default function StaffParkingReportPage() {
             accessor: key,
             className: cn(
                 index === 0 ? "pl-6 font-mono text-muted-foreground font-medium" : "text-sm",
-                key.toLowerCase().includes("status") && "font-medium text-indigo-600"
             ),
             cell: (val: any) => {
                  if (typeof val === 'string' && val.includes('T') && val.length > 10 && !isNaN(Date.parse(val))) {
                      return <span className="whitespace-nowrap">{new Date(val).toLocaleDateString()}</span>;
+                 }
+                 if (key.toLowerCase().includes("status")) {
+                     return <StatusBadge status={val} />;
                  }
                  return val;
             }
@@ -65,13 +67,15 @@ export default function StaffParkingReportPage() {
         if (page !== pagination.currentPage) pagination.setCurrentPage(page);
 
         try {
+            const { SearchQuery, ...otherParams } = dynamicFilters;
             const response = await hrService.generateReport({
-                reportName: "", 
+                reportName: "report_CarPark_StaffListing",
                 pageNumber: page,
                 pageSize: pagination.pageSize,
-                parameters: dynamicFilters 
+                SearchQuery: SearchQuery, 
+                parameters: otherParams 
             });
-            
+
             setData(response.items);
             pagination.setMetaData(response.totalPages, response.totalCount);
 
@@ -92,7 +96,6 @@ export default function StaffParkingReportPage() {
     // --- 4. RENDER INPUTS (Styled like Car Park Report) ---
     const renderInput = (param: any) => {
         const value = dynamicFilters[param.name];
-        // Matches the exact style from the Car Park Report
         const inputClass = "h-11 bg-background border-input shadow-sm focus:border-indigo-500 focus:ring-indigo-500/20 transition-all";
         const labelClass = "text-[11px] font-bold uppercase text-muted-foreground tracking-wider mb-1.5 block";
 
@@ -195,16 +198,15 @@ export default function StaffParkingReportPage() {
                             emptyTitle="No Data Generated"
                             emptyMessage='Configure filters and click "Run Report" to generate results.'
                             emptyIcon={FileText}
+                            pagination={{
+                                currentPage: pagination.currentPage,
+                                totalPages: pagination.totalPages,
+                                totalRecords: pagination.totalRecords,
+                                pageSize: pagination.pageSize,
+                                onPageChange: (page) => runReport(page)
+                            }}
                         />
                     </div>
-                    {pagination.totalPages > 0 && (
-                        <div className="p-6 border-t bg-muted/5 flex-shrink-0">
-                            <PaginationControls 
-                                {...pagination.paginationProps}
-                                onPageChange={(page) => runReport(page)}
-                            />
-                        </div>
-                    )}
                 </CardContent>
             </Card>
         </div>

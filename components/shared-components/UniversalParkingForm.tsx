@@ -8,7 +8,7 @@ import { formatNRIC, formatMobile } from "@/lib/formatter"
 import { 
     User, Car, MapPin, Briefcase, CreditCard, Smartphone, Home, ScanLine, Users, AlertTriangle, Loader2
 } from "lucide-react"
-
+import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,16 +16,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { DatePicker } from "@/components/ui/date-picker"
+import { useDebounce } from "@/hooks/use-debounce"
 import { cn } from "@/lib/utils"
+import { CarParkPhase, CarParkUnit, CarParkPackage, CarParkDepartment } from "@/type/car-park"
+import { carParkService } from "@/services/car-park-services"
 import { hrService } from "@/services/hr-services"
-import { Phase, Unit, Package, Department } from "@/type/hr"
 
-interface CarParkFormProps {
+interface UniversalParkingFormProps {
     form: UseFormReturn<CarParkFormValues>;
-    phases: Phase[];
-    units: Unit[];
-    packages: Package[];
-    departments?: Department[];
+    context: "HR" | "CP"; 
+    phases: CarParkPhase[];
+    units: CarParkUnit[];
+    packages: CarParkPackage[];
+    departments?: CarParkDepartment[];
     loadingUnits?: boolean;
     loadingPhases?: boolean;
     onPhaseChange: (phaseId: string) => void;
@@ -33,54 +36,67 @@ interface CarParkFormProps {
     onPlateConflict?: (isConflicting: boolean) => void;
 }
 
-export function CarParkForm({ 
-    form, 
-    phases, 
-    units, 
-    packages, 
-    departments = [],
-    loadingUnits = false,
-    loadingPhases = false,
-    onPhaseChange,
-    readOnlyUser = false,
-    onPlateConflict
-}: CarParkFormProps) {
+export function UniversalParkingForm({ 
+    form, context, phases, units, packages, departments = [],
+    loadingUnits = false, loadingPhases = false, onPhaseChange,
+    readOnlyUser = false, onPlateConflict
+}: UniversalParkingFormProps) {
     
     const { register, watch, setValue, formState: { errors } } = form;
-
     const userType = watch("userType");
     const parkingType = watch("parkingType");
     const isTandemChecked = watch("isTandem");
 
-    // Unified Styles
-    const inputClass = "h-11 bg-background border-input focus:border-indigo-500 focus:ring-indigo-500/20 text-sm shadow-sm transition-all";
-    const labelClass = "text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block";
-    const disabledClass = "bg-muted text-muted-foreground cursor-not-allowed opacity-70";
-    const normalizePlate = (val: string) => val.toUpperCase().replace(/[^A-Z0-9]/g, "");
-
     const plate1 = watch("plate1");
+    const debouncedPlate = useDebounce(plate1, 800);
     const [isCheckingPlate, setIsCheckingPlate] = useState(false);
     const [plateConflict, setLocalPlateConflict] = useState(false);
 
+
+    const isHR = context === "HR";
+
+    // Styles
+    const inputClass = "h-11 bg-background border-input focus:border-indigo-500 focus:ring-indigo-500/20 text-sm shadow-sm transition-all";
+    const labelClass = "text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block";
+    const disabledClass = "bg-muted text-muted-foreground cursor-not-allowed opacity-70";
+
+    // Shared Duplicate Plate Check logic
     useEffect(() => {
-    if (plate1 && plate1.length > 3) {
         const checkDuplicate = async () => {
-                const res = await hrService.getQrListing(1, 1, plate1);
-                const isConflict = res.totalCount > 0;
-                setLocalPlateConflict(isConflict);
-                onPlateConflict?.(isConflict); 
-            };
-        const timer = setTimeout(checkDuplicate, 800); 
-        return () => clearTimeout(timer);
-        } else {
-            setLocalPlateConflict(false);
-            onPlateConflict?.(false);
-        }
-}, [plate1]);
+            if (debouncedPlate && debouncedPlate.length > 3) {
+                setIsCheckingPlate(true); 
+                try {
+                    const service = isHR ? hrService : carParkService;
+                    const res = await service.getQrListing(1, 1, plate1);
+                    const isConflict = res.totalCount > 0;
+                    setLocalPlateConflict(isConflict);
+                    onPlateConflict?.(isConflict); 
+                } catch (e) {
+                    console.error("Plate check failed", e);
+                } finally {
+                    setIsCheckingPlate(false); 
+                }
+            } else {
+                setLocalPlateConflict(false);
+                onPlateConflict?.(false);
+                setIsCheckingPlate(false)
+            }
+        };
+
+        checkDuplicate();
+    }, [debouncedPlate, isHR, onPlateConflict]);
+
+    useEffect(() => {
+    if (!isTandemChecked) {
+        setValue("tandemName", "");
+        setValue("tandemNric", "");
+        setValue("tandemMobile", "");
+        setValue("tandemPlate1", "");
+    }
+}, [isTandemChecked, setValue]);
 
     return (
         <div className="space-y-6 pb-10">
-            
             {/* === CARD 1: PRIMARY HOLDER INFO === */}
             <Card className="border shadow-sm bg-card">
                 <CardHeader className="px-6 py-4 border-b bg-muted/10">
@@ -261,6 +277,7 @@ export function CarParkForm({
                 </CardContent>
             </Card>
 
+
             {/* === CARD 2: PARKING CONFIGURATION === */}
             <Card className="border shadow-sm bg-card">
                 <CardHeader className="px-6 py-4 border-b bg-muted/10">
@@ -276,17 +293,17 @@ export function CarParkForm({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                         <div>
                             <Label className={labelClass}>Parking Mode</Label>
-                            <div className="flex bg-muted p-1 rounded-md h-11">
+                            <div className="flex bg-muted/50 dark:bg-zinc-950 p-1 rounded-md h-11 border border-border/50">
                                 {["Normal", "Reserved"].map((m) => (
                                     <button 
                                         key={m}
                                         type="button" 
                                         onClick={() => setValue("parkingType", m as any)}
                                         className={cn(
-                                            "flex-1 text-xs font-medium rounded-sm transition-all",
-                                                parkingType === m 
-                                                ? "bg-background shadow-sm text-foreground" 
-                                                : "text-muted-foreground hover:text-foreground"
+                                            "flex-1 text-xs font-medium rounded-sm transition-all duration-200",
+                                            parkingType === m 
+                                                ? "bg-white dark:bg-indigo-600 text-black dark:text-white shadow-md" 
+                                                : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
                                         )}
                                     >
                                         {m}
@@ -440,17 +457,33 @@ export function CarParkForm({
                     </div>
 
                     {/* Tandem Section (Conditional) */}
-                    {isTandemChecked && (
-                        <div className="animate-in fade-in slide-in-from-top-2 duration-300 rounded-lg border border-indigo-100 bg-indigo-50/30 p-4 mt-2">
-                            <Label className={cn(labelClass, "text-indigo-900 mb-3")}>Tandem Holder Details</Label>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Input {...register("tandemName")} className={inputClass} placeholder="Secondary Name" />
-                                <Input {...register("tandemNric")} className={inputClass} placeholder="Secondary NRIC" />
-                                <Input {...register("tandemMobile")} className={inputClass} placeholder="Secondary Mobile" />
-                                <Input {...register("tandemPlate1")} className={cn(inputClass, "uppercase")} placeholder="Tandem Vehicle Plate" />
-                            </div>
-                        </div>
-                    )}
+                    <AnimatePresence>
+                        {isTandemChecked && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                                animate={{ height: "auto", opacity: 1, marginTop: 8 }}
+                                exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                                transition={{ duration: 0.3, ease: "easeInOut" }}
+                                className="overflow-hidden" // Prevents layout jitter during animation
+                            >
+                                <div className="rounded-lg border border-indigo-100 bg-indigo-50/30 dark:bg-indigo-900/10 p-4">
+                                    <Label className={cn(labelClass, "text-indigo-900 dark:text-indigo-300 mb-3")}>
+                                        Tandem Holder Details
+                                    </Label>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <Input {...register("tandemName")} className={inputClass} placeholder="Secondary Name" />
+                                        <Input {...register("tandemNric")} className={inputClass} placeholder="Secondary NRIC" />
+                                        <Input {...register("tandemMobile")} className={inputClass} placeholder="Secondary Mobile" />
+                                        <Input 
+                                            {...register("tandemPlate1")} 
+                                            className={cn(inputClass, "uppercase")} 
+                                            placeholder="Tandem Vehicle Plate" 
+                                        />
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                 </CardContent>
             </Card>

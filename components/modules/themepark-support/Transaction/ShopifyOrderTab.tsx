@@ -1,11 +1,12 @@
 // components/it-poswf/tabs/Transaction/ShopifyOrderTab.tsx
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { ShoppingBag, Search, SearchX, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { Label } from "@/components/ui/label"
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
 import { ShopifyOrder } from "@/type/themepark-support"
@@ -72,7 +73,7 @@ export default function ShopifyOrderTab() {
       performSearch(orderName);
   }
 
-  const orderTrxColumns: TableColumn<ShopifyTableData>[] = [
+  const orderTrxColumns: TableColumn<ShopifyTableData>[] = useMemo(() => [
     { header: "Order Name (Searched)", accessor: "orderName", cell: (value) => <span className="font-semibold">{value}</span> },
     { header: "Transaction ID", accessor: "trxId" },
     { header: "Invoice No", accessor: "invoiceNo" },
@@ -80,7 +81,7 @@ export default function ShopifyOrderTab() {
     { header: "Email", accessor: "email"},
     { header: "Purchased Date", accessor: "purchasedDate" },
     { header: "Financial Status", accessor: "financialStatus"}
-  ]
+  ], []);
 
   const dataForTable = searchResult ? [searchResult] : []
 
@@ -111,10 +112,16 @@ export default function ShopifyOrderTab() {
 
             </div>
             <div className="flex items-end">
-              <Button onClick={handleSearch} disabled={isSearching || !orderName.trim()} className="h-11 px-8"> {/* Adjusted h-9 to match InputGroup default */}
-                {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-                {isSearching ? "Searching..." : "Search"}
-              </Button>
+              <LoadingButton 
+                  onClick={handleSearch} 
+                  isLoading={isSearching} 
+                  loadingText="Searching..."
+                  icon={Search}
+                  disabled={!orderName.trim()}
+                  className="h-11 px-8"
+              >
+                  Search
+              </LoadingButton>
             </div>
           </div>
         </CardContent>

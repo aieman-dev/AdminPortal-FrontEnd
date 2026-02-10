@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -207,7 +208,7 @@ export default function RetailManualConsumeTab() {
 
   const totalPages = consumeSearchResult ? Math.ceil(consumeSearchResult.items.length / pager.pageSize) : 0;
 
-  const retailItemColumns: TableColumn<RetailItem>[] = [
+  const retailItemColumns: TableColumn<RetailItem>[] = useMemo(() => [
     { header: "Item Details", accessor: "itemName", className: "pl-6 w-[40%]", cell: (value, row: RetailItem) => (
         <div className="flex flex-col gap-1">
             <span className="font-medium text-foreground">{value}</span>
@@ -244,7 +245,7 @@ export default function RetailManualConsumeTab() {
         const qty = quantities[row.id] || 0;
         return <span className={qty > 0 ? "text-foreground" : "text-muted-foreground/30"}>{formatCurrency(row.unitPrice * qty)}</span>
     }}
-  ];
+  ], []);
 
   // --- REFACTORED VIEW: SELECTION TABLE (Matches ManualConsumeTab) ---
   const renderSelectionView = () => {
@@ -384,9 +385,14 @@ export default function RetailManualConsumeTab() {
                     <Button variant="outline" onClick={handleBackStep} disabled={isExecuting}>
                         <ArrowLeft className="h-4 w-4 mr-2" /> Back
                     </Button>
-                    <Button onClick={handleConsumeExecute} disabled={isExecuting} className="min-w-[140px]">
-                        {isExecuting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : "Submit"}
-                    </Button>
+                    <LoadingButton 
+                        onClick={handleConsumeExecute} 
+                        isLoading={isExecuting} 
+                        loadingText="Submitting..."
+                        className="min-w-[140px]"
+                    >
+                        Submit
+                    </LoadingButton>
                 </CardFooter>
             </Card>
         </div>

@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
 import { SearchField } from "@/components/shared-components/search-field"
-import { PaginationControls } from "@/components/ui/pagination-controls"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { usePagination } from "@/hooks/use-pagination"
 import { useAutoSearch } from "@/hooks/use-auto-search"
@@ -96,10 +95,11 @@ export default function StaffListingPage() {
          await new Promise(r => setTimeout(r, 1000));
     }
 
-    const columns: TableColumn<StaffListItem>[] = [
+    const columns: TableColumn<StaffListItem>[] = useMemo (() => [
         { header: "Staff ID", accessor: "staffId", className: "pl-6 w-[80px] font-medium text-muted-foreground", cell: (val) => <span className="font-mono text-xs">{val}</span>
         },
-        { header: "Staff Name", accessor: "staffName", className: "font-medium min-w-[180px]" },
+        { header: "Name", accessor: "staffName", className: "font-medium min-w-[180px]" },
+        { header: "Email", accessor: "email", className: "font-medium min-w-[180px]" },
         { header: "Staff No", accessor: "staffNo", cell: (val) => <span className="inline-flex items-center justify-center w-[110px] font-mono text-xs font-medium text-foreground bg-muted/40 px-2 py-1 rounded border">{val}</span> },
         { header: "Department", accessor: "department", cell: (val) => <Badge variant="outline" className={cn("flex items-center justify-center w-[60px] font-medium", getDeptColor(val as string))}>{val}</Badge> },
         {
@@ -122,13 +122,13 @@ export default function StaffListingPage() {
                 </Button>
             )
         }
-    ];
+    ], []);
 
     return (
         <div className="space-y-6">
             <PageHeader title="All Staff Directory" description="View and manage the master list of all staff members." >
                 <div className="flex gap-2">
-                    <Button className="h-9 gap-2 bg-black hover:bg-zinc-800 text-white shadow-sm" onClick={() => router.push("/portal/hr/new-staff-non-cp")}>
+                    <Button className="h-9 gap-2 bg-primary text-primary-foreground hover:opacity-90 transition-colors shadow-sm" onClick={() => router.push("/portal/hr/new-staff-non-cp")}>
                         <Users className="h-4 w-4" /> Add Staff
                     </Button>
                 </div>
@@ -157,20 +157,15 @@ export default function StaffListingPage() {
                         emptyIcon={Users}
                         emptyTitle="No Staff Found"
                         onRowClick={(row) => handleOpenSheet(row)}
+                        pagination={{
+                            currentPage: pagination.currentPage,
+                            totalPages: pagination.totalPages,
+                            totalRecords: pagination.totalRecords,
+                            pageSize: pagination.pageSize,
+                            onPageChange: (p) => fetchStaffList(p, searchTerm)
+                        }}
                     />
                 </CardContent>
-                
-                {pagination.totalPages > 0 && (
-                    <div className="p-4 border-t bg-muted/5">
-                        <PaginationControls 
-                            currentPage={pagination.currentPage}
-                            totalPages={pagination.totalPages}
-                            totalRecords={pagination.totalRecords}
-                            pageSize={pagination.pageSize}
-                            onPageChange={(p) => fetchStaffList(p, searchTerm)}
-                        />
-                    </div>
-                )}
             </Card>
 
             <StaffEditSheet 

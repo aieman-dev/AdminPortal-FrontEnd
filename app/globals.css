@@ -148,7 +148,85 @@
     75% { transform: translateX(4px); }
   }
   --animate-shake: shake 0.2s ease-in-out 0s 2;
+  
+  /* --- EXISTING ANIMATIONS (Keep these) --- */
+  @keyframes shimmer {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
+  }
+  --animate-shimmer: shimmer 2s infinite;
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+  --animate-shake: shake 0.2s ease-in-out 0s 2;
+  
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  --animate-spin-slow: spin-slow 60s linear infinite;
+
+  @keyframes cloud-drift {
+    0% { transform: translateX(-5vw); }
+    100% { transform: translateX(105vw); }
+  }
+  --animate-cloud-slow: cloud-drift 40s linear infinite;
+  --animate-cloud-fast: cloud-drift 25s linear infinite;
+
+  @keyframes float-up {
+    0% { transform: translateY(110vh) rotate(0deg); opacity: 0; }
+    20% { opacity: 0.6; }
+    80% { opacity: 0.6; }
+    100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+  }
+  --animate-particle: float-up 10s linear infinite;
+
+  /* 1. Hot Air Balloon Bobbing */
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+  }
+  --animate-float: float 6s ease-in-out infinite;
+
+  /* 2. Sun/Moon Pulse */
+  @keyframes pulse-slow {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(0.95); }
+  }
+  --animate-pulse-slow: pulse-slow 4s ease-in-out infinite;
+
+  /* 3. Roller Coaster Physics */
+  @keyframes coaster-physics {
+  0% { offset-distance: 0%; animation-timing-function: linear; opacity: 0;}
+  5% { opacity: 1; } 
+  35% { offset-distance: 30%; animation-timing-function: ease-in; /* Start accelerating down */}
+  45% { offset-distance: 55%; animation-timing-function: linear; /* Maintain high speed through loop */}
+  60% { offset-distance: 80%; animation-timing-function: ease-out; /* Slow down slightly at end */}
+
+  90% { opacity: 1; }
+  100% { offset-distance: 100%; opacity: 0;}
 }
+--animate-coaster-physics: coaster-physics 10s infinite;
+
+@keyframes flicker {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.9); }
+    25% { opacity: 0.8; }
+    75% { opacity: 0.4; }
+  }
+  --animate-flicker: flicker 3s infinite alternate;
+
+  @keyframes wave {
+    0%, 100% { transform: skewY(0deg); }
+    50% { transform: skewY(10deg); }
+  }
+  --animate-wave: wave 2s ease-in-out infinite;
+}
+
+/* --- MOVED UTILITY CLASS HERE --- */
 
 @layer base {
   * {
@@ -160,6 +238,10 @@
 }
 
 @layer utilities {
+  .perspective-\[500px\] {
+    perspective: 500px;
+  }
+
   /* Hide scrollbar for Chrome, Safari and Opera */
   .scrollbar-hide::-webkit-scrollbar {
     display: none;

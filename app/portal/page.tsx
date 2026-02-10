@@ -1,5 +1,5 @@
 import { serverFetch } from "@/lib/server-api";
-import DashboardClient from "./DashboardClient";
+import  DashboardClient  from "@/app/portal/dashboard/DashboardClient"
 import { Package } from "@/type/packages";
 import { ROLES } from "@/lib/constants";
 import { getServerUserRole } from "@/lib/server-auth";

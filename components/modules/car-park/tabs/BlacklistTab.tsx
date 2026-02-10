@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { Ban, Unlock, RefreshCw, CreditCard, Loader2 } from "lucide-react" 
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
 import { SearchField } from "@/components/shared-components/search-field"
 import { carParkService } from "@/services/car-park-services"
 import { BlockedUser, CarParkPass } from "@/type/car-park" 
 import { useAppToast } from "@/hooks/use-app-toast"
-import { PaginationControls } from "@/components/ui/pagination-controls"
 import { usePagination } from "@/hooks/use-pagination"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
@@ -146,7 +146,7 @@ export default function BlacklistTab() {
     };
 
     // --- Columns Definitions ---
-    const blacklistColumns: TableColumn<BlockedUser>[] = [
+    const blacklistColumns: TableColumn<BlockedUser>[] = useMemo(() => [
         { header: "Card ID", accessor: "qrId", className: "pl-6 font-mono font-medium" },
         { header: "Email", accessor: "email" },
         { header: "Staff No", accessor: "staffNo", cell: (val) => val || "-" },
@@ -171,7 +171,7 @@ export default function BlacklistTab() {
                 </Button>
             )
         }
-    ];
+    ], []);
 
     // Search Results Columns (Active Cards)
     const searchColumns: TableColumn<CarParkPass>[] = [
@@ -296,18 +296,14 @@ export default function BlacklistTab() {
                                 emptyIcon={Ban}
                                 emptyTitle="Blacklist Empty"
                                 emptyMessage="No blocked users found."
+                                pagination={{
+                                    currentPage: currentPage,
+                                    totalPages: totalPages,
+                                    totalRecords: totalRecords,
+                                    pageSize: pageSize,
+                                    onPageChange: fetchBlacklist
+                                }}
                             />
-                            {totalPages > 1 && (
-                                <div className="mt-4">
-                                    <PaginationControls 
-                                        currentPage={currentPage}
-                                        totalPages={totalPages}
-                                        totalRecords={totalRecords}
-                                        pageSize={pageSize}
-                                        onPageChange={fetchBlacklist}
-                                    />
-                                </div>
-                            )}
                         </>
                     ) : (
                         <DataTable 
@@ -328,8 +324,14 @@ export default function BlacklistTab() {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle className="text-red-600 flex items-center gap-2">
-                            <Ban className="h-5 w-5" />
-                            Confirm Block
+                            <LoadingButton 
+                                variant="destructive" 
+                                onClick={confirmBlock} 
+                                isLoading={isProcessingBlock}
+                                loadingText="Blocking..."
+                            >
+                                Confirm Block
+                            </LoadingButton>
                         </DialogTitle>
                         <DialogDescription>
                             You are about to block <strong>{selectedUserToBlock?.name}</strong> (Card ID: {selectedUserToBlock?.qrId}).

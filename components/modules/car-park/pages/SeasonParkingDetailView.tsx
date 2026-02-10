@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { SYSTEM_TERMINAL_ID } from "@/lib/constants"
+import { cn, isUserInside } from "@/lib/utils"
 import { carParkService } from "@/services/car-park-services"
 import { CarParkPackage,  ParkingDetailData, ParkingDetailStatus, CarParkPhase, CarParkUnit } from "@/type/car-park"
 
@@ -132,8 +133,7 @@ export function SeasonParkingDetailView({ qrId, backPath, backLabel, moduleName 
     // --- Actions ---
     const handleAssignEntry = async (target: "qr" | "account") => {
         const currentStatus = target === "qr" ? statusInfo.seasonStatus : statusInfo.iPointStatus;
-        const s = (currentStatus || "").toUpperCase();
-        const isInside = (s.includes("PARK") || s.includes("USED")) && !s.includes("UNUSED") && !s.includes("AWAY");
+        const isInside = isUserInside(currentStatus);
         setSubmittingTarget(target);
         setManualDirection(isInside ? "Out" : "In");
         setManualTerminalId(String(SYSTEM_TERMINAL_ID)); 

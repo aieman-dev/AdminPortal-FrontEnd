@@ -12,6 +12,7 @@ import {
     ReportResponse,
     StaffListItem,
     StaffDetail,
+    UpdateStaffPayload,
     PassDetailResult,
     ParkingDetailData,
     ParkingDetailStatus,
@@ -182,11 +183,11 @@ export const hrService = {
     },
 
     
-    //updateStaff: async (payload: UpdateStaffPayload) => {
-    //    const response = await apiClient.put(ENDPOINTS.STAFF_UPDATE, payload);
-    //    if (!response.success) throw new Error(response.error || "Update failed");
-    //    return response.data;
-    //},
+    updateStaff: async (payload: UpdateStaffPayload) => {
+        const response = await apiClient.put(ENDPOINTS.STAFF_UPDATE, payload);
+        if (!response.success) throw new Error(response.error || "Update failed");
+        return response.data;
+    },
 
     //deleteStaff: async (staffId: number) => {
     //    const response = await apiClient.delete(`${ENDPOINTS.STAFF_DELETE}/${staffId}`);

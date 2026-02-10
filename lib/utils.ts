@@ -35,11 +35,10 @@ export function getProxiedImageUrl(url: string | null | undefined): string {
   return `/api/proxy-image?url=${encodeURIComponent(targetUrl)}`;
 }
 
-export function extractBackendError(errorMsg: string): string {
-    if (!errorMsg) return "An unexpected error occurred.";
-    // Regex to find content between "error =" and the next comma or bracket
-    const match = errorMsg.match(/error\s*=\s*([^,}]+)/);
-    return match && match[1] ? match[1].trim() : errorMsg;
+// SeasonParkingDetailView /SuperAppVisitorDetailView logic
+export function isUserInside(status: string | undefined): boolean {
+    const s = (status || "").toUpperCase();
+    return (s.includes("PARK") || s.includes("USED")) && 
+           !s.includes("AWAY") && 
+           !s.includes("UNUSED");
 }
-
-// NOTE: Pricing logic moved to lib/formatter.ts

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -100,7 +100,7 @@ export default function VoidTransactionTab() {
     }
   }
 
-  const columns: TableColumn<VoidTransaction>[] = [
+  const columns: TableColumn<VoidTransaction>[] = useMemo(() => [
     { header: "Transaction ID", accessor: "trxID", cell: (value) => <span className="font-medium">{value}</span> },
     { header: "Invoice No", accessor: "invoiceNo" },
     { header: "Transaction Type", accessor: "trxType", cell: (value) => <StatusBadge status={value} /> },
@@ -133,7 +133,7 @@ export default function VoidTransactionTab() {
         </Button>
       ),
     },
-  ]
+  ], []);
 
   return (
     <>

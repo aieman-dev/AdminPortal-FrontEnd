@@ -1,10 +1,11 @@
 // components/themepark-support/tabs/Ticket/DeactivateTicketTab.tsx
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Ticket, Loader2, SearchX, ShoppingBag } from "lucide-react" 
 import { StatusBadge } from "@/components/shared-components/status-badge"
@@ -153,15 +154,17 @@ export default function DeactivateTicketTab() {
     const isAlreadyDeactivated = row.status.toLowerCase() !== "active";
     const isRowUpdating = updatingRowIds.has(row.id);
     return (
-        <Button 
+        <LoadingButton 
             variant="destructive" 
             size="sm" 
             onClick={(e) => { e.stopPropagation(); handleDeactivateClick(row); }} 
+            isLoading={isRowUpdating} 
+            loadingText="Wait..."
             disabled={isAlreadyDeactivated || isRowUpdating} 
             className="h-7 px-3 text-xs w-[100px]"
         >
-            {isRowUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : (isAlreadyDeactivated ? "Deactivated" : "Deactivate")}
-        </Button>
+            {isAlreadyDeactivated ? "Deactivated" : "Deactivate"}
+        </LoadingButton>
     )
   }
 
@@ -172,7 +175,7 @@ export default function DeactivateTicketTab() {
   }
 
   // --- UPDATED COLUMN DEFINITIONS WITH BADGE ---
-  const masterColumns: TableColumn<DeactivatableTicket>[] = [
+  const masterColumns: TableColumn<DeactivatableTicket>[] = useMemo(() => [
       { header: "Ticket No", accessor: "ticketNo", cell: (value, row) => {
           // Calculate the count of child consumption items for this ticket
           const childCount = consumptionHistory.filter(c => c.ticketNo === row.ticketNo).length;
@@ -194,7 +197,7 @@ export default function DeactivateTicketTab() {
       { header: "Total Qty", accessor: "quantity", className: "text-center pr-8" },
       { header: "Purchase Date", accessor: "purchaseDate", cell: (value) => formatDateTime(value as string) },
       { header: "Status", accessor: "status", cell: (value) => <StatusBadge status={value} /> },
-  ];
+  ], []);
 
 
   // --- DESKTOP SUB-COMPONENT ---

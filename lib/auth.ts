@@ -109,6 +109,11 @@ export function canViewCarParkSupport(department?: string): boolean {
   return department === ROLES.MIS_SUPER || department === ROLES.CP_Admin;
 }
 
+export function canViewHRSupport(department?: string): boolean {
+  if (!department) return false;
+  return department === ROLES.MIS_SUPER || department === ROLES.HR_Admin;
+}
+
 export function canCreatePackage(department?: string): boolean {
   if (!department) return false;
   const allowed = [ROLES.MIS_SUPER, ROLES.TP_ADMIN];

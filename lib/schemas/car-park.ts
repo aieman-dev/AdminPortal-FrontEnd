@@ -1,5 +1,21 @@
 import { z } from "zod"
 
+// Helper to clean NRIC
+const transformNRIC = (val: string) => {
+    const clean = val.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (/^\d{12}$/.test(clean)) {
+        return `${clean.slice(0, 6)}-${clean.slice(6, 8)}-${clean.slice(8, 12)}`;
+    }
+    return clean.slice(0, 15);
+};
+
+// Helper to clean Mobile
+const transformMobile = (val: string) => {
+    let digits = val.replace(/\D/g, "");
+    if (digits.startsWith("0")) digits = "6" + digits;
+    return digits.slice(0, 13);
+};
+
 export const carParkFormSchema = z.object({
     // Search/Meta (Optional/Internal)
     searchType: z.enum(["qr", "email"]).optional(),
@@ -9,13 +25,13 @@ export const carParkFormSchema = z.object({
     accId: z.number().optional(),
     userEmail: z.string().email("Invalid email address"),
     name: z.string().min(1, "Full Name is required"),
-    nric: z.string().min(1, "NRIC/Passport is required"),
-    mobileContact: z.string().min(1, "Mobile number is required"),
+    nric: z.string().min(1, "NRIC/Passport is required").transform(transformNRIC),
+    mobileContact: z.string().min(1, "Mobile number is required").transform(transformMobile),
     officeContact: z.string().optional(),
     companyName: z.string().optional(),
     
     // Vehicles
-    plate1: z.string().min(1, "Primary car plate is required"),
+    plate1: z.string().min(1, "Primary car plate is required").transform(val => val.toUpperCase().replace(/[^A-Z0-9]/g, "")),
     plate2: z.string().optional(),
     plate3: z.string().optional(),
 

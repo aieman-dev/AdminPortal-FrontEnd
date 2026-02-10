@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/portal/page-header"
 import { SearchField } from "@/components/shared-components/search-field"
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
-import { PaginationControls } from "@/components/ui/pagination-controls" 
 import { useAppToast } from "@/hooks/use-app-toast"
 import { useAutoSearch } from "@/hooks/use-auto-search" 
 import { usePagination } from "@/hooks/use-pagination"
@@ -131,19 +130,14 @@ export default function ApplicationsPage() {
                         isLoading={loading}
                         emptyTitle="No Pending Applications"
                         emptyMessage="All caught up! There are no applications to review."
+                        pagination={{
+                            currentPage: pagination.currentPage,
+                            totalPages: pagination.totalPages,
+                            totalRecords: pagination.totalRecords,
+                            pageSize: pagination.pageSize,
+                            onPageChange: (page) => fetchApplications(page, searchTerm)
+                        }}
                     />
-
-                    {pagination.totalPages > 1 && (
-                        <div className="mt-4">
-                             <PaginationControls 
-                                currentPage={pagination.currentPage}
-                                totalPages={pagination.totalPages}
-                                totalRecords={pagination.totalRecords}
-                                pageSize={pagination.pageSize}
-                                onPageChange={(page) => fetchApplications(page, searchTerm)}
-                            />
-                        </div>
-                    )}
                 </CardContent>
             </Card>
         </div>

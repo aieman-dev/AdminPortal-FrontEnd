@@ -10,6 +10,7 @@ import {
 import { SYSTEM_TERMINAL_ID } from "@/lib/constants"
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
@@ -18,7 +19,7 @@ import { useAppToast } from "@/hooks/use-app-toast"
 import { useAuth } from "@/hooks/use-auth"
 import { carParkService } from "@/services/car-park-services"
 import { carParkFormSchema, CarParkFormValues } from "@/lib/schemas/car-park"
-import { CarParkForm } from "@/components/modules/car-park/forms/CarParkForm"
+import { UniversalParkingForm } from "@/components/shared-components/UniversalParkingForm"
 import { CarParkPhase, CarParkUnit, CarParkPackage, CarParkDepartment } from "@/type/car-park"
 import {
   DropdownMenu,
@@ -327,7 +328,8 @@ export default function ApplicationReviewPage() {
             {/* FORM CONTENT (REUSING COMPONENT) */}
             <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-32 scrollbar-hide">
                 <div className="max-w-5xl mx-auto space-y-8">
-                    <CarParkForm 
+                    <UniversalParkingForm 
+                        context="CP"
                         form={form} 
                         phases={phases} 
                         units={units} 
@@ -379,23 +381,27 @@ export default function ApplicationReviewPage() {
                         </DropdownMenu>
 
                         {/* 2. Reject Button (Flex 1) */}
-                        <Button 
-                            variant="destructive" 
+                        <LoadingButton 
                             onClick={() => setIsRejectOpen(true)} 
+                            isLoading={isSubmitting} 
+                            loadingText="Rejecting.."
                             disabled={isSubmitting} 
+                            icon={XCircle}
                             className="flex-1 h-11 bg-red-600/10 text-red-600 hover:bg-red-600/20 border border-red-600/20 shadow-sm"
                         >
-                            <XCircle className="mr-2 h-4 w-4" /> Reject
-                        </Button>
+                             Reject
+                        </LoadingButton>
 
                         {/* 3. Approve Button (Flex 2 - More prominent) */}
-                        <Button 
+                        <LoadingButton 
                             onClick={handleApprove} 
-                            disabled={isSubmitting} 
+                            isLoading={isSubmitting} 
+                            loadingText="Approving..."
+                            icon={CheckCircle2}
                             className="flex-[1.5] h-11 bg-green-600 hover:bg-green-700 text-white shadow-md font-semibold"
                         >
-                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve"}
-                        </Button>
+                            Approve
+                        </LoadingButton>
                     </div>
                 </div>
             </div>

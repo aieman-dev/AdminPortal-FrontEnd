@@ -92,7 +92,7 @@ export default function ConsumeTerminalTab() {
         return consumeHistory.slice(start, start + consumePager.pageSize);
     }, [consumeHistory, consumePager.currentPage, consumePager.pageSize]);
 
-    const commonColumns: TableColumn<TerminalTransaction>[] = [
+    const commonColumns: TableColumn<TerminalTransaction>[] = useMemo(() => [
         { header: "Transaction ID", accessor: "trxID",className: "pl-6", cell: (value) => <span className="font-medium">{value}</span> },
         { header: "Invoice No", accessor: "invoiceNo" },
         { header: "Transaction Type", accessor: "trxType", cell: (value) => <StatusBadge status={value} /> },
@@ -100,7 +100,7 @@ export default function ConsumeTerminalTab() {
         { header: "Created Date", accessor: "createdDate", cell: (value) => formatDateTime(value) },
         { header: "Status", accessor: "recordStatus", cell: (value) => <StatusBadge status={value} /> },
         { header: "Created By", accessor: "createdBy" },
-    ];
+   ], []);
 
     return (
         <div className="space-y-6">

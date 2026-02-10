@@ -5,6 +5,7 @@ import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
@@ -306,13 +307,26 @@ export function StaffDrawer({ staff, isOpen, onClose, onUpdate }: StaffDrawerPro
 
                 {/* FOOTER */}
                 <div className="p-6 border-t bg-muted/5 flex flex-col gap-3 flex-shrink-0">
-                    <Button 
+                    <LoadingButton 
                         className="w-full shadow-sm" 
                         onClick={handleSaveChanges} 
-                        disabled={isSaving}
+                        isLoading={isSaving}
+                        loadingText="Saving..."
                     >
-                        {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : "Save Changes"}
-                    </Button>
+                        Save Changes
+                    </LoadingButton>
+
+                    <LoadingButton 
+                        onClick={handleResetPassword} 
+                        isLoading={isResetting}
+                        loadingText="Resetting..."
+                        icon={RefreshCw}
+                        disabled={!manualPassword.trim()}
+                        variant="destructive"
+                        className="h-9 shrink-0"
+                    >
+                        Reset
+                    </LoadingButton>
                 </div>
             </SheetContent>
         </Sheet>

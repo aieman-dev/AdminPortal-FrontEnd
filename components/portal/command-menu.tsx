@@ -12,7 +12,8 @@ import { useAuth } from "@/hooks/use-auth"
 import { 
     canViewThemeParkSupport, 
     canViewCarParkSupport,
-    canCreatePackage 
+    canCreatePackage,
+    canViewHRSupport
 } from "@/lib/auth"
 import { ROLES } from "@/lib/constants";
 import { useTheme } from "next-themes"
@@ -40,6 +41,7 @@ export function CommandMenu() {
     ITSupport: canViewThemeParkSupport(dept),
     packages: canCreatePackage(dept),
     carPark: canViewCarParkSupport(dept),
+    HR: canViewHRSupport(dept),
     MIS: dept === ROLES.MIS_SUPER
   };
 
@@ -196,6 +198,13 @@ export function CommandMenu() {
         }
         if (flags.isName) {
             actions.push({ id: `find-terminal-${rawQ}`, label: `Update Terminal: "${rawQ}"`, icon: Monitor, path: `/portal/themepark-support/attraction-master?tab=update-terminal&search=${encodeURIComponent(rawQ)}`, priority: 2 });
+        }
+    }
+
+    // HR Management  
+    if (permissions.HR) { 
+        if (flags.isEmail || flags.isName) {
+            actions.push({ id: `find-staff-${rawQ}`, label: `Find Staff Member: "${rawQ}"`, icon: Briefcase, path: "/portal/hr/staff-listing", priority: 5 });
         }
     }
 

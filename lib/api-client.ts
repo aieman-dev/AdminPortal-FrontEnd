@@ -1,7 +1,17 @@
 // lib/api-client.ts
 import { getAuthToken } from "./auth"
-import { AppError, ErrorType } from "@/lib/errors"
+import { AppError, ErrorType, STATUS_MESSAGES } from "@/lib/errors"
 import { USER_DATA_KEY } from "@/lib/constants"
+
+const resolveErrorMessage = (status: number, backendMessage?: string) => {
+    // 1. If backend provides a specific readable message, use it.
+    //    (Filter out generic tech messages like "One or more errors occurred.")
+    if (backendMessage && !backendMessage.includes("One or more errors")) {
+        return backendMessage;
+    }
+    // 2. Otherwise, return our friendly default
+    return STATUS_MESSAGES[status] || `An unexpected error occurred (Code: ${status})`;
+};
 
 // --- NEW: Helper to trigger global lock screen ---
 export const triggerGlobalError = (message: string, debugInfo?: any) => {
@@ -52,56 +62,60 @@ class ApiClient {
         }
 
         if (!response.ok) {
-          let errorMessage = data?.content?.error || data?.content?.message || data?.message || data?.error;
+          // 1. Extract raw backend message
+          let rawMessage = data?.content?.error || data?.content?.message || data?.message || data?.error;
           
-          if (!errorMessage && data?.errorMessage) {
-             errorMessage = data.errorMessage.replace("{ message = ", "").replace(" }", "");
+          if (!rawMessage && data?.errorMessage) {
+             rawMessage = data.errorMessage.replace("{ message = ", "").replace(" }", "");
           }
-          
-          const finalMessage = errorMessage || response.statusText;
 
-          // --- A. Handle 401 (Session Expired) -> Force Logout ---
+          // 2. IMPROVEMENT: Use the resolver
+          const finalMessage = resolveErrorMessage(response.status, rawMessage);
+
+          // --- Special Handlers ---
+          
+          // 401: Force Logout
           if (response.status === 401) {
             if (typeof window !== "undefined") {
                localStorage.removeItem(USER_DATA_KEY);
-               try {
-                   await fetch("/api/auth/logout", { method: "POST" });
-               } catch (e) {
-                   console.error("Logout cleanup failed", e);
-               }
+               try { await fetch("/api/auth/logout", { method: "POST" }); } catch (e) {}
+               // Add error param so login page can show a toast
                window.location.href = "/login?error=session_expired";
             }
-            return { success: false, error: "Session expired. Redirecting..." };
+            return { success: false, error: finalMessage };
           }
 
-          // --- B. Handle 403 (Forbidden / Expired) -> Trigger Global Screen ---
+          // 403: Security Lockout vs Simple Permission
           if (response.status === 403) {
              console.warn(`Access Denied [403] for ${cleanEndpoint}`);
-             
-             // Check if it's specifically an expiry issue
              if (finalMessage.toLowerCase().includes("expired")) {
                  triggerGlobalError(finalMessage, data); 
-             } 
-             throw AppError.fromStatusCode(403, finalMessage, data);
+             }
           }
 
-          if (response.status === 503 || response.status === 502) {
-             // triggerOfflineState(); 
+          // 503: Maintenance Mode
+          if (response.status === 503) {
+             // Optional: triggerOfflineState();
           }
           
+          // Throw processed error to be caught below
           throw AppError.fromStatusCode(response.status, finalMessage, data);
         }
 
         return { success: true, data: data };
 
       } catch (error) {
+        // Network Errors (Server down / Offline)
         if (error instanceof TypeError && error.message === "Failed to fetch") {
           console.warn("Backend disconnected.");
-          return { success: false, error: "Unable to connect to server." };
+          return { success: false, error: "Unable to connect to the server. Please check your internet." };
         }
+        
+        // Pass through AppErrors
         if (error instanceof AppError) {
             return { success: false, error: error.message, data: error.data }; 
         }
+        
         return { success: false, error: error instanceof Error ? error.message : "An unexpected error occurred" };
       }
   }
@@ -147,4 +161,10 @@ export function getContent<T>(data: any): T[] {
  */
 export function getDataObject<T>(data: any): T {
     return data?.content || data?.data || data || ({} as T);
+}
+
+// Add a unified error getter
+export function getErrorMessage(error: any): string {
+    if (typeof error === 'string') return error;
+    return error?.message || error?.error || "An unexpected error occurred.";
 }

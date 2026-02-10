@@ -9,6 +9,9 @@ import { ShoppingCart, List, Trash2, PlusCircle, AlertTriangle,  } from "lucide-
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose 
 } from "@/components/ui/dialog";
+import {
+  HoverCard, HoverCardContent, HoverCardTrigger
+} from "@/components/ui/hover-card"
 import { packageService } from "@/services/package-services"; 
 import { LoaderState } from "@/components/ui/loader-state";
 import { Input } from "@/components/ui/input"; 
@@ -29,8 +32,6 @@ const PackageFormStep2: React.FC<Props> = ({ form, onNext, onBack }) => {
   const [query, setQuery] = useState("");
   const [availableItems, setAvailableItems] = useState<PackageItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hoveredImage, setHoveredImage] = useState<string | null>(null);
-  const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const [isClearOpen, setIsClearOpen] = useState(false);
   
   // Mobile Tab Logic
@@ -68,20 +69,6 @@ const PackageFormStep2: React.FC<Props> = ({ form, onNext, onBack }) => {
     availableItems.filter((i) => i.itemName.toLowerCase().includes(query.toLowerCase())), 
   [query, availableItems]);
 
-  const handleMouseEnter = (imgUrl: string) => {
-    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-    
-    // Set a timer to show the image after 3 seconds (3000ms)
-    hoverTimeoutRef.current = setTimeout(() => {
-      setHoveredImage(imgUrl);
-    }, 2000); 
-  };
-
-  const handleMouseLeave = () => {
-    // If mouse leaves before 3s, clear timer so it never opens
-    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-    setHoveredImage(null);
-  };
 
   const toggleSelect = (item: PackageItem) => {
     const exists = packageItems.find((s) => s.attractionId === item.attractionId);
@@ -214,48 +201,30 @@ const PackageFormStep2: React.FC<Props> = ({ form, onNext, onBack }) => {
                   <div key={item.attractionId} onClick={() => toggleSelect(item)} className={`flex items-center gap-4 p-3 border rounded-lg cursor-pointer transition-colors ${selected ? "bg-indigo-50 border-indigo-600" : "hover:bg-muted/50"}`}>
                     
                     {/* ITEM IMAGE */}
-                    <div 
-                        className="relative h-12 w-12 shrink-0 rounded-md overflow-hidden bg-muted border group"
-                        onMouseEnter={() => handleMouseEnter(item.image || "")}
-                        onMouseLeave={handleMouseLeave}
-                      >
-                        <img 
-                            src={item.image} 
-                            alt={item.itemName}
-                            className="h-full w-full object-cover"
-                            onError={(e) => (e.currentTarget.src = "/packages/DefaultPackageImage.png")}
-                        />
-                        {/* POPUP ZOOM IMAGE (Only visible if this specific image is the hovered one) */}
-                        {hoveredImage === item.image && (
-                            <div className="fixed z-[9999] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-                                <div className="animate-in fade-in zoom-in-95 duration-300 ease-out">
-                                    
-                                    {/* Main Image Card */}
-                                    <div className="relative w-72 h-72 md:w-96 md:h-96 rounded-3xl overflow-hidden shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] bg-white border-[6px] border-white">
-                                        
-                                        {/* 1. Blurred Background Layer */}
-                                        <div className="absolute inset-0 z-0">
-                                            <img 
-                                                src={item.image} 
-                                                className="w-full h-full object-cover opacity-30 blur-2xl scale-125" 
-                                                alt=""
-                                            />
-                                        </div>
-
-                                        {/* 2. Sharp Foreground Image */}
-                                        <div className="relative z-10 w-full h-full flex items-center justify-center p-2">
-                                            <img 
-                                                src={item.image} 
-                                                alt="Zoom" 
-                                                className="max-w-full max-h-full object-contain rounded-lg shadow-sm" 
-                                            />
-                                        </div>
-                                    </div>
-
-                                </div>
+                    <HoverCard openDelay={500} closeDelay={100}>
+                        <HoverCardTrigger asChild>
+                            <div className="relative h-12 w-12 shrink-0 rounded-md overflow-hidden bg-muted border group cursor-zoom-in">
+                                <img 
+                                    src={item.image} 
+                                    alt={item.itemName}
+                                    className="h-full w-full object-cover"
+                                    onError={(e) => (e.currentTarget.src = "/packages/DefaultPackageImage.png")}
+                                />
                             </div>
-                        )}
-                    </div>
+                        </HoverCardTrigger>
+                        
+                        <HoverCardContent 
+                            side="right" 
+                            align="start" 
+                            className="w-72 h-72 p-0 overflow-hidden border-4 border-white shadow-2xl rounded-xl z-50 ml-4"
+                        >
+                            <img 
+                                src={item.image} 
+                                alt="Zoom" 
+                                className="w-full h-full object-cover" 
+                            />
+                        </HoverCardContent>
+                    </HoverCard>
 
                     <div className="flex-1 font-semibold text-sm leading-tight">{item.itemName}</div>
                     

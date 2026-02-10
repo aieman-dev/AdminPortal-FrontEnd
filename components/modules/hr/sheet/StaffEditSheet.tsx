@@ -8,6 +8,7 @@ import {
     Sheet, SheetContent, SheetHeader, SheetTitle,SheetFooter, SheetDescription 
 } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -15,7 +16,7 @@ import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { useAppToast } from "@/hooks/use-app-toast"
-import { Loader2, Trash2, Save, Mail, Briefcase, User, Clock } from "lucide-react"
+import {  Trash2, Save, Mail, Briefcase, User, Clock } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -127,12 +128,12 @@ export function StaffEditSheet({ isOpen, onClose, staff, onSave, onDelete }: Sta
                     <div className="p-6 border-b flex-shrink-0 bg-muted/5">
                         <div className="flex items-start gap-4">
                             <Avatar className="h-16 w-16 border shadow-sm">
-                                <AvatarFallback className="text-xl bg-primary/10 text-primary">
-                                    {staff.staffName?.charAt(0) || "U"}
+                                <AvatarFallback className="text-xl font-bold bg-primary/10 text-primary">
+                                    {staff.staffName?.charAt(0).toUpperCase() || "U"}
                                 </AvatarFallback>
                             </Avatar>
                             <div className="space-y-1.5 flex-1 min-w-0">
-                                <SheetTitle className="text-xl leading-none truncate" title={staff.staffName}>
+                                <SheetTitle className="text-2xl leading-none truncate" title={staff.staffName}>
                                     {staff.staffName}
                                 </SheetTitle>
                                 <SheetDescription className="text-xs">
@@ -280,14 +281,15 @@ export function StaffEditSheet({ isOpen, onClose, staff, onSave, onDelete }: Sta
 
                     {/* --- FOOTER ACTIONS --- */}
                     <SheetFooter className="p-6 border-t bg-background flex-col gap-3 flex-shrink-0">
-                        <Button 
+                        <LoadingButton 
                             onClick={form.handleSubmit(onSubmit)} 
-                            disabled={isSaving} 
-                            className="w-full bg-black hover:bg-zinc-800 text-white h-11"
+                            isLoading={isSaving} 
+                            loadingText="Saving Changes..."
+                            icon={Save}
+                            className="w-full h-11 bg-primary text-primary-foreground hover:opacity-90 transition-colors"
                         >
-                            {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                             Save Changes
-                        </Button>
+                        </LoadingButton>
                     </SheetFooter>
                 </SheetContent>
             </Sheet>

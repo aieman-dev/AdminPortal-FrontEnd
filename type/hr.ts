@@ -90,6 +90,7 @@ export interface ActivePassesPayload {
     staffId: number;
     accountId: number;
     staffName: string;
+    email: string;
     staffNo: string;
     department: string;
     status: string;
@@ -107,6 +108,13 @@ export interface StaffDetail {
     createdDate: string;
     modifiedBy: string;
     modifiedDate: string;
+}
+
+export interface UpdateStaffPayload{
+    staffId: number;
+    name: string;
+    staffNo: string;
+    departmentCode: string;
 }
 
  //Qr Listing
@@ -300,6 +308,7 @@ export interface StaffDetail {
      reportName: string;
      pageNumber: number;
      pageSize: number;
+     SearchQuery?: string | number;
      parameters?: {
          AccID?: string | number | null;
          LocationID?: number | null;

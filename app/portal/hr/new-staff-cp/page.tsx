@@ -9,6 +9,7 @@ import { Mail, QrCode, RefreshCw, Loader2, ArrowRight, CheckCircle2, User, Car }
 import { useAuth } from "@/hooks/use-auth"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { useAppToast } from "@/hooks/use-app-toast"
@@ -19,9 +20,8 @@ import { cn } from "@/lib/utils"
 import { carParkFormSchema, CarParkFormValues } from "@/lib/schemas/car-park"
 import { NavigationGuard } from "@/components/portal/navigation-guard" 
 import { useNavigation } from "@/context/navigation-context"
+import { UniversalParkingForm } from "@/components/shared-components/UniversalParkingForm"
 
-// CHANGE: Import the HR specific component
-import { CarParkForm } from "@/components/modules/hr/forms/CarParkForm"
 
 export default function HRRegistrationPage() {
     const router = useRouter()
@@ -215,7 +215,8 @@ export default function HRRegistrationPage() {
             {/* FORM AREA */}
             <div className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-hide">
                 <div className="max-w-5xl mx-auto space-y-8 pb-24 md:pb-10">
-                    <CarParkForm 
+                    <UniversalParkingForm 
+                        context="HR" 
                         form={form} 
                         phases={phases} 
                         units={units} 
@@ -225,17 +226,24 @@ export default function HRRegistrationPage() {
                         loadingPhases={loadingPhases}
                         onPhaseChange={handlePhaseChange}
                         onPlateConflict={setHasPlateConflict}
-                        readOnlyUser={false} // Staff fields are editable
+                        readOnlyUser={false} 
                     />
 
                     <div className="hidden md:flex justify-end gap-4 pt-4 border-t">
                         <Button type="button" variant="outline" onClick={handleClear} className="h-11 px-8">
                             <RefreshCw className="mr-2 h-4 w-4" /> Clear Form
                         </Button>
-                        <Button type="submit" onClick={handleSubmit(onPreSubmit)} disabled={isSubmitting || hasPlateConflict} className="h-11 px-10 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg">
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-2 h-4 w-4" />} 
-                            Proceed 
-                        </Button>
+                        <LoadingButton 
+                            type="submit" 
+                            onClick={handleSubmit(onPreSubmit)} 
+                            isLoading={isSubmitting} 
+                            loadingText="Processing..."
+                            icon={ArrowRight}
+                            disabled={hasPlateConflict}
+                            className="h-11 px-10 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
+                        >
+                            Proceed
+                        </LoadingButton>
                     </div>
                 </div>
             </div>
@@ -243,8 +251,17 @@ export default function HRRegistrationPage() {
             {/* MOBILE ACTION BAR */}
             <div className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur px-4 py-3 z-30 shadow-up">
                 <div className="flex gap-3">
-                    <Button type="button" variant="outline" onClick={handleClear} className="flex-1 h-11"><RefreshCw className="mr-2 h-4 w-4" /> Clear</Button>
-                    <Button type="submit" onClick={handleSubmit(onPreSubmit)} disabled={isSubmitting || hasPlateConflict} className="flex-[2] h-11 bg-black text-white">Proceed</Button>
+                    <Button type="button" variant="outline" onClick={handleClear} className="flex-1 h-11">
+                        <RefreshCw className="mr-2 h-4 w-4" /> Clear
+                    </Button>
+                    <Button 
+                        type="submit" 
+                        onClick={handleSubmit(onPreSubmit)} 
+                        disabled={isSubmitting || hasPlateConflict} 
+                        className="flex-[2] h-11 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
+                    >
+                        Proceed
+                    </Button>
                 </div>
             </div>
 
@@ -267,7 +284,7 @@ export default function HRRegistrationPage() {
                     )}
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsConfirmOpen(false)}>Back</Button>
-                        <Button onClick={handleFinalSubmit} disabled={isSubmitting} className="bg-black text-white">Confirm</Button>
+                        <Button onClick={handleFinalSubmit} disabled={isSubmitting} className="bg-primary text-primary-foreground hover:bg-primary/90">Confirm</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

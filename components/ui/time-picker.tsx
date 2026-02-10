@@ -9,16 +9,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { cn } from "@/lib/utils"
 
 interface TimePickerProps {
   date: Date | undefined
   setDate: (date: Date | undefined) => void
   disabled?: boolean
+  className?: string
 }
 
-export function TimePicker({ date, setDate, disabled }: TimePickerProps) {
+export function TimePicker({ date, setDate, disabled, className }: TimePickerProps) {
   const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"))
-  const minutes = Array.from({ length: 12 }, (_, i) => (i * 5).toString().padStart(2, "0")) // 5-minute increments
+  const minutes = Array.from({ length: 12 }, (_, i) => (i * 5).toString().padStart(2, "0"))
 
   const selectedHour = date ? date.getHours().toString().padStart(2, "0") : "00"
   const selectedMinute = date ? Math.floor(date.getMinutes() / 5) * 5 : 0
@@ -33,7 +35,7 @@ export function TimePicker({ date, setDate, disabled }: TimePickerProps) {
       newDate.setMinutes(parseInt(value))
     }
     
-    // Reset seconds/ms for cleanliness
+    // Reset seconds/ms
     newDate.setSeconds(0)
     newDate.setMilliseconds(0)
     
@@ -41,47 +43,52 @@ export function TimePicker({ date, setDate, disabled }: TimePickerProps) {
   }
 
   return (
-    <div className="flex items-center gap-1.5">
-      <div className="relative">
-        <Select
-          value={selectedHour}
-          onValueChange={(val) => handleTimeChange("hour", val)}
-          disabled={disabled}
+    <div 
+      className={cn(
+        "flex items-center rounded-md border border-input bg-background px-3 ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+        "h-11", // Standardized Height
+        className
+      )}
+    >
+      <Clock className="mr-2 h-4 w-4 text-muted-foreground opacity-50" />
+      
+      {/* Hours Select - Ghost Style */}
+      <Select
+        value={selectedHour}
+        onValueChange={(val) => handleTimeChange("hour", val)}
+        disabled={disabled}
+      >
+        <SelectTrigger 
+            className="w-[50px] border-0 p-0 h-auto focus:ring-0 shadow-none text-foreground font-medium hover:bg-transparent" 
         >
-          {/* UPDATED WIDTH: Increased to w-[72px] for better spacing */}
-          <SelectTrigger className="w-[72px] h-9">
-            <SelectValue placeholder="HH" />
-          </SelectTrigger>
-          <SelectContent className="h-[200px]">
-            {hours.map((h) => (
-              <SelectItem key={h} value={h}>
-                {h}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <span className="text-muted-foreground font-medium">:</span>
-      <div className="relative">
-        <Select
-          value={selectedMinuteStr}
-          onValueChange={(val) => handleTimeChange("minute", val)}
-          disabled={disabled}
+          <SelectValue placeholder="HH" />
+        </SelectTrigger>
+        <SelectContent className="h-[200px]">
+          {hours.map((h) => (
+            <SelectItem key={h} value={h}>{h}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <span className="text-muted-foreground font-medium mx-1">:</span>
+
+      {/* Minutes Select - Ghost Style */}
+      <Select
+        value={selectedMinuteStr}
+        onValueChange={(val) => handleTimeChange("minute", val)}
+        disabled={disabled}
+      >
+        <SelectTrigger 
+            className="w-[50px] border-0 p-0 h-auto focus:ring-0 shadow-none text-foreground font-medium hover:bg-transparent"
         >
-          {/* UPDATED WIDTH: Increased to w-[72px] */}
-          <SelectTrigger className="w-[72px] h-9">
-            <SelectValue placeholder="MM" />
-          </SelectTrigger>
-          <SelectContent className="h-[200px]">
-            {minutes.map((m) => (
-              <SelectItem key={m} value={m}>
-                {m}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <Clock className="h-4 w-4 text-muted-foreground ml-1.5" />
+          <SelectValue placeholder="MM" />
+        </SelectTrigger>
+        <SelectContent className="h-[200px]">
+          {minutes.map((m) => (
+            <SelectItem key={m} value={m}>{m}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   )
 }

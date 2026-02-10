@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge" 
 import { Separator } from "@/components/ui/separator"
@@ -239,7 +240,7 @@ export default function ManualConsumeTab() {
   const totalPages = consumeSearchResult ? Math.ceil(consumeSearchResult.tickets.length / ITEMS_PER_PAGE) : 0;
 
   // --- DATA TABLE COLUMNS ---
-  const ticketColumns: TableColumn<AvailableTicket>[] = [
+  const ticketColumns: TableColumn<AvailableTicket>[] = useMemo(() => [
     { 
         header: "Item Details", 
         accessor: "id", 
@@ -318,7 +319,7 @@ export default function ManualConsumeTab() {
             )
         }
     }
-  ];
+  ], []);
 
   // --- VIEW: SELECTION TABLE ---
   const renderSelectionView = () => {
@@ -452,9 +453,14 @@ export default function ManualConsumeTab() {
                     <Button variant="outline" onClick={handleBackStep} disabled={isExecuting}>
                         <ArrowLeft className="h-4 w-4 mr-2" /> Back
                     </Button>
-                    <Button onClick={handleConsumeExecute} disabled={isExecuting} className="min-w-[140px]">
-                        {isExecuting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : "Confirm Consume"}
-                    </Button>
+                    <LoadingButton 
+                        onClick={handleConsumeExecute} 
+                        isLoading={isExecuting} 
+                        loadingText="Submitting..."
+                        className="min-w-[140px]"
+                    >
+                        Confirm Consume
+                    </LoadingButton>
                 </CardFooter>
             </Card>
         </div>

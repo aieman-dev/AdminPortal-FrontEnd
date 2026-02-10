@@ -10,7 +10,7 @@ import { LogOut, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 import { useState, useEffect } from "react" 
-import { canViewThemeParkSupport, canViewPackageManagement, canViewCarParkSupport } from "@/lib/auth"
+import { canViewThemeParkSupport, canViewPackageManagement, canViewCarParkSupport, canViewHRSupport } from "@/lib/auth"
 import { SIDEBAR_NAVIGATION } from "@/config/navigation"
 import { useNavigation } from "@/context/navigation-context"
 
@@ -85,6 +85,9 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
 
     if (item.name === "Car Park Management") {
         return canViewCarParkSupport(department);
+    }
+    if (item.name === "HR Management") {
+        return canViewHRSupport(department);
     }
 
     if (item.name === "Staff Management") {

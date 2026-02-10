@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Calendar, SearchX, Clock, Save } from "lucide-react"
@@ -127,7 +127,7 @@ export default function ExtendExpiryTab() {
   }
 
   // Define columns
-  const columns: TableColumn<ExtendTicketData>[] = [
+  const columns: TableColumn<ExtendTicketData>[] = useMemo(() => [
       { header: "Ticket No", accessor: "ticketNo", className: "font-medium pl-6" },
       { header: "Ticket Name", accessor: "ticketName" },
       { header: "Effective Date", accessor: "effectiveDate", cell: (val) => (val as string).split('T')[0], className: isMobile ? "hidden" : "" },
@@ -171,7 +171,7 @@ export default function ExtendExpiryTab() {
               )
           }
       }
-  ];
+  ], []);
 
   return (
     <>

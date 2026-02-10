@@ -42,6 +42,15 @@ export async function POST(request: NextRequest) {
       expires: new Date(refreshTokenExpiry),
     });
 
+    const newExpiryTimestamp = Date.now() + (24 * 60 * 60 * 1000);
+
+    cookieStore.set("session_expiry", String(newExpiryTimestamp), {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+    });
+
     return NextResponse.json({ success: true });
 
   } catch (error) {

@@ -21,6 +21,7 @@ import { StatusBadge } from "@/components/shared-components/status-badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/ui/loading-button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -270,9 +271,15 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
                             {/* Mobile Action Bar - FIX 4: Sticky at bottom of THIS container */}
                             {isActionable && (
                                 <div className="mt-auto space-y-2 pt-2 sticky bottom-0 bg-card z-10 pb-1">
-                                    <Button className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 shadow-sm text-white font-semibold" onClick={handleAttemptApproval}>
-                                        <CheckCircle2 className="w-4 h-4 mr-2" /> Approve
-                                    </Button>
+                                    <LoadingButton 
+                                        className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 shadow-sm text-white font-semibold" 
+                                        onClick={handleAttemptApproval}
+                                        isLoading={loading}
+                                        loadingText="Approving..."
+                                        icon={CheckCircle2}
+                                    >
+                                        Approve
+                                    </LoadingButton>
                                     
                                     <div className="bg-red-50 dark:bg-red-900/10 p-2.5 rounded-lg space-y-2 border border-red-100 dark:border-red-900/30">
                                         <span className="text-[10px] font-bold text-red-700 flex items-center gap-1 uppercase tracking-wide">

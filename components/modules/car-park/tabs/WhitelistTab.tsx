@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ShieldCheck, Trash2, Plus } from "lucide-react"
@@ -32,7 +32,7 @@ export default function WhitelistTab() {
 
     useEffect(() => { fetchData() }, [])
 
-    const columns: TableColumn<WhitelistedUser>[] = [
+    const columns: TableColumn<WhitelistedUser>[] = useMemo (() =>[
         { header: "QrID", accessor: "qrId", className: "pl-6 font-mono" },
         { header: "Email", accessor: "email" },
         { header: "Staff No", accessor: "staffNo" },
@@ -46,7 +46,7 @@ export default function WhitelistTab() {
                 </Button>
             )
         }
-    ];
+    ], []);
      */
 
     return (

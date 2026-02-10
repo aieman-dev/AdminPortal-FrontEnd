@@ -1,6 +1,4 @@
 "use client"
-//import { useState } from "react"
-//import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/portal/page-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Ban, ShieldCheck } from "lucide-react"
@@ -15,26 +13,13 @@ const WhitelistTab = dynamic(() => import("@/components/modules/car-park/tabs/Wh
     loading: () => <LoaderState message="Loading whitelist..." className="h-[300px]" />
 })
 
-//const [shouldCrash, setShouldCrash] = useState(false);
-
-// This will trigger the Error Boundary because the error happens during the RENDER
-//if (shouldCrash) {
-//  throw new Error("Module Level Crash Test");
-//}
 
 export default function AccessControlPage() {
     const tabTransitionClass = "mt-0 space-y-6 outline-none animate-in fade-in slide-in-from-bottom-5 duration-500 fill-mode-forward";
 
     return (
         <div className="space-y-6">
-        {/* uncomment for error
-        <Button 
-        variant="destructive" 
-        onClick={() => setShouldCrash(true)}
-        >
-        Test Render Crash
-        </Button>
-    */}
+    
             <PageHeader 
                 title="Access Control" 
                 description="Manage blocked users (Blacklist) and exempted users (Whitelist)." 
@@ -59,8 +44,6 @@ export default function AccessControlPage() {
                         </TabsTrigger>
                     </TabsList>
                 </div>
-
-                
 
                 <TabsContent value="blacklist" className={tabTransitionClass}>
                     <BlacklistTab />

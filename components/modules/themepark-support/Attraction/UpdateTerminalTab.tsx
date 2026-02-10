@@ -1,12 +1,13 @@
 // components/themepark-support/tabs/Attraction/UpdateTerminalTab.tsx
 "use client"
 
-import { useState,useEffect } from "react"
+import { useState,useEffect, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Pencil, Clock, SearchX } from "lucide-react"
@@ -111,7 +112,7 @@ export default function UpdateTerminalTab() {
   }
 
   // --- COLUMN DEFINITIONS ---
-  const terminalColumns: TableColumn<Terminal>[] = [
+  const terminalColumns: TableColumn<Terminal>[] = useMemo (() => [
       { header: "Terminal Name", accessor: "terminalName", className: "font-medium pl-6" },
       { header: "UUID", accessor: "uuid", cell: (val) => <span className="font-mono text-sm text-gray-600">{val}</span> },
       { header: "Type", accessor: "terminalType" },
@@ -138,7 +139,7 @@ export default function UpdateTerminalTab() {
             </Button>
           )
       }
-  ];
+  ], []);
     
   return (
     <>
@@ -214,7 +215,13 @@ export default function UpdateTerminalTab() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isUpdating}>Cancel</Button>
-            <Button onClick={handleTerminalUpdate} disabled={isUpdating}>{isUpdating ? "Updating..." : "Update Terminal"}</Button>
+            <LoadingButton 
+                onClick={handleTerminalUpdate} 
+                isLoading={isUpdating}
+                loadingText="Updating..."
+            >
+                Update Terminal
+            </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

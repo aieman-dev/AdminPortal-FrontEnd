@@ -1,112 +1,163 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Clock, AlertTriangle, LogOut, RefreshCw } from "lucide-react"
+import { LogOut, Power, Timer } from "lucide-react"
 import { 
   Dialog, DialogContent, DialogHeader, 
-  DialogTitle, DialogDescription, DialogFooter 
+  DialogTitle, DialogFooter 
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 import { useAppToast } from "@/hooks/use-app-toast"
+import { cn } from "@/lib/utils"
 
-// Helper to get cookie value by name
-const getCookie = (name: string) => {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop()?.split(';').shift();
-}
+// --- CONFIGURATION ---
+const TIMEOUT_MS = 15 * 60 * 1000; // 15 Minutes Total
+const WARNING_MS = 2 * 60 * 1000;  // 2 Minutes Warning
+// ---------------------
 
 export function SessionTimer() {
   const router = useRouter()
   const toast = useAppToast()
   const { logout } = useAuth()
   
-  const [isOpen, setIsOpen] = useState(false)
-  const [timeLeft, setTimeLeft] = useState<number | null>(null)
+  const [isWarning, setIsWarning] = useState(false)
+  const [timeLeft, setTimeLeft] = useState<number>(0)
+  const [isExtending, setIsExtending] = useState(false)
+  
+  const lastActivity = useRef<number>(Date.now())
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
 
-  const checkSession = useCallback(() => {
-    const token = getCookie("accessToken")
-    if (!token) return
+  // --- HELPER: Format Seconds to MM m : SS s ---
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m} m : ${s} s`;
+  };
 
-    try {
-      // Decode JWT payload (standard Base64)
-      const payload = JSON.parse(atob(token.split('.')[1]))
-      const expiry = payload.exp * 1000 // Convert to milliseconds
-      const now = Date.now()
-      const diff = expiry - now
-
-      // Trigger warning if less than 2 minutes (120000ms) left
-      if (diff > 0 && diff < 120000) {
-        setTimeLeft(Math.floor(diff / 1000))
-        setIsOpen(true)
-      } else if (diff <= 0) {
-        // Immediate logout if already expired
-        handleExpired()
-      } else {
-        setIsOpen(false)
-      }
-    } catch (e) {
-      console.error("Session check error", e)
-    }
-  }, [])
-
-  const handleExpired = useCallback(() => {
-    setIsOpen(false)
+  // --- LOGIC (Same as before) ---
+  const handleTimeout = useCallback(() => {
+    setIsWarning(false)
     logout()
     router.push("/login?error=session_expired")
   }, [logout, router])
 
-  const handleExtend = async () => {
-    try {
-      const res = await fetch("/api/auth/refresh", { method: "POST" })
-      if (res.ok) {
-        setIsOpen(false)
-        toast.success("Session Extended", "Your workspace is now active.")
+  const updateActivity = useCallback(() => {
+    if (!isWarning) {
+      lastActivity.current = Date.now()
+    }
+  }, [isWarning])
+
+  useEffect(() => {
+    timerRef.current = setInterval(() => {
+      const now = Date.now()
+      const timeSinceLastActivity = now - lastActivity.current
+      const timeRemaining = TIMEOUT_MS - timeSinceLastActivity
+
+      console.log(`[Timer Debug] Idle for: ${(timeSinceLastActivity/1000).toFixed(0)}s | Time Left: ${(timeRemaining/1000).toFixed(0)}s | Warning at: ${(WARNING_MS/1000)}s`);
+
+      if (timeRemaining <= 0) {
+        handleTimeout()
+      } else if (timeRemaining <= WARNING_MS) {
+        if (!isWarning) setIsWarning(true)
+        setTimeLeft(Math.floor(timeRemaining / 1000))
       } else {
-        handleExpired()
+        if (isWarning) setIsWarning(false)
       }
+    }, 1000)
+
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [isWarning, handleTimeout])
+
+  useEffect(() => {
+    const events = ["mousedown", "mousemove", "keydown", "scroll", "touchstart"]
+    events.forEach(event => window.addEventListener(event, updateActivity))
+    return () => events.forEach(event => window.removeEventListener(event, updateActivity))
+  }, [updateActivity])
+
+  const handleExtend = async () => {
+    setIsExtending(true)
+    try {
+      await fetch("/api/auth/refresh", { method: "POST" })
+      lastActivity.current = Date.now()
+      setIsWarning(false)
+      toast.success("Welcome Back", "Session resumed successfully.")
     } catch (err) {
-      handleExpired()
+      lastActivity.current = Date.now()
+      setIsWarning(false)
+    } finally {
+      setIsExtending(false)
     }
   }
 
-  useEffect(() => {
-    const timer = setInterval(checkSession, 10000) // Check every 10 seconds
-    return () => clearInterval(timer)
-  }, [checkSession])
+  if (!isWarning) return null
 
-  if (!isOpen) return null
+  // Calculate percentage for progress bar (0 to 100)
+  const progressPercent = (timeLeft / (WARNING_MS / 1000)) * 100;
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[400px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-orange-600">
-            <Clock className="h-5 w-5" /> Session Expiring
-          </DialogTitle>
-          <DialogDescription>
-            Your administrative session will end in <span className="font-bold text-foreground">{timeLeft} seconds</span>. 
-            Would you like to extend your session?
-          </DialogDescription>
-        </DialogHeader>
+    <Dialog open={isWarning} onOpenChange={(open) => !open && handleTimeout()}> 
+      <DialogContent className="sm:max-w-[380px] p-0 overflow-hidden border-0 shadow-2xl" onPointerDownOutside={(e) => e.preventDefault()}>
         
-        <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg flex gap-3 border border-orange-100 dark:border-orange-800">
-            <AlertTriangle className="h-5 w-5 text-orange-600 shrink-0" />
-            <p className="text-xs text-orange-800 dark:text-orange-200">
-                Unsaved changes in open forms may be lost if the session expires.
-            </p>
+        {/* HEADER BACKGROUND */}
+        <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-6 text-white text-center relative overflow-hidden">
+            {/* Background Decoration */}
+            <div className="absolute top-0 left-0 w-full h-full bg-[url('/grid-pattern.svg')] opacity-10" />
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+            
+            <div className="relative z-10 flex flex-col items-center">
+                <div className="h-12 w-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mb-3 ring-1 ring-white/30">
+                    <Timer className="h-6 w-6 text-white" />
+                </div>
+                <DialogTitle className="text-xl font-bold tracking-tight text-white">Session Timeout</DialogTitle>
+                <p className="text-indigo-100 text-xs mt-1">Due to inactivity, your session is ending.</p>
+            </div>
         </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button variant="ghost" onClick={handleExpired} className="gap-2">
-            <LogOut className="h-4 w-4" /> Sign Out
-          </Button>
-          <Button onClick={handleExtend} className="gap-2 bg-indigo-600 hover:bg-indigo-700">
-            <RefreshCw className="h-4 w-4" /> Keep Working
-          </Button>
-        </DialogFooter>
+        {/* TIMER BODY */}
+        <div className="p-6 flex flex-col items-center bg-background">
+            <div className="text-center mb-6 w-full">
+                <p className="text-sm text-muted-foreground mb-2 uppercase tracking-wider font-bold text-[10px]">Auto Logout In</p>
+                
+                {/* BIG TIMER */}
+                <div className="text-4xl font-mono font-bold text-foreground tabular-nums tracking-tight">
+                    {formatTime(timeLeft)}
+                </div>
+
+                {/* PROGRESS BAR */}
+                <div className="w-full h-1.5 bg-muted rounded-full mt-4 overflow-hidden">
+                    <div 
+                        className={cn(
+                            "h-full transition-all duration-1000 ease-linear",
+                            timeLeft < 30 ? "bg-red-500" : "bg-indigo-500"
+                        )}
+                        style={{ width: `${progressPercent}%` }}
+                    />
+                </div>
+            </div>
+
+            <DialogFooter className="flex-row gap-3 w-full sm:justify-between">
+                <Button 
+                    variant="outline" 
+                    onClick={handleTimeout} 
+                    className="flex-1 h-11 border-dashed border-gray-300 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-colors"
+                >
+                    <LogOut className="h-4 w-4 mr-2" /> Sign Out
+                </Button>
+                <Button 
+                    onClick={handleExtend} 
+                    disabled={isExtending} 
+                    className="flex-[2] h-11 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200"
+                >
+                    {isExtending ? "Resuming..." : (
+                        <>
+                            <Power className="h-4 w-4 mr-2" /> Keep Working
+                        </>
+                    )}
+                </Button>
+            </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   )

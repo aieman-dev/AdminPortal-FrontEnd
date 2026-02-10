@@ -111,7 +111,7 @@ export default function GlobalError({
               </Button>
               <Button 
                 onClick={() => reset()}
-                className="w-full gap-2 h-11 bg-red-600 hover:bg-red-700 text-white"
+                className="w-full gap-2 h-11 bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 Try Again
               </Button>

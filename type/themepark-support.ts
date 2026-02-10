@@ -43,6 +43,15 @@ export interface TransactionHistory {
   createdDate: string
 }
 
+export interface GroupedInvoice {
+    id: string; 
+    invoiceNo: string;
+    totalAmount: number;
+    trxType: string; 
+    createdDate: string;
+    items: TransactionHistory[];
+}
+
 export interface TicketHistory {
   id?: string | number
   transactionId: string

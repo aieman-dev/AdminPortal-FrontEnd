@@ -41,3 +41,16 @@ export class AppError extends Error {
     return new AppError(message || "Unknown error", ErrorType.UNKNOWN, status, null, data);
   }
 }
+
+export const STATUS_MESSAGES: Record<number, string> = {
+    400: "The request data is invalid. Please check your input.",
+    401: "Your session has expired. Please log in again.",
+    403: "You do not have permission to perform this action.",
+    404: "The requested resource could not be found.",
+    408: "The server took too long to respond. Please try again.",
+    429: "Too many requests. Please wait a moment before trying again.",
+    500: "Internal server error. Our team has been notified.",
+    502: "System is currently unavailable. Please try again later.",
+    503: "Service is under maintenance. Please check back soon.",
+    504: "Gateway timeout. The server is not responding."
+};

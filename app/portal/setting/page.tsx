@@ -18,7 +18,7 @@ import {
 } from "lucide-react"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { useAuth } from "@/hooks/use-auth"
-import { canViewPackageManagement, canViewThemeParkSupport, canCreatePackage, isFinanceApprover, canViewCarParkSupport } from "@/lib/auth"
+import { canViewPackageManagement, canViewThemeParkSupport, canCreatePackage, isFinanceApprover, canViewCarParkSupport, canViewHRSupport } from "@/lib/auth"
 import { staffService } from "@/services/staff-services" 
 import { StaffMember } from "@/type/staff" 
 import { formatDate } from "@/lib/formatter"
@@ -157,6 +157,7 @@ export default function SettingsPage() {
       { label: "Approve/Reject Packages", allowed: isFinanceApprover(user?.department) },
       { label: "View Themepark Support", allowed: canViewThemeParkSupport(user?.department) },
       { label: "View Car Park Management", allowed: canViewCarParkSupport(user?.department) },
+      { label: "View HR Management", allowed: canViewHRSupport(user?.department) },
   ];
 
   const showPackageAlerts = user?.department 
@@ -330,7 +331,7 @@ export default function SettingsPage() {
                                             placeholder="e.g. System Maintenance" 
                                             value={broadcastForm.title}
                                             onChange={(e) => setBroadcastForm({ ...broadcastForm, title: e.target.value })}
-                                            className="h-9" // Compact Input
+                                            className="h-11" 
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -339,7 +340,7 @@ export default function SettingsPage() {
                                             value={broadcastForm.type} 
                                             onValueChange={(val: any) => setBroadcastForm({ ...broadcastForm, type: val })}
                                         >
-                                            <SelectTrigger className="h-9">
+                                            <SelectTrigger className="h-11">
                                                 <SelectValue placeholder="Select type" />
                                             </SelectTrigger>
                                             <SelectContent>

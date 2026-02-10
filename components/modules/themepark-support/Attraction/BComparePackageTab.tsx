@@ -129,7 +129,7 @@ export default function BComparePackageTab() {
         }
     };
 
-    const columns: TableColumn<SelectableItPoswfPackage>[] = [
+    const columns: TableColumn<SelectableItPoswfPackage>[] = useMemo (() => [
         { 
             header: "Select", 
             accessor: "id", 
@@ -150,7 +150,7 @@ export default function BComparePackageTab() {
         { header: "Price", accessor: "price", cell: (value) => formatCurrency(value) },
         { header: "Status", accessor: "status", cell: (value) => <StatusBadge status={value} /> },
         { header: "Sync Status", accessor: "syncStatus", cell: (value) => <StatusBadge status={value} /> },
-    ];
+    ], []);
 
     return (
         <div className="space-y-6">

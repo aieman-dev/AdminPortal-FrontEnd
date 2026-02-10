@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input"
 import { carParkService } from "@/services/car-park-services"
 import { ParkingActivity } from "@/type/car-park"
 import { StatusBadge } from "@/components/shared-components/status-badge" // Centralized Badge
-import { PaginationControls } from "@/components/ui/pagination-controls"
 import { startOfMonth, endOfMonth, addDays } from "date-fns"
 import { formatDateTime } from "@/lib/formatter"
 import { useAppToast } from "@/hooks/use-app-toast"
@@ -126,7 +125,7 @@ export function ParkingActivityHistory({ accId }: ParkingActivityHistoryProps) {
         }
     }
 
-    const columns: TableColumn<ParkingActivity>[] = [
+    const columns: TableColumn<ParkingActivity>[] = useMemo(() => [
         { 
             header: "Entry Time", 
             accessor: "entryTime",
@@ -217,7 +216,7 @@ export function ParkingActivityHistory({ accId }: ParkingActivityHistoryProps) {
                 )
             }
         }
-    ];
+    ], []);
 
     return (
         <>
@@ -271,19 +270,14 @@ export function ParkingActivityHistory({ accId }: ParkingActivityHistoryProps) {
                     emptyIcon={SearchX}
                     emptyTitle="No Activity Found"
                     emptyMessage="No parking records found for the selected date range."
+                    pagination={{
+                        currentPage: currentPage,
+                        totalPages: totalPages,
+                        totalRecords: totalRecords,
+                        pageSize: PAGE_SIZE,
+                        onPageChange: fetchHistory
+                    }}
                 />
-                
-                {totalPages > 1 && (
-                    <div className="p-4 border-t bg-muted/5">
-                        <PaginationControls 
-                            currentPage={currentPage}
-                            totalPages={totalPages}
-                            totalRecords={totalRecords}
-                            pageSize={PAGE_SIZE}
-                            onPageChange={fetchHistory}
-                        />
-                    </div>
-                )}
             </CardContent>
         </Card>
 

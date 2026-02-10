@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils"
 import { Toaster } from "@/components/ui/toaster"
 import { CommandMenu } from "@/components/portal/command-menu"
 import { SessionTimer } from "@/components/portal/session-timer"
-import { useAutoLogout } from "@/hooks/use-auto-logout";
 import { SystemAnnouncement } from "@/components/portal/system-annoucement";
 import { SystemOffline } from "@/components/portal/system-offline";
 import { SystemTips } from "@/components/portal/system-tips"
@@ -131,7 +130,6 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     };
   }, []);
 
-    useAutoLogout();
 
   if (isSystemLocked) {
     return (

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -105,7 +105,7 @@ export default function PackageListingTab() {
   }
 
   // FIXED: Explicitly typed 'value' and 'row'
-  const packageColumns: TableColumn<ItPoswfPackage>[] = [
+  const packageColumns: TableColumn<ItPoswfPackage>[] = useMemo (() =>[
     { header: "Package ID", accessor: "packageId", className: "pl-6", cell: (value) => <span className="font-medium">{value}</span> },
     { header: "Package Name", accessor: "packageName" },
     { header: "Type", accessor: "packageType", cell: (value) => <StatusBadge status={value} /> },
@@ -122,7 +122,7 @@ export default function PackageListingTab() {
         </Button>
       ),
     },
-  ]
+  ], []);
 
   return (
     <>

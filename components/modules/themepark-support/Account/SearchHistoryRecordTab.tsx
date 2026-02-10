@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SearchField } from "@/components/shared-components/search-field"
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
 import { StatusBadge } from "@/components/shared-components/status-badge"
-import { TransactionHistory, TicketHistory } from "@/type/themepark-support"; 
+import { GroupedInvoice, TransactionHistory, TicketHistory } from "@/type/themepark-support"; 
 import { itPoswfService } from "@/services/themepark-support"; 
 import { formatCurrency, formatDate } from "@/lib/formatter";
 import { useAppToast } from "@/hooks/use-app-toast"
@@ -36,14 +36,6 @@ function parseAmount(amount: string | number): number {
     return parseFloat(cleanStr) || 0;
 }
 
-interface GroupedInvoice {
-    id: string; 
-    invoiceNo: string;
-    totalAmount: number;
-    trxType: string; 
-    createdDate: string;
-    items: TransactionHistory[];
-}
 
 export default function SearchHistoryRecordTab() {
   const toast = useAppToast();
@@ -64,7 +56,7 @@ export default function SearchHistoryRecordTab() {
   const ticketPager = usePagination({ pageSize: 10 });
 
   // Sorting
-  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
+  const [sortConfig, setSortConfig] = useState<{ key: keyof GroupedInvoice, direction: 'asc' | 'desc' } | null>(null);
 
   // Core Search Logic
   const executeSearch = useCallback(async (type: string, term: string) => {
@@ -149,9 +141,7 @@ export default function SearchHistoryRecordTab() {
       const sortableItems = [...groupedTransactions];
       if (sortConfig !== null) {
         sortableItems.sort((a, b) => {
-            // @ts-ignore - dynamic access
             const aValue = a[sortConfig.key] ?? "";
-            // @ts-ignore
             const bValue = b[sortConfig.key] ?? "";
             
             if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -175,11 +165,13 @@ export default function SearchHistoryRecordTab() {
 
   // Handler for DataTable sorting
   const handleSort = (key: string) => {
+  const validKey = key as keyof GroupedInvoice;
     let direction: 'asc' | 'desc' = 'asc';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+    
+    if (sortConfig && sortConfig.key === validKey && sortConfig.direction === 'asc') {
         direction = 'desc';
     }
-    setSortConfig({ key, direction });
+    setSortConfig({ key: validKey, direction });
   };
 
   // Handler for Row Click (Mobile Only)
@@ -208,7 +200,7 @@ export default function SearchHistoryRecordTab() {
       )}
   ];
 
-  const ticketColumns: TableColumn<TicketHistory>[] = [
+  const ticketColumns: TableColumn<TicketHistory>[] = useMemo (() => [
     { header: "Ticket No", accessor: "ticketNo", cell: (value) => <span className="font-medium">{value}</span> },
     { header: "Package Name", accessor: "packageName" },
     { header: "Qty", accessor: "qty" },
@@ -217,7 +209,7 @@ export default function SearchHistoryRecordTab() {
     { header: "Last Valid Date", accessor: "lastValidDate" },
     { header: "Status", accessor: "status", cell: (value) => <StatusBadge status={value} /> },
     { header: "Created Date", accessor: "createdDate", cell: (value) => <span className="text-muted-foreground text-sm w-[180px]">{formatDate(value as string)}</span> },
-  ];
+  ], []);
 
   // --- SUB-COMPONENT RENDERER  (DESKTOP)---
   const renderDetailRow = (group: GroupedInvoice) => {

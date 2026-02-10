@@ -10,7 +10,8 @@ import { ArrowRightLeft, Loader2, LogOut, Wallet, LogIn } from "lucide-react"
 import { SYSTEM_TERMINAL_ID } from "@/lib/constants"
 import { carParkService } from "@/services/car-park-services"
 import { CarParkPackage, ParkingDetailData, ParkingDetailStatus } from "@/type/car-park"
-import { cn, extractBackendError } from "@/lib/utils"
+import { cn, isUserInside } from "@/lib/utils"
+import { getErrorMessage } from "@/lib/api-client"
 
 import { ParkingStatusDetail } from "@/components/modules/car-park/ParkingStatusDetail"
 import { ParkingActivityHistory } from "@/components/modules/car-park/ParkingActivityHistory"
@@ -134,8 +135,7 @@ export function SuperAppVisitorDetailView({
     useEffect(() => { fetchData(); }, [accId]);
 
     const handleAssignEntry = (target: "qr" | "account") => {
-        const s = (statusInfo.iPointStatus || "").toUpperCase();
-        const isInside = (s.includes("PARK") || s.includes("USED")) && !s.includes("UNUSED") && !s.includes("AWAY");
+        const isInside = isUserInside(statusInfo.iPointStatus);
         setSubmittingTarget(target);
         setManualDirection(isInside ? "Out" : "In");
         setManualAmount("0.00");
@@ -174,7 +174,7 @@ export function SuperAppVisitorDetailView({
             setTimeout(() => { fetchData(); }, 800);
 
         } catch (error :any) {
-            toast.error("Action Failed", extractBackendError(error.message));
+            toast.error("Action Failed", getErrorMessage(error));
             setSubmittingTarget(null);
         } finally {
             setIsProcessingEntry(false);

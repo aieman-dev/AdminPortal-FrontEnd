@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/portal/page-header"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAppToast } from "@/hooks/use-app-toast"
@@ -229,15 +230,17 @@ export default function NewStaffNonCPPage() {
 
                 {/* 3. SUBMIT BUTTON */}
                 <div className="flex justify-end pt-2">
-                    <Button 
+                    <LoadingButton 
                         size="lg" 
                         onClick={handleSubmit(onSubmit)} 
-                        disabled={!isVerified || isSubmitting}
-                        className="h-11 px-10 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg transition-transform active:scale-95"
+                        isLoading={isSubmitting}
+                        loadingText="Creating Staff..."
+                        icon={UserPlus}
+                        disabled={!isVerified}
+                        className="h-11 px-10 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
                     >
-                        {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <UserPlus className="h-5 w-5 mr-2" />}
                         Confirm Registration
-                    </Button>
+                    </LoadingButton>
                 </div>
             </div>
         </div>

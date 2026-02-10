@@ -1,7 +1,7 @@
 // components/auth/login-form.tsx
 "use client"
 
-import { useState } from "react"
+import { useState, Dispatch, SetStateAction } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/navigation"
@@ -22,7 +22,12 @@ import {
 import { login } from "@/lib/auth"
 import { loginSchema, LoginValues } from "@/lib/schemas/login"
 
-export function LoginForm() {
+
+interface LoginFormProps {
+  onSubmitting?: Dispatch<SetStateAction<boolean>>;
+}
+
+export function LoginForm({ onSubmitting }: LoginFormProps) {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [generalError, setGeneralError] = useState("")
@@ -45,6 +50,8 @@ export function LoginForm() {
     setGeneralError("")
     setForgotMsg(false)
 
+    if (onSubmitting) onSubmitting(true);
+
     try {
       const response = await login(values.email, values.password, values.rememberMe)
 
@@ -52,9 +59,11 @@ export function LoginForm() {
         router.push("/portal")
       } else {
         setGeneralError(response.error || "Login failed")
+        if (onSubmitting) onSubmitting(false);
       }
     } catch (err) {
       setGeneralError("An unexpected error occurred")
+      if (onSubmitting) onSubmitting(false);
     }
   }
 

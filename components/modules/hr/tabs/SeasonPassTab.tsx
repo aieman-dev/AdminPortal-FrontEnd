@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
 import { SearchField } from "@/components/shared-components/search-field"
-import { PaginationControls } from "@/components/ui/pagination-controls"
 import { StatusBadge } from "@/components/shared-components/status-badge"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { useAppToast } from "@/hooks/use-app-toast"
@@ -69,7 +68,7 @@ export default function SeasonPassTab() {
             cell: (value, row) => (
                 <HoverCard openDelay={100} closeDelay={100}>
                     <HoverCardTrigger asChild>
-                        <span className="font-mono uppercase tracking-wide cursor-pointer hover:text-indigo-600 transition-colors border-b border-dashed border-muted-foreground/50">
+                        <span className="font-mono uppercase tracking-wide cursor-pointer hover:text-indigo-600 transition-colors border-b border-none border-muted-foreground/50">
                             {value}
                         </span>
                     </HoverCardTrigger>
@@ -133,18 +132,14 @@ export default function SeasonPassTab() {
                         emptyIcon={Car}
                         emptyTitle="No Passes Found"
                         emptyMessage="No active season passes match your search."
+                        pagination={{
+                            currentPage: pagination.currentPage,
+                            totalPages: pagination.totalPages,
+                            totalRecords: pagination.totalRecords,
+                            pageSize: pagination.pageSize,
+                            onPageChange: (p) => fetchData(p, searchTerm)
+                        }}
                     />
-                    {pagination.totalPages > 1 && (
-                        <div className="p-4 border-t">
-                            <PaginationControls 
-                                currentPage={pagination.currentPage}
-                                totalPages={pagination.totalPages}
-                                totalRecords={pagination.totalRecords}
-                                pageSize={pagination.pageSize}
-                                onPageChange={(p) => fetchData(p, searchTerm)}
-                            />
-                        </div>
-                    )}
                 </CardContent>
             </Card>
         </div>

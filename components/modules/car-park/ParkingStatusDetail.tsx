@@ -4,11 +4,12 @@ import {
     Save, Trash2, Ban, User, Unlock, Loader2, MoreVertical
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { StatusBadge } from "@/components/shared-components/status-badge"
 import { formatDateTime } from "@/lib/formatter"
-import { cn } from "@/lib/utils"
+import { cn,isUserInside } from "@/lib/utils"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,11 +71,6 @@ export function ParkingStatusDetail({
     const isBlocked = (status.recordStatus || "").toLowerCase() === "blocked";
     const isReadOnly = isLoading || isBlocked; 
 
-    const checkIsParked = (statusStr: string) => {
-        const s = (statusStr || "").toUpperCase();
-        return (s.includes("PARK") || s.includes("USED")) && !s.includes("AWAY") && !s.includes("UNUSED");
-    };
-
     if (isLoading) return <DetailSkeleton mode={mode} />;
 
     return (
@@ -98,10 +94,15 @@ export function ParkingStatusDetail({
                 <div className="flex items-center gap-2 w-full md:w-auto">
                     
                     {/* PRIMARY ACTION (Always Visible) */}
-                    <Button onClick={onSave} disabled={isSaving || isBlocked} className="flex-1 md:flex-none bg-indigo-600 hover:bg-indigo-700 text-white h-10 shadow-sm">
-                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    <LoadingButton 
+                        onClick={onSave} 
+                        isLoading={isSaving} 
+                        loadingText="Saving..."
+                        icon={Save}
+                        className="flex-1 md:flex-none bg-indigo-600 hover:bg-indigo-700 text-white h-10 shadow-sm"
+                    >
                         Save Changes
-                    </Button>
+                    </LoadingButton>
 
                     {/* SECONDARY ACTIONS (Desktop: Buttons, Mobile: Dropdown) */}
                     {mode === "season" && (
@@ -165,7 +166,7 @@ export function ParkingStatusDetail({
                         title={mode === "season" ? "Season Pass Status" : "Access Status"}
                         status={mode === "season" ? status.seasonStatus : status.iPointStatus}
                         lastExit={mode === "season" ? status.lastExitSeason : status.lastExitIPoint}
-                        isParked={checkIsParked(mode === "season" ? status.seasonStatus : status.iPointStatus)}
+                        isParked={isUserInside(mode === "season" ? status.seasonStatus : status.iPointStatus)}
                         onAssign={() => onAssignEntry(mode === "season" ? "qr" : "account")}
                         isBusy={!!submittingTarget}
                     />

@@ -15,6 +15,7 @@ import { formatDate } from "@/lib/formatter";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useDebounce } from "@/hooks/use-debounce";
 import { Button } from "@/components/ui/button"; 
+import { LoadingButton } from "@/components/ui/loading-button";
 import { EmptyState } from "@/components/portal/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PaginationControls } from "@/components/ui/pagination-controls";
@@ -336,38 +337,28 @@ export default function PackagesPage() {
                   </div>
                   {selectedPackageIds.size > 0 && (
                       <div className="ml-auto flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={openBulkSubmit} 
-                            disabled={isProcessing}
-                            className="text-indigo-600 border-indigo-200 bg-indigo-50 hover:bg-indigo-100"
+                          <LoadingButton 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={openBulkSubmit} 
+                              isLoading={isProcessing && actionState.type === 'SUBMIT'}
+                              loadingText="Submitting..."
+                              icon={Send}
+                              className="text-indigo-600 border-indigo-200 bg-indigo-50 hover:bg-indigo-100"
                           >
-                            {isProcessing && actionState.type === 'SUBMIT' ? (
-                                // 1. Loading State: Spinning Icon only
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            ) : (
-                                // 2. Normal State: Send Icon
-                                <Send className="w-4 h-4 mr-2"/>
-                            )}
-                            Submit Selected ({selectedPackageIds.size})
-                          </Button>
-                          
-                          <Button 
-                            variant="destructive" 
-                            size="sm" 
-                            onClick={openBulkDelete} 
-                            disabled={isProcessing}
+                              Submit Selected ({selectedPackageIds.size})
+                          </LoadingButton>
+
+                          <LoadingButton 
+                              variant="destructive" 
+                              size="sm" 
+                              onClick={openBulkDelete} 
+                              isLoading={isProcessing && actionState.type === 'DELETE'}
+                              loadingText="Deleting..."
+                              icon={Trash2}
                           >
-                            {isProcessing && actionState.type === 'DELETE' ? (
-                                  // 1. Loading State: Spinning Icon only
-                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              ) : (
-                                  // 2. Normal State: Trash Icon
-                                  <Trash2 className="w-4 h-4 mr-2"/>
-                              )}
                               Delete Selected ({selectedPackageIds.size})
-                            </Button>
+                          </LoadingButton>
                       </div>
                   )}
               </div>

@@ -16,9 +16,9 @@ import { CarParkPhase, CarParkUnit, CarParkPackage, CarParkDepartment } from "@/
 import { carParkService } from "@/services/car-park-services"
 import { cn } from "@/lib/utils"
 import { carParkFormSchema, CarParkFormValues } from "@/lib/schemas/car-park"
-import { CarParkForm } from "@/components/modules/car-park/forms/CarParkForm"
 import { NavigationGuard } from "@/components/portal/navigation-guard" 
 import { useNavigation } from "@/context/navigation-context"
+import { UniversalParkingForm } from "@/components/shared-components/UniversalParkingForm";
 
 export default function NewRegistrationPage() {
     const router = useRouter()
@@ -264,7 +264,8 @@ export default function NewRegistrationPage() {
                 <div className="max-w-5xl mx-auto space-y-8 pb-24 md:pb-10">
                     
                     {/* Pass Form and Lists to Shared Component */}
-                    <CarParkForm 
+                    <UniversalParkingForm 
+                        context="CP"
                         form={form} 
                         phases={phases} 
                         units={units} 

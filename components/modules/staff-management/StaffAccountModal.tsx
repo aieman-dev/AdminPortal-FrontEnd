@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, Loader2, UserPlus, User, Eye, EyeOff } from "lucide-react"
 import { useAppToast } from "@/hooks/use-app-toast"
@@ -266,19 +267,16 @@ export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAcco
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isAssigning}>
             Cancel
           </Button>
-          <Button 
+
+          <LoadingButton 
             onClick={handleAssign} 
-            disabled={isAssigning || !selectedUser || !selectedRole}
+            isLoading={isAssigning}
+            loadingText="Assigning..."
+            disabled={!selectedUser || !selectedRole}
             className="min-w-[120px]"
-          >
-            {isAssigning ? (
-                <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Assigning...
-                </>
-            ) : (
-                "Confirm Assignment"
-            )}
-          </Button>
+        >
+            Confirm Assignment
+        </LoadingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

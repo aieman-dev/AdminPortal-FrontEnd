@@ -87,6 +87,18 @@ export async function POST(request: NextRequest) {
       maxAge: maxAge,
     });
 
+    const expiryTime = rememberMe 
+        ? Date.now() + (7 * 24 * 60 * 60 * 1000) 
+        : Date.now() + (24 * 60 * 60 * 1000); 
+
+    cookieStore.set("session_expiry", String(expiryTime), {
+        httpOnly: false, // <--- Allow JS to read this
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: maxAge,
+    });
+
     // Refresh Token (Long-lived)
     if (refreshToken) {
         const expiryDate = new Date(refreshTokenExpiry);
