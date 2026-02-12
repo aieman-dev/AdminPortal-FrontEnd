@@ -315,18 +315,6 @@ export function StaffDrawer({ staff, isOpen, onClose, onUpdate }: StaffDrawerPro
                     >
                         Save Changes
                     </LoadingButton>
-
-                    <LoadingButton 
-                        onClick={handleResetPassword} 
-                        isLoading={isResetting}
-                        loadingText="Resetting..."
-                        icon={RefreshCw}
-                        disabled={!manualPassword.trim()}
-                        variant="destructive"
-                        className="h-9 shrink-0"
-                    >
-                        Reset
-                    </LoadingButton>
                 </div>
             </SheetContent>
         </Sheet>

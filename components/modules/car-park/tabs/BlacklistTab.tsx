@@ -171,7 +171,7 @@ export default function BlacklistTab() {
                 </Button>
             )
         }
-    ], []);
+    ], [isUnblockProcessing]);
 
     // Search Results Columns (Active Cards)
     const searchColumns: TableColumn<CarParkPass>[] = [

@@ -189,13 +189,12 @@ export const hrService = {
         return response.data;
     },
 
-    //deleteStaff: async (staffId: number) => {
-    //    const response = await apiClient.delete(`${ENDPOINTS.STAFF_DELETE}/${staffId}`);
-    //    if (!response.success) throw new Error(response.error || "Delete failed");
-    //    return response.data;
-    //},
+    deleteStaff: async (staffId: number | string) => {
+        const response = await apiClient.delete(`${ENDPOINTS.STAFF_DELETE}/${staffId}`);
+        if (!response.success) {throw new Error(response.error || "Delete failed");}
+        return response.data;
+    },
     
-
 
     // =========================================================
     // NEW STAFF REGISTRATION (WITH PARKING)

@@ -84,7 +84,7 @@ export function StaffEditSheet({ isOpen, onClose, staff, onSave, onDelete }: Sta
         }
     }, [staff, form])
 
-    // simulate
+    
     const onSubmit = async (data: StaffEditValues) => {
         setIsSaving(true)
         try {
@@ -98,11 +98,12 @@ export function StaffEditSheet({ isOpen, onClose, staff, onSave, onDelete }: Sta
         }
     }
 
-    // simulate
     const handleDelete = async () => {
+        if (!staff) return; 
+
         setIsDeleting(true)
         try {
-            //await onDelete(String(staff.staffId))
+            await onDelete(String(staff.staffId))
             toast.success("Deleted", "Staff account removed.")
             setShowDeleteConfirm(false)
             onClose()

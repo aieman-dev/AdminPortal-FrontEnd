@@ -11,10 +11,10 @@ import { BalanceCard } from "@/components/shared-components/balance-card"
 import { itPoswfService } from "@/services/themepark-support"
 import { type BalanceDetail, type BalanceTransaction } from "@/type/themepark-support"
 import { formatCurrency } from "@/lib/formatter";
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
 
 export default function ActivateBalancePage() {
-  const { toast } = useToast()
+  const toast = useAppToast()
   const [email, setEmail] = useState("")
   const [searchResult, setSearchResult] = useState<BalanceDetail | null>(null)
   const [isSearching, setIsSearching] = useState(false)
@@ -31,24 +31,13 @@ export default function ActivateBalancePage() {
       
       if (response.success && response.data) {
         setSearchResult(response.data)
-        toast({ 
-            title: "Search Complete", 
-            description: "Balance details retrieved successfully." 
-        })
+        toast.info("Search Complete","Balance details retrieved successfully.")
       } else {
-        toast({
-            title: "Search Failed",
-            description: response.error || "No balance details found for this email.",
-            variant: "destructive"
-        })
+        toast.error( "Search Failed", response.error || "No balance details found for this email.")
       }
     } catch (error) {
         console.error("Search Error:", error)
-        toast({
-            title: "Network Error",
-            description: "Failed to connect to the server.",
-            variant: "destructive"
-        })
+        toast.error( "Network Error","Failed to connect to the server.")
     } finally {
       setIsSearching(false)
     }

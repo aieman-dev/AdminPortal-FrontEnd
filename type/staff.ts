@@ -34,6 +34,16 @@ export interface SearchedUser {
   fullName: string;
 }
 
+export interface StaffAccount {
+    id: string
+    name: string
+    email: string
+    department: string
+    role: string
+    status: "Active" | "Inactive" | "Suspended"
+    createdDate: string
+}
+
 // --- NEW AUDIT LOG INTERFACES ---
 
 export interface AuditLog {
@@ -55,7 +65,17 @@ export interface AuditLogResponse {
   pageNumber: number;
   pageSize: number;
   totalRecords: number;
+  totalPages: number;
   logs: AuditLog[];
+}
+
+export interface AuditLogListPayload {
+  searchQuery: string;
+  pageNumber: number;
+  pageSize: number;
+  module?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 // --- BACKEND DTOs (Data Transfer Objects) ---

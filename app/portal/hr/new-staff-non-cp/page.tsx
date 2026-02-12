@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Search, RotateCcw, Save, User, Briefcase, Mail, Loader2, CheckCircle2, UserPlus } from "lucide-react"
+import { Search, RotateCcw, Save, User, Briefcase, Mail, Loader2, CheckCircle2, UserPlus, X } from "lucide-react"
 
 import { PageHeader } from "@/components/portal/page-header"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -44,6 +44,8 @@ export default function NewStaffNonCPPage() {
             department: ""
         }
     })
+
+    const departmentValue = form.watch("department");
 
     const { register, setValue, watch, handleSubmit, reset, formState: { errors } } = form
     const emailValue = watch("email")
@@ -91,7 +93,12 @@ export default function NewStaffNonCPPage() {
 
 
     const handleClear = (showToast = true) => {
-        reset()
+        reset({
+            email: "",
+            fullName: "",
+            staffNo: "",
+            department: "" 
+        })
         setIsVerified(false)
         if (showToast) {
             toast.info("Reset", "Form cleared.")
@@ -145,10 +152,21 @@ export default function NewStaffNonCPPage() {
                                     <Input 
                                         {...register("email")}
                                         placeholder="user@example.com" 
-                                        className="pl-9 h-11"
+                                        className="pl-9 pr-10 h-11"
                                         disabled={isVerified}
                                         onKeyDown={(e) => e.key === "Enter" && handleVerify()}
                                     />
+                                    {emailValue && !isVerified && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setValue("email", "")} // Clears the form value
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 transition-colors"
+                                            tabIndex={-1} 
+                                            title="Clear email"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </button>
+                                    )}
                                 </div>
                                 {errors.email && <p className="text-xs text-red-500 font-medium">{errors.email.message}</p>}
                             </div>
@@ -211,7 +229,7 @@ export default function NewStaffNonCPPage() {
 
                         <div className="space-y-2 md:w-1/2">
                             <Label>Department <span className="text-red-500">*</span></Label>
-                            <Select onValueChange={(val) => setValue("department", val)}>
+                            <Select  value={departmentValue} onValueChange={(val) => setValue("department", val, { shouldValidate: true })}>
                                 <SelectTrigger className="h-11">
                                     <SelectValue placeholder="Select Department" />
                                 </SelectTrigger>

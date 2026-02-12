@@ -15,7 +15,7 @@ import { useAutoSearch } from "@/hooks/use-auto-search"
 import { getDeptColor } from "@/lib/constants"
 import { StaffEditSheet } from "@/components/modules/hr/sheet/StaffEditSheet"
 import { hrService } from "@/services/hr-services"
-import { StaffListItem, StaffDetail } from "@/type/hr"
+import { StaffListItem, StaffDetail, UpdateStaffPayload } from "@/type/hr"
 import { cn } from "@/lib/utils"
 
 
@@ -84,15 +84,38 @@ export default function StaffListingPage() {
         }
     }
 
-    const handleSaveStaff = async (data: any) => {
-        console.log("Saving:", data);
-        await new Promise(r => setTimeout(r, 1000));
-        // Add refresh logic here
+    const handleSaveStaff = async (formData: { fullName: string; staffNo: string; department: string }) => {
+        if (!selectedStaff) return;
+
+        try {
+            const payload: UpdateStaffPayload = {
+                staffId: selectedStaff.staffId,
+                name: formData.fullName,
+                staffNo: formData.staffNo,
+                departmentCode: formData.department
+            };
+
+            await hrService.updateStaff(payload);
+            
+            fetchStaffList(pagination.currentPage, searchTerm);
+
+        } catch (error) {
+             console.error("Update Error:", error);
+             throw error; 
+        }
     }
 
+
     const handleDeleteStaff = async (id: string) => {
-         console.log("Deleting:", id);
-         await new Promise(r => setTimeout(r, 1000));
+         try {
+            await hrService.deleteStaff(id);
+            
+            fetchStaffList(pagination.currentPage, searchTerm);
+
+        } catch (error) {
+             console.error("Delete Error:", error);
+             throw error; 
+        }
     }
 
     const columns: TableColumn<StaffListItem>[] = useMemo (() => [

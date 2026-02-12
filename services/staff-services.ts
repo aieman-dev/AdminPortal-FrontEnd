@@ -9,7 +9,8 @@ import {
   AssignRolePayload,
   StaffListPayload,
   SearchUserPayload,
-  AuditLogResponse
+  AuditLogResponse,
+  AuditLogListPayload
 } from "@/type/staff";
 
 // ENDPOINTS: Pointing to actual Backend Routes
@@ -21,7 +22,7 @@ const ENDPOINTS = {
   STAFF_LIST: "account/roles/list",
   GET_ME: "Account/me",
 
-  AUDIT_LOG_ALL: "AuditLog/all",
+  AUDIT_LOG_LIST: "AuditLog/list",
   AUDIT_LOG_USER: "AuditLog/user",
 };
 
@@ -87,7 +88,7 @@ export const staffService = {
   },
 
   assignRole: async (accId: number, roles: string, password: string, expiryDate?: Date | null): Promise<{ message: string }> => {
-    const formattedDate = expiryDate ? expiryDate.toISOString() : null;
+    const formattedDate = expiryDate ? expiryDate.toISOString() : "";
     const payload: AssignRolePayload = { accId, roles, password, expiryDate: formattedDate };
     const response = await apiClient.post<{ message: string }>(ENDPOINTS.ASSIGN_ROLE, payload);
     
@@ -129,10 +130,22 @@ export const staffService = {
     return rawList.map(mapToStaff);
   },
 
-  getAllAuditLogs: async (page: number = 1, size: number = 10): Promise<AuditLogResponse | null> => {
-    const response = await apiClient.get<any>(`${ENDPOINTS.AUDIT_LOG_ALL}?page=${page}&size=${size}`);
+  getAllAuditLogs: async (payload: AuditLogListPayload): Promise<AuditLogResponse | null> => {
+    const response = await apiClient.post<any>(ENDPOINTS.AUDIT_LOG_LIST, payload);
     if (!response.success || !response.data) return null;
-    return getDataObject<AuditLogResponse>(response.data);
+    const content = getDataObject<any>(response.data);
+
+    const totalRecords = content.totalRecords || 0;
+    const pageSize = content.pageSize || payload.pageSize;
+    const totalPages = Math.ceil(totalRecords / pageSize);
+
+    return {
+        pageNumber: content.pageNumber,
+        pageSize: content.pageSize,
+        totalRecords: totalRecords,
+        totalPages: totalPages, 
+        logs: content.logs || []
+    };
   },
 
   getUserAuditLogs: async (userId: string | number, page: number = 1, size: number = 20): Promise<AuditLogResponse | null> => {

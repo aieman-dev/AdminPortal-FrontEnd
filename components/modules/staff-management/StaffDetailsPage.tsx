@@ -6,20 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Key, User, Briefcase, RefreshCw, Loader2 } from "lucide-react"
 import { StatusBadge } from "@/components/shared-components/status-badge"
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from "@/components/ui/breadcrumb"
 import { LoaderState } from "@/components/ui/loader-state"
+import { StaffAccount } from "@/type/staff"
 
-interface StaffAccount {
-    id: string
-    name: string
-    email: string
-    department: string
-    role: string
-    status: "Active" | "Inactive" | "Suspended"
-    createdDate: string
-}
 
 const mockRoles = ["IT Admin", "MIS Superadmin", "Package Manager", "Package Creator", "View Only"]
 
@@ -38,7 +30,7 @@ interface StaffDetailsPageProps {
 }
 
 export function StaffDetailsPage({ staffId }: StaffDetailsPageProps) {
-    const { toast } = useToast()
+    const toast = useAppToast()
     const [staffData, setStaffData] = useState<StaffAccount | null>(null)
     const [loading, setLoading] = useState(true)
     const [isUpdating, setIsUpdating] = useState(false)
@@ -67,7 +59,7 @@ export function StaffDetailsPage({ staffId }: StaffDetailsPageProps) {
         await new Promise(resolve => setTimeout(resolve, 1500))
         const updatedStaff = { ...staffData, role: newRole, status: newStatus as StaffAccount['status'] }
         setStaffData(updatedStaff)
-        toast({ title: "Success", description: `Staff details for ${staffData.name} updated.` })
+        toast.success( "Success", `Staff details for ${staffData.name} updated.` )
         setIsUpdating(false)
     }
     
@@ -75,7 +67,7 @@ export function StaffDetailsPage({ staffId }: StaffDetailsPageProps) {
         if (!staffData) return;
         setIsUpdating(true)
         await new Promise(resolve => setTimeout(resolve, 1500))
-        toast({ title: "Security", description: `Password reset to temporary default (e.g., 123456).` })
+        toast.info("Security", `Password reset to temporary default (e.g., 123456).` )
         setIsUpdating(false)
     }
 

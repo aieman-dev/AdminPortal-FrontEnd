@@ -8,8 +8,8 @@ export const useAppToast = () => {
     toast({
       title,
       description,
-      variant: "success", // Ensure 'success' variant is defined in toast.tsx or use default
-      duration: 3000,
+      variant: "success", 
+      duration: 5000,
     });
   };
 
@@ -18,7 +18,7 @@ export const useAppToast = () => {
       title,
       description,
       variant: "destructive",
-      duration: 5000, // Longer for errors
+      duration: 5000, 
     });
   };
 
@@ -27,9 +27,9 @@ export const useAppToast = () => {
       title,
       description,
       variant: "default",
-      duration: 3000,
+      duration: 5000,
     });
   };
 
-  return { success, error, info, toast }; // Expose raw toast just in case
+  return { success, error, info, toast }; 
 };

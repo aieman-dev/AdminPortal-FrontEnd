@@ -245,7 +245,7 @@ export default function RetailManualConsumeTab() {
         const qty = quantities[row.id] || 0;
         return <span className={qty > 0 ? "text-foreground" : "text-muted-foreground/30"}>{formatCurrency(row.unitPrice * qty)}</span>
     }}
-  ], []);
+  ], [quantities]);
 
   // --- REFACTORED VIEW: SELECTION TABLE (Matches ManualConsumeTab) ---
   const renderSelectionView = () => {

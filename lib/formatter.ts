@@ -102,6 +102,13 @@ export const getRelativeTime = (dateStr: string) => {
     return `${Math.floor(diffInSeconds / 86400)}d ago`;
 }
 
+// --- HELPER: Format Seconds to MM m : SS s ---
+export const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m} m : ${s} s`;
+  };
+
 /**
  * Returns the CSS classes for a given status key.
  * Used by StatusBadge and PackageCard.

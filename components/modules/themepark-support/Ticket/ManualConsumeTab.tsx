@@ -292,7 +292,7 @@ export default function ManualConsumeTab() {
         cell: (_, row) => {
             const qty = quantities[row.id] || 0;
             const isActive = row.packageStatus.toLowerCase() === 'active';
-            const maxQty = row.balanceQty; // Limit to balance
+            const maxQty = row.balanceQty; 
 
             return (
                 <div className="flex items-center justify-end gap-1">
@@ -319,7 +319,7 @@ export default function ManualConsumeTab() {
             )
         }
     }
-  ], []);
+  ], [quantities]);
 
   // --- VIEW: SELECTION TABLE ---
   const renderSelectionView = () => {

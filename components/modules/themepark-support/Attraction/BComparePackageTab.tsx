@@ -150,7 +150,8 @@ export default function BComparePackageTab() {
         { header: "Price", accessor: "price", cell: (value) => formatCurrency(value) },
         { header: "Status", accessor: "status", cell: (value) => <StatusBadge status={value} /> },
         { header: "Sync Status", accessor: "syncStatus", cell: (value) => <StatusBadge status={value} /> },
-    ], []);
+    
+    ], [selectedIds]);
 
     return (
         <div className="space-y-6">

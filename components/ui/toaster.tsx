@@ -19,7 +19,7 @@ export function Toaster() {
         return (
           <Toast 
             key={id} 
-            duration={3000} // <--- Add it DIRECTLY here
+            duration={5000} 
             {...props}
           >
             <div className="grid gap-1">

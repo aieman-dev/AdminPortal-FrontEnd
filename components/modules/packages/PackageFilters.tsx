@@ -143,7 +143,7 @@ export default function PackageFilters({
            <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search packages..."
+            placeholder="Search packages"
             className="w-full h-11 pl-10 bg-background shadow-sm border-gray-200 dark:border-gray-800"
           />
           <Search size={18} className="absolute left-3 top-3 text-muted-foreground" />
@@ -152,7 +152,7 @@ export default function PackageFilters({
         <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
           <SheetTrigger asChild>
             <Button variant="outline" size="icon" className="h-11 w-11 shrink-0 relative bg-background shadow-sm border-gray-200 dark:border-gray-800">
-              <Filter size={18} className="text-foreground" />
+              <Filter size={18} className="h-4 w-4 text-foreground" />
               {activeCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-indigo-600 rounded-full border-2 border-background flex items-center justify-center">
                     <span className="sr-only">Filters active</span>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { LogOut, Power, Timer } from "lucide-react"
+import { LogOut, Play, Clock, AlertCircle, Timer, Loader2 } from "lucide-react"
 import { 
   Dialog, DialogContent, DialogHeader, 
   DialogTitle, DialogFooter 
@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { cn } from "@/lib/utils"
+import { formatTime } from "@/lib/formatter"
+import { Progress } from "@/components/ui/progress"
 
 // --- CONFIGURATION ---
 const TIMEOUT_MS = 15 * 60 * 1000; // 15 Minutes Total
@@ -28,13 +30,6 @@ export function SessionTimer() {
   
   const lastActivity = useRef<number>(Date.now())
   const timerRef = useRef<NodeJS.Timeout | null>(null)
-
-  // --- HELPER: Format Seconds to MM m : SS s ---
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-    const s = (seconds % 60).toString().padStart(2, '0');
-    return `${m} m : ${s} s`;
-  };
 
   // --- LOGIC (Same as before) ---
   const handleTimeout = useCallback(() => {
@@ -79,13 +74,19 @@ export function SessionTimer() {
   const handleExtend = async () => {
     setIsExtending(true)
     try {
-      await fetch("/api/auth/refresh", { method: "POST" })
+      const res = await fetch("/api/auth/refresh", { method: "POST" })
+      
+      if (!res.ok) {
+          throw new Error("Refresh failed");
+      }
+
       lastActivity.current = Date.now()
       setIsWarning(false)
-      toast.success("Welcome Back", "Session resumed successfully.")
+      toast.success("Session Extended", "You can continue working.")
     } catch (err) {
-      lastActivity.current = Date.now()
-      setIsWarning(false)
+      console.error("Session extend failed:", err);
+      // Optional: Force logout if refresh fails? 
+      // handleTimeout(); 
     } finally {
       setIsExtending(false)
     }
@@ -93,66 +94,58 @@ export function SessionTimer() {
 
   if (!isWarning) return null
 
-  // Calculate percentage for progress bar (0 to 100)
-  const progressPercent = (timeLeft / (WARNING_MS / 1000)) * 100;
+  // Calculate inverse percentage (100% -> 0%)
+  const totalSeconds = WARNING_MS / 1000;
+  const progressValue = (timeLeft / totalSeconds) * 100;
 
   return (
     <Dialog open={isWarning} onOpenChange={(open) => !open && handleTimeout()}> 
-      <DialogContent className="sm:max-w-[380px] p-0 overflow-hidden border-0 shadow-2xl" onPointerDownOutside={(e) => e.preventDefault()}>
+      <DialogContent className="sm:max-w-[400px] border shadow-2xl p-0 gap-0 overflow-hidden" onPointerDownOutside={(e) => e.preventDefault()}>
         
-        {/* HEADER BACKGROUND */}
-        <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-6 text-white text-center relative overflow-hidden">
-            {/* Background Decoration */}
-            <div className="absolute top-0 left-0 w-full h-full bg-[url('/grid-pattern.svg')] opacity-10" />
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+        {/* HEADER: Clean System Look */}
+        <div className="p-6 pb-4 flex flex-col items-center text-center space-y-4">
+            <div className="h-12 w-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                <Clock className="h-6 w-6" />
+            </div>
             
-            <div className="relative z-10 flex flex-col items-center">
-                <div className="h-12 w-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mb-3 ring-1 ring-white/30">
-                    <Timer className="h-6 w-6 text-white" />
-                </div>
-                <DialogTitle className="text-xl font-bold tracking-tight text-white">Session Timeout</DialogTitle>
-                <p className="text-indigo-100 text-xs mt-1">Due to inactivity, your session is ending.</p>
+            <div className="space-y-1">
+                <DialogTitle className="text-xl">Session Expiring</DialogTitle>
+                <p className="text-sm text-muted-foreground">
+                    For your security, your session will time out due to inactivity.
+                </p>
             </div>
         </div>
 
         {/* TIMER BODY */}
-        <div className="p-6 flex flex-col items-center bg-background">
-            <div className="text-center mb-6 w-full">
-                <p className="text-sm text-muted-foreground mb-2 uppercase tracking-wider font-bold text-[10px]">Auto Logout In</p>
-                
-                {/* BIG TIMER */}
-                <div className="text-4xl font-mono font-bold text-foreground tabular-nums tracking-tight">
+        <div className="px-6 pb-6 space-y-6">
+            <div className="bg-muted/50 rounded-xl p-4 border flex flex-col items-center justify-center space-y-2">
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Auto-Logout In</span>
+                <span className="text-3xl font-mono font-bold tabular-nums tracking-tight text-foreground">
                     {formatTime(timeLeft)}
-                </div>
-
-                {/* PROGRESS BAR */}
-                <div className="w-full h-1.5 bg-muted rounded-full mt-4 overflow-hidden">
-                    <div 
-                        className={cn(
-                            "h-full transition-all duration-1000 ease-linear",
-                            timeLeft < 30 ? "bg-red-500" : "bg-indigo-500"
-                        )}
-                        style={{ width: `${progressPercent}%` }}
-                    />
-                </div>
+                </span>
+                <Progress value={progressValue} className="h-2 w-32 mt-2" />
             </div>
 
-            <DialogFooter className="flex-row gap-3 w-full sm:justify-between">
+            <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between w-full">
                 <Button 
-                    variant="outline" 
+                    variant="ghost" 
                     onClick={handleTimeout} 
-                    className="flex-1 h-11 border-dashed border-gray-300 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-colors"
+                    className="w-full sm:w-auto text-muted-foreground hover:text-red-600 hover:bg-red-50"
                 >
                     <LogOut className="h-4 w-4 mr-2" /> Sign Out
                 </Button>
                 <Button 
                     onClick={handleExtend} 
                     disabled={isExtending} 
-                    className="flex-[2] h-11 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200"
+                    className="w-full sm:w-auto bg-primary text-primary-foreground min-w-[140px]"
                 >
-                    {isExtending ? "Resuming..." : (
+                    {isExtending ? (
                         <>
-                            <Power className="h-4 w-4 mr-2" /> Keep Working
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Resuming...
+                        </>
+                    ) : (
+                        <>
+                            <Play className="h-4 w-4 mr-2 fill-current" /> Keep Working
                         </>
                     )}
                 </Button>

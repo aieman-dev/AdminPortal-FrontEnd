@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect} from "react"
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -7,8 +8,9 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Copy, Clock, User, Database, CheckCircle2, FileJson, AlertCircle } from "lucide-react"
 import { AuditLog } from "@/type/staff"
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
 import { cn } from "@/lib/utils"
+
 
 interface ActivityDrawerProps {
   log: AuditLog | null
@@ -17,7 +19,16 @@ interface ActivityDrawerProps {
 }
 
 export function ActivityDrawer({ log, isOpen, onClose }: ActivityDrawerProps) {
-  const { toast } = useToast()
+  const  toast = useAppToast()
+  const [activeTab, setActiveTab] = useState("new");
+
+  // Reset tab to "new" (or "old" if new is empty) when drawer opens
+  useEffect(() => {
+    if (isOpen && log) {
+        setActiveTab(log.newValue ? "new" : "old");
+    }
+  }, [isOpen, log]);
+
 
   if (!log) return null
 
@@ -36,10 +47,19 @@ export function ActivityDrawer({ log, isOpen, onClose }: ActivityDrawerProps) {
   const hasChanges = newData || oldData;
 
   const handleCopy = (text: string) => {
-    if (text) {
-        navigator.clipboard.writeText(text)
-        toast({ title: "Copied", description: "Data copied to clipboard." })
+    if (!text) return;
+
+    let contentToCopy = text;
+    try {
+        const parsed = JSON.parse(text);
+        
+        contentToCopy = JSON.stringify(parsed, null, 2);
+    } catch (e) {
+        console.warn("Could not format JSON, copying raw text.");
     }
+
+    navigator.clipboard.writeText(contentToCopy);
+    toast.info("Copied","Formatted JSON copied to clipboard." );
   }
 
   // Recursive renderer for JSON objects
@@ -128,20 +148,20 @@ export function ActivityDrawer({ log, isOpen, onClose }: ActivityDrawerProps) {
         <ScrollArea className="flex-1">
             <div className="p-6">
                 {hasChanges ? (
-                    <Tabs defaultValue={newData ? "new" : "old"} className="w-full">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                         <TabsList className="grid w-full grid-cols-2 mb-4">
                             <TabsTrigger value="new" disabled={!newData}>New / Current Value</TabsTrigger>
                             <TabsTrigger value="old" disabled={!oldData}>Previous Value</TabsTrigger>
                         </TabsList>
                         
                         <TabsContent value="new" className="mt-0">
-                            <div className="rounded-xl border bg-card p-5 shadow-sm">
+                            <div className="rounded-xl border bg-card p-5 shadow-sm max-h-[50vh] overflow-y-auto scrollbar-hide border-indigo-100/50 mx-2">
                                 {renderDataView(newData)}
                             </div>
                         </TabsContent>
                         
                         <TabsContent value="old" className="mt-0">
-                            <div className="rounded-xl border bg-muted/30 p-5 shadow-inner">
+                            <div className="rounded-xl border bg-muted/30 p-5 shadow-inner max-h-[45vh] overflow-y-auto scrollbar-hide mx-2">
                                 {renderDataView(oldData)}
                             </div>
                         </TabsContent>
@@ -157,8 +177,14 @@ export function ActivityDrawer({ log, isOpen, onClose }: ActivityDrawerProps) {
 
         {/* FOOTER */}
         <div className="p-4 border-t bg-muted/5 flex gap-2 shrink-0">
-            <Button variant="outline" size="sm" onClick={() => handleCopy(log.newValue || "")} disabled={!log.newValue} className="flex-1 gap-2">
-                <FileJson className="h-3.5 w-3.5" /> Copy JSON
+            <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => handleCopy(activeTab === "new" ? (log.newValue || "") : (log.oldValue || ""))}
+                disabled={activeTab === "new" ? !log.newValue : !log.oldValue}
+                className="flex-1 gap-2">
+                <FileJson className="h-3.5 w-3.5" /> 
+                Copy {activeTab === "new" ? "New" : "Previous"} JSON
             </Button>
             <Button variant="secondary" size="sm" onClick={onClose}>
                 Close

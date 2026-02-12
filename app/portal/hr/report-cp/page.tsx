@@ -22,9 +22,9 @@ const STATIC_META = {
     parameters: [
         {
             name: "SearchQuery",
-            label: "search",
+            label: "Search", // Shortened label for mobile
             type: "text",
-            placeholder: "Search by Name, Staff ID, or Plate No"
+            placeholder: "Name, Staff ID, or Plate"
         }
     ]
 };
@@ -93,10 +93,11 @@ export default function StaffParkingReportPage() {
         }
     };
 
-    // --- 4. RENDER INPUTS (Styled like Car Park Report) ---
+    // --- 4. RENDER INPUTS ---
     const renderInput = (param: any) => {
         const value = dynamicFilters[param.name];
-        const inputClass = "h-11 bg-background border-input shadow-sm focus:border-indigo-500 focus:ring-indigo-500/20 transition-all";
+        // Optimized input style for mobile touch targets (h-10)
+        const inputClass = "h-10 md:h-11 bg-background border-input shadow-sm focus:border-indigo-500 focus:ring-indigo-500/20 transition-all text-sm";
         const labelClass = "text-[11px] font-bold uppercase text-muted-foreground tracking-wider mb-1.5 block";
 
         if (param.type === 'select') {
@@ -133,53 +134,65 @@ export default function StaffParkingReportPage() {
     };
 
     return (
-        <div className="flex flex-col space-y-8 p-4 md:p-8 animate-in fade-in duration-500">
+        // Reduced padding (p-3) and spacing (space-y-4) for mobile
+        <div className="flex flex-col space-y-4 md:space-y-8 p-3 md:p-8 animate-in fade-in duration-500 pb-20 md:pb-8">
             
             <PageHeader 
                 title={STATIC_META.friendlyName} 
                 description={STATIC_META.description} 
             >
-                {/* Styled Buttons match Car Park UI */}
-                <div className="flex gap-3">
+                {/* Responsive Actions: Stack on very small screens, row on others */}
+                <div className="flex items-center gap-2 mt-2 md:mt-0">
                     <Button 
                         disabled={data.length === 0} 
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/10 h-11 px-6 transition-all active:scale-95"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm h-9 md:h-11 px-4 text-xs md:text-sm font-medium flex-1 md:flex-none"
                     >
-                        <FileSpreadsheet className="h-4 w-4 mr-2" /> Export CSV
+                        <FileSpreadsheet className="h-3.5 w-3.5 mr-2" /> 
+                        <span className="hidden sm:inline">Export</span> CSV
                     </Button>
+                    
+                    {/* Icon-only button on mobile to save space */}
                     <Button 
                         variant="outline" 
                         onClick={() => window.print()} 
                         disabled={data.length === 0} 
-                        className="h-11 border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-6 transition-all"
+                        className="h-9 md:h-11 w-9 md:w-auto md:px-6 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                        title="Print"
                     >
-                        <Printer className="h-4 w-4 mr-2" /> Print / PDF
+                        <Printer className="h-4 w-4 md:mr-2" /> 
+                        <span className="hidden md:inline">Print</span>
                     </Button>
                 </div>
             </PageHeader>
 
-            {/* FILTER CARD (Matches Style) */}
-            <Card className="bg-muted/20 border-dashed border-2 shadow-none">
-                <CardContent className="py-6 px-6">
-                    <div className="flex flex-col xl:flex-row gap-6 items-end">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 w-full">
+            {/* FILTER CARD - Compact Mobile View */}
+            <Card className="bg-muted/20 border-2 border-dashed md:border-dashed border-border/60 shadow-none">
+                <CardContent className="py-4 px-4 md:py-6 md:px-6">
+                    <div className="flex flex-col xl:flex-row gap-4 md:gap-6 items-end">
+                        
+                        {/* Inputs Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 w-full">
                             {STATIC_META.parameters.map(param => renderInput(param))}
                         </div>
-                        <div className="flex gap-3 shrink-0 w-full md:w-auto">
+
+                        {/* Action Buttons - Full width on mobile */}
+                        <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
                             <Button 
                                 onClick={() => setDynamicFilters({})} 
                                 variant="ghost" 
-                                className="h-11 text-muted-foreground hover:text-foreground"
+                                className="h-10 md:h-11 flex-1 md:flex-none text-muted-foreground hover:text-foreground"
                             >
-                                <RotateCcw className="h-4 w-4 mr-2" /> Reset
+                                <RotateCcw className="h-4 w-4 md:mr-2" /> 
+                                <span className="hidden md:inline">Reset</span>
                             </Button>
+                            
                             <Button 
                                 onClick={() => runReport(1)} 
                                 disabled={loading} 
-                                className="h-11 px-10 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 font-semibold transition-all hover:scale-[1.02]"
+                                className="h-10 md:h-11 px-6 md:px-10 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md font-semibold flex-[2] md:flex-none"
                             >
                                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 mr-2 fill-current" />} 
-                                Run Report
+                                Run
                             </Button>
                         </div>
                     </div>
@@ -187,7 +200,7 @@ export default function StaffParkingReportPage() {
             </Card>
 
             {/* RESULTS TABLE */}
-            <Card className="flex-1 flex flex-col min-h-[500px] overflow-hidden shadow-sm border-gray-200 dark:border-zinc-800">
+            <Card className="flex-1 flex flex-col min-h-[400px] overflow-hidden shadow-sm border-gray-200 dark:border-zinc-800">
                 <CardContent className="p-0 flex-1 flex flex-col">
                     <div className="flex-1 overflow-auto scrollbar-hide">
                         <DataTable 
@@ -196,7 +209,7 @@ export default function StaffParkingReportPage() {
                             keyExtractor={(_, index) => `row-${index}`}
                             isLoading={loading}
                             emptyTitle="No Data Generated"
-                            emptyMessage='Configure filters and click "Run Report" to generate results.'
+                            emptyMessage='Click "Run" to see results.'
                             emptyIcon={FileText}
                             pagination={{
                                 currentPage: pagination.currentPage,

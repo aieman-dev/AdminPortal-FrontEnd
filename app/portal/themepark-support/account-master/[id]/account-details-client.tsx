@@ -22,7 +22,7 @@ import { BalanceCard } from "@/components/shared-components/balance-card"
 import { CheckCircle2, Wallet, Clock, SearchX, FileText, User, ShieldAlert, ArrowLeft, Mail, ArrowRightLeft, Power } from "lucide-react"
 import type { Account, BalanceDetail, BalanceTransaction } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
-import { useToast } from "@/hooks/use-toast"
+import { useAppToast } from "@/hooks/use-app-toast"
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
 import {
   Breadcrumb,
@@ -49,7 +49,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
   const [isProcessing, setIsProcessing] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
   const [showSuccess, setShowSuccess] = useState(false)
-  const { toast } = useToast()
+  const toast = useAppToast()
 
   const trxPager = usePagination({ pageSize: 50 });
 
@@ -114,12 +114,12 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
         
         setSuccessMessage(successToastMessage);
         setShowSuccess(true)
-        toast({ title: "Success", description: successToastMessage });
+        toast.success( "Success", successToastMessage );
         setTimeout(() => setShowSuccess(false), 5000)
 
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "An unexpected error occurred.";
-        toast({ title: "Action Failed", description: errorMsg, variant: "destructive" });
+        toast.error( "Action Failed",  errorMsg);
         setSuccessMessage("");
         setShowSuccess(false);
 
@@ -163,7 +163,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
             setAccount(prev => ({ ...prev, email: newEmail.trim() }));
             const msg = `Email changed successfully to ${newEmail}`;
             setSuccessMessage(msg);
-            toast({ title: "Success", description: msg });
+            toast.success( "Success", msg );
             setShowSuccess(true);
             setNewEmail("");
             fetchBalanceDetails();
@@ -174,7 +174,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
         }
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Error.";
-        toast({ title: "Action Failed", description: errorMsg, variant: "destructive" });
+        toast.error("Action Failed", errorMsg);
     } finally {
         setIsProcessing(false);
     }
@@ -188,7 +188,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
         if (response.success) {
             const msg = `Transaction exchange requested successfully.`;
             setSuccessMessage(msg);
-            toast({ title: "Success", description: msg });
+            toast.success("Success", msg );
             setShowSuccess(true);
             setNewEmail("");
             setNewAccId("");
@@ -199,7 +199,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
         }
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Error.";
-        toast({ title: "Action Failed", description: errorMsg, variant: "destructive" });
+        toast.error( "Action Failed", errorMsg);
     } finally {
         setIsProcessing(false);
     }
@@ -209,7 +209,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
 
   const handleActivateExpiredBalance = async () => {
     if (expiredBalance <= 0) {
-         toast({ title: "Action Blocked", description: "Expired balance is zero.", variant: "default" });
+         toast.info("Action Blocked", "Expired balance is zero.");
          return;
     }
     setIsProcessing(true)
@@ -218,7 +218,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
         if (response.success) {
             const msg = "Expired balance activation requested successfully.";
             setSuccessMessage(msg);
-            toast({ title: "Success", description: msg });
+            toast.success( "Success", msg );
             setShowSuccess(true);
             fetchBalanceDetails();
             setActionType(null); 
@@ -228,7 +228,7 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
         }
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Error.";
-        toast({ title: "Action Failed", description: errorMsg, variant: "destructive" });
+        toast.error( "Action Failed",  errorMsg);
     } finally {
         setIsProcessing(false)
     }

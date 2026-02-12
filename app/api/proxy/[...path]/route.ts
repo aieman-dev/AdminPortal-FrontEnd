@@ -26,16 +26,17 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
 
   try {
     let body: any = undefined;
-    if (request.method === "POST" || request.method === "PUT") {
+    if (request.method === "POST" || request.method === "PUT" || request.method === "PATCH") {
+      const contentType = request.headers.get("content-type");
+      if (contentType?.includes("application/json")) {
         try {
-            const text = await request.text();
-            // Only parse if string is not empty to avoid JSON parse error
-            if (text) {
-                body = JSON.parse(text);
+                body = await request.json();
+            } catch (e) {
+                console.warn("Failed to parse request JSON, forwarding empty body.");
+                body = undefined;
             }
-        } catch (e) {
-            console.warn("Failed to parse request body, proceeding with undefined body.");
-            body = undefined;
+        } else {
+            console.warn("Proxy received non-JSON content-type:", contentType);
         }
     }
 

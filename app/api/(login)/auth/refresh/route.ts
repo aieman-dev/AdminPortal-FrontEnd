@@ -6,16 +6,18 @@ export async function POST(request: NextRequest) {
   const cookieStore = await cookies();
   const refreshToken = cookieStore.get("refreshToken")?.value;
 
+  // Retrieve the (potentially expired) access token
+  const accessToken = cookieStore.get("accessToken")?.value;
+
   if (!refreshToken) {
     return NextResponse.json({ message: "No refresh token" }, { status: 401 });
   }
 
   try {
-    // Call Backend Refresh
     const res = await fetch(`${BACKEND_API_BASE}/api/auth/refresh`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken }),
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken || ""}` },
+      body: JSON.stringify({ refreshToken, token: accessToken }),
     });
 
     const data = await res.json();
@@ -30,20 +32,21 @@ export async function POST(request: NextRequest) {
     cookieStore.set("accessToken", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
       path: "/",
     });
 
-    cookieStore.set("refreshToken", newRefresh, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/",
-      expires: new Date(refreshTokenExpiry),
-    });
+    if (newRefresh) {
+        cookieStore.set("refreshToken", newRefresh, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            path: "/",
+            expires: new Date(refreshTokenExpiry),
+        });
+    }
 
     const newExpiryTimestamp = Date.now() + (24 * 60 * 60 * 1000);
-
     cookieStore.set("session_expiry", String(newExpiryTimestamp), {
       httpOnly: false,
       secure: process.env.NODE_ENV === "production",
@@ -54,6 +57,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
 
   } catch (error) {
+    console.error("Refresh Route Error:", error);
     return NextResponse.json({ message: "Server error" }, { status: 500 });
   }
 }
