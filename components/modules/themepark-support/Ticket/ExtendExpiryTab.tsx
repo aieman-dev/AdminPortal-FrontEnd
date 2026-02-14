@@ -11,10 +11,12 @@ import { useAutoSearch } from "@/hooks/use-auto-search"
 import { DatePicker } from "@/components/ui/date-picker"
 import { TimePicker } from "@/components/ui/time-picker"
 import { SearchField } from "@/components/shared-components/search-field"
+import { StatusBadge } from "@/components/shared-components/status-badge"
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet"
 import { Label } from "@/components/ui/label"
+import { formatDateTime } from "@/lib/formatter"
 
 export default function ExtendExpiryTab() {
   const toast = useAppToast()
@@ -75,7 +77,11 @@ export default function ExtendExpiryTab() {
 
   const handleDateTimeChange = (ticketNo: string, newDate: Date | undefined) => {
       if (newDate) {
-          setEditedDates(prev => ({ ...prev, [ticketNo]: newDate }));
+        const updatedDate = new Date(newDate);
+        setEditedDates(prev => ({ 
+            ...prev, 
+            [ticketNo]: updatedDate 
+        }));
       }
   }
 
@@ -132,6 +138,11 @@ export default function ExtendExpiryTab() {
       { header: "Ticket Name", accessor: "ticketName" },
       { header: "Effective Date", accessor: "effectiveDate", cell: (val) => (val as string).split('T')[0], className: isMobile ? "hidden" : "" },
       { 
+        header: "Current Expiry", 
+        accessor: "expiryDate", 
+        cell: (val) => <span className="text-amber-600 font-mono text-xs">{formatDateTime(val as string)}</span> 
+    },
+      { 
           header: "New Expiry Date", 
           accessor: "ticketNo", 
           className: isMobile ? "hidden" : "min-w-[320px]",
@@ -150,6 +161,8 @@ export default function ExtendExpiryTab() {
               )
           }
       },
+      { header: "Last Valid Date", accessor: "lastValidDate", cell: (val) => (val as string).split('T')[0], className: isMobile ? "hidden" : "" },
+      { header: "Status", accessor: "recordStatus", cell: (value) => <StatusBadge status={value} /> },
       {
           header: "Action",
           accessor: "ticketNo",
@@ -171,7 +184,7 @@ export default function ExtendExpiryTab() {
               )
           }
       }
-  ], []);
+  ], [editedDates, isUpdatingTicketNo, isMobile]);
 
   return (
     <>
@@ -230,6 +243,7 @@ export default function ExtendExpiryTab() {
                                 date={editedDates[selectedTicket.ticketNo]} 
                                 setDate={(d) => handleDateTimeChange(selectedTicket.ticketNo, d)} 
                                 className="w-full h-12"
+                                minDate={new Date(selectedTicket.effectiveDate)}
                             />
                         </div>
                         <div className="space-y-2">

@@ -1,5 +1,6 @@
 // components/PackageFormStep1.tsx
 import React, { useEffect, useState, useRef } from "react";
+import Image from "next/image";
 import { Search, X, ChevronDown, Check, Loader2, Eye } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { PackageFormValues } from "@/lib/schemas/package-management";
@@ -260,7 +261,7 @@ const PackageFormStep1: React.FC<Props> = ({ form, onNext }) => {
                             setIsImageDropdownOpen(true);
                         }}
                         onClick={() => setIsImageDropdownOpen(prev => !prev)} 
-                        placeholder="Search image database..."
+                        placeholder="Search image database"
                         className="pl-10 cursor-pointer"
                     />
                     <Search className="absolute left-3 top-2.5 text-muted-foreground pointer-events-none" size={18} />
@@ -288,7 +289,16 @@ const PackageFormStep1: React.FC<Props> = ({ form, onNext }) => {
                         ) : (
                             filteredImages.map((img) => (
                                 <div key={img.id} onClick={() => handleSelectImage(img)} className="flex items-center gap-3 p-2 hover:bg-accent cursor-pointer border-b last:border-0">
-                                    <img src={img.url} alt={img.name} className="w-10 h-10 rounded object-cover border" />
+                                    <div className="relative w-10 h-10 shrink-0 rounded overflow-hidden border bg-muted">
+                                        <Image 
+                                            src={img.url} 
+                                            alt={img.name} 
+                                            fill
+                                            className="object-cover"
+                                            sizes="40px"
+                                            unoptimized={img.url.startsWith("blob:")}
+                                        />
+                                        </div>
                                     <span className="text-sm flex-1 truncate">{img.name}</span>
                                     {currentImageID === img.id && <Check size={16} className="text-indigo-600" />}
                                 </div>
@@ -305,7 +315,14 @@ const PackageFormStep1: React.FC<Props> = ({ form, onNext }) => {
                     <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
                         <DialogTrigger asChild>
                             <div className="relative group cursor-zoom-in flex-shrink-0">
-                                <img src={imagePreviewUrl} alt="Selected" className="w-24 h-24 object-cover rounded-md border bg-background" />
+                                <Image 
+                                    src={imagePreviewUrl} 
+                                    alt="Selected" 
+                                    width={96} 
+                                    height={96} 
+                                    className="object-cover rounded-md border bg-background" 
+                                    unoptimized={imagePreviewUrl.startsWith("blob:")}
+                                />
                                 <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity rounded-md flex items-center justify-center">
                                     <Eye className="text-white w-6 h-6" />
                                 </div>
@@ -313,7 +330,11 @@ const PackageFormStep1: React.FC<Props> = ({ form, onNext }) => {
                         </DialogTrigger>
                         <DialogContent className="max-w-3xl w-auto p-0 bg-transparent border-none">
                             <DialogTitle className="sr-only">Image Preview</DialogTitle> 
-                            <img src={imagePreviewUrl} alt="Preview" className="w-full h-auto max-h-[80vh] rounded-lg shadow-2xl" />
+                                <img 
+                                    src={imagePreviewUrl} 
+                                    alt="Preview" 
+                                    className="w-full h-auto max-h-[80vh] rounded-lg shadow-2xl"
+                                />
                         </DialogContent>
                     </Dialog>
                     <div className="flex flex-col justify-between h-24 py-1 min-w-0">

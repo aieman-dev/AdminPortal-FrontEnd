@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Badge } from "@/components/ui/badge"
+import { EmailAutocomplete } from "@/components/ui/email-autocomplete"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { useBeforeUnload } from "@/hooks/use-before-unload";
@@ -78,7 +79,7 @@ export default function HRRegistrationPage() {
             nric: "",
             mobileContact: "",
             plate1: "",
-            userType: "Staff", // <--- LOCKED TO STAFF
+            userType: "Staff",
             parkingType: "Reserved",
             bayNo: "",
             seasonPackage: "",
@@ -150,7 +151,7 @@ export default function HRRegistrationPage() {
         reset({
             searchType: "email",
             searchTerm: "",
-            userType: "Staff", // Keep as Staff
+            userType: "Staff", 
             parkingType: "Reserved",
             isTandem: false
         })
@@ -167,7 +168,6 @@ export default function HRRegistrationPage() {
         setIsSubmitting(true)
         try {
             const adminId = user?.id || 0
-            // Reuse existing service, it handles "Staff" userType correctly
             await hrService.submitRegistration(formDataToSubmit, adminId)
             toast.success("Registration Successful", "New staff parking registered.")
             handleClear()
@@ -200,11 +200,16 @@ export default function HRRegistrationPage() {
                         </button>
                     </div>
                     <div className="w-px h-6 bg-border" />
-                    <Input 
+                    <EmailAutocomplete 
                         placeholder={searchType === "email" ? "staff@icity.com" : "QR Code"} 
                         {...register("searchTerm")}
+                        value={watch("searchTerm")}
                         className="h-9 border-0 bg-transparent focus-visible:ring-0 w-full md:w-[250px] text-sm shadow-none pl-0"
-                        onKeyDown={(e) => e.key === "Enter" && handleVerify()}
+                        onKeyDown={(e) => {
+                             if (e.key === "Enter" && !e.defaultPrevented) {
+                                 handleVerify()
+                             }
+                        }}
                     />
                     <Button type="button" onClick={handleVerify} disabled={isVerifying} size="sm" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90">
                         {isVerifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Verify"}

@@ -1,25 +1,39 @@
 //app/portal/layout
 "use client"
 
-import type React from "react"
-import { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect } from "react"
+import { usePathname } from "next/navigation"
+import { AnimatePresence } from "framer-motion"
+
+// Components
 import { Sidebar } from "@/components/portal/sidebar"
 import { Header } from "@/components/portal/header"
 import { ProtectedRoute } from "@/components/portal/protected-route"
-import { cn } from "@/lib/utils"
 import { Toaster } from "@/components/ui/toaster"
 import { CommandMenu } from "@/components/portal/command-menu"
 import { SessionTimer } from "@/components/portal/session-timer"
-import { SystemAnnouncement } from "@/components/portal/system-annoucement";
-import { SystemOffline } from "@/components/portal/system-offline";
+import { SystemAnnouncement } from "@/components/portal/system-annoucement"
+import { SystemOffline } from "@/components/portal/system-offline"
 import { SystemTips } from "@/components/portal/system-tips"
-import { settingService, type BroadcastItem } from "@/services/setting-services";
-
-import { AnimatePresence } from "framer-motion"
 import { PageWrapper } from "@/components/portal/page-wrapper"
-import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
+
+// Context & Services
+import { DashboardProvider, useDashboard } from "@/context/DashboardContext"
+import { settingService } from "@/services/setting-services"
+
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <ProtectedRoute>
+      <DashboardProvider>
+        <PortalContent>{children}</PortalContent>
+      </DashboardProvider>
+    </ProtectedRoute>
+  )
+}
+
+  function PortalContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
@@ -29,95 +43,36 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const [lockDetails, setLockDetails] = useState<any>(null);
 
   // Broadcast noti
-  const [broadcasts, setBroadcasts] = useState<BroadcastItem[]>([]);
-  const [personalNotifications, setPersonalNotifications] = useState<any[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const { broadcasts, personalNotifications, unreadCount, refreshAll } = useDashboard()
   const [showSystemNews, setShowSystemNews] = useState(true);
 
-  const fetchDashboardData = useCallback(async () => {
-      try {
-        const response: any = await settingService.getDashboardAlerts();
-        if (!response) return
-        
-        const data = response.content || response;
-        
-        setBroadcasts((prev) => 
-          JSON.stringify(prev) === JSON.stringify(data.broadcasts) ? prev : (data.broadcasts || [])
-        )
-            
-        setPersonalNotifications((prev) => 
-          JSON.stringify(prev) === JSON.stringify(data.personalNotifications) ? prev : (data.personalNotifications || [])
-        )
 
-        setUnreadCount((prev) => (prev === data.unreadCount ? prev : data.unreadCount))
-        
-      } catch (error) {
-        console.error("Dashboard Poll Error:", error);
-      }
-  }, [])
-
+  // Simple Mark-Read Handler (UI Logic only)
   const handleMarkAllRead = async () => {
       try {
           await settingService.markAllNotificationsAsRead();
-          
-          setUnreadCount(0);
-          setBroadcasts(prev => prev.map(b => ({ ...b, isRead: true })));
-          setPersonalNotifications(prev => prev.map(p => ({ ...p, isRead: true })));
-
-          await fetchDashboardData();  
+          refreshAll(); // Ask context to update data
       } catch (error) {
           console.error("Failed to mark all read:", error);
       }
   };
 
+  // Load Preferences (UI Preference only)
   useEffect(() => {
-    const initPreferences = async () => {
-      try {
-        const prefData = await settingService.getSetting<boolean>("systemAnnouncements");
-        setShowSystemNews(prefData ?? true);
-      } catch (error) {
-        console.error("Pref Load Error:", error);
-      }
+    const loadPref = async () => {
+      const prefData = await settingService.getSetting<boolean>("systemAnnouncements");
+      setShowSystemNews(prefData ?? true);
     };
+    loadPref();
+  }, []);
+
     
-    initPreferences();
-    fetchDashboardData();
-
-    // 1. Polling: Only fetch if the tab is visible
-  const intervalId = setInterval(() => {
-    if (!document.hidden) {
-      fetchDashboardData();
-    }
-  }, 30000);
-
-  // 2. Revalidation: Fetch immediately when user returns to the tab
-  const handleVisibilityChange = () => {
-    if (!document.hidden) {
-      console.log("Tab active: Revalidating dashboard...");
-      fetchDashboardData();
-    }
-  };
-
-  document.addEventListener("visibilitychange", handleVisibilityChange);
-
-  // Cleanup
-  return () => {
-    clearInterval(intervalId);
-    document.removeEventListener("visibilitychange", handleVisibilityChange);
-  };
-}, [fetchDashboardData]);
-
-
+  // Global Error Listener (Keep this here as it affects the whole UI)
   useEffect(() => {
     const handleGlobalError = (event: Event) => {
         const customEvent = event as CustomEvent;
-        // 1. Get message from event
-        const msg = customEvent.detail?.message || "System Unavailable";
-        const debug = customEvent.detail?.debugInfo;
-        
-        // 2. Set State
-        setLockMessage(msg);
-        setLockDetails(debug);
+        setLockMessage(customEvent.detail?.message || "System Unavailable");
+        setLockDetails(customEvent.detail?.debugInfo);
         setIsSystemLocked(true);
     };
 

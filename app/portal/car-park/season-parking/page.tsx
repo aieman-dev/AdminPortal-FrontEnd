@@ -211,6 +211,7 @@ export default function SeasonParkingPage() {
                 onChange={setSearchTerm}
                 onSearch={handleSearchClick}
                 isSearching={isSearching}
+                inputType="email"
             />
         </CardContent>
       </Card>

@@ -14,8 +14,6 @@ export default function LoginPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  if (!mounted) return null;
-
   return (
     <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-background text-foreground transition-colors duration-500">
       
@@ -40,7 +38,10 @@ export default function LoginPage() {
       </div>
 
       {/* CARD CONTAINER */}
-      <div className="relative z-10 w-full max-w-[400px] p-4 animate-in fade-in zoom-in-95 duration-500">
+      <div className={cn(
+        "relative z-10 w-full max-w-[400px] p-4 transition-opacity duration-500",
+        mounted ? "opacity-100 scale-100" : "opacity-0 scale-95"
+      )}>
         
         {/* Glow Underlay */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 bg-primary/20 blur-[80px] rounded-full -z-10" />

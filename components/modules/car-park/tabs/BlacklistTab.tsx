@@ -229,6 +229,7 @@ export default function BlacklistTab() {
                                     onChange={setSearchTerm}
                                     onSearch={handleCardSearch}
                                     isSearching={loading}
+                                    inputType="email"
                                 />
                             </div>
                             

@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/portal/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { EmailAutocomplete } from "@/components/ui/email-autocomplete"
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
 import { SearchField } from "@/components/shared-components/search-field"
 import { useAppToast } from "@/hooks/use-app-toast"
@@ -166,6 +167,7 @@ export default function StaffListingPage() {
                         onChange={setSearchTerm}
                         onSearch={handleSearchClick}
                         isSearching={isLoading}
+                        inputType="email"
                     />
                 </CardContent>
             </Card>

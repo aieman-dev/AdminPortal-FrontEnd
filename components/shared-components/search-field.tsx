@@ -2,6 +2,7 @@
 "use client"
 
 import { Input } from "@/components/ui/input"
+import { EmailAutocomplete } from "@/components/ui/email-autocomplete"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Search, X, Loader2 } from "lucide-react"
@@ -16,6 +17,7 @@ interface SearchFieldProps {
   isSearching?: boolean
   disabled?: boolean
   extraFilters?: ReactNode 
+  inputType?: "text" | "email"
 }
 
 export function SearchField({
@@ -26,8 +28,12 @@ export function SearchField({
   onSearch,
   isSearching = false,
   disabled = false,
-  extraFilters
+  extraFilters,
+  inputType = "text"
 }: SearchFieldProps) {
+
+    const InputComponent = inputType === "email" ? EmailAutocomplete : Input;
+
   return (
     <div className="flex flex-col gap-2 w-full">
         <Label className="text-sm font-medium ml-1">{label}</Label>
@@ -35,11 +41,11 @@ export function SearchField({
             
             {/* 1. Input Field (Grows to fill space) */}
             <div className="relative flex-1">
-                <Input
+                <InputComponent
                   placeholder={placeholder}
                   value={value}
-                  onChange={(e) => onChange(e.target.value)}
-                  onKeyDown={(e) => {
+                  onChange={(e: any) => onChange(e.target.value)}
+                  onKeyDown={(e: any) => {
                       if (e.key === "Enter" && !isSearching) {
                           onSearch();
                       }

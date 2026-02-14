@@ -80,8 +80,9 @@ export default function UpdateTerminalTab() {
     try {
         const terminalID = editingTerminal.id; 
         const newUUID = editingTerminal.uuid;
+        const newType = editingTerminal.terminalType;
 
-        const response = await itPoswfService.updateTerminalUUID(terminalID, newUUID);
+        const response = await itPoswfService.updateTerminalUUID(terminalID, newUUID, newType);
 
         if (response.success) {
             const updatedTerminals = terminals.map((t) =>
@@ -89,6 +90,7 @@ export default function UpdateTerminalTab() {
                     ? { 
                         ...t, 
                         uuid: newUUID, 
+                        terminalType: newType,
                         modifiedDate: new Date().toISOString() 
                     }
                     : t,
@@ -190,7 +192,10 @@ export default function UpdateTerminalTab() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-type" className="text-sm font-medium">Terminal Type</Label>
-                <Select value={editingTerminal.terminalType} disabled>
+                <Select 
+                      value={editingTerminal.terminalType} 
+                      onValueChange={(val) => setEditingTerminal({ ...editingTerminal, terminalType: val as any })}
+                  >
                   <SelectTrigger id="edit-type" className="h-11"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="POS">POS</SelectItem>

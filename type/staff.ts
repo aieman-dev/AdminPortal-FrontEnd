@@ -57,7 +57,7 @@ export interface AuditLog {
   userRole?: string;
   oldValue?: string | null;
   newValue?: string | null;
-  tableAffected?: string | null;
+  tableAffected?: string | string[] | null;
   timestamp: string;
 }
 

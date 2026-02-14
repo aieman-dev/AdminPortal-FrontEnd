@@ -1,16 +1,20 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation";
+import { ReceiptData } from "@/components/modules/themepark-support/Receipt/ReceiptView"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
+import { EmailAutocomplete } from "@/components/ui/email-autocomplete"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Search, Wallet, TrendingUp, Minus, Plus, ShoppingCart, Loader2, ArrowLeft, CheckCircle2, SearchX } from "lucide-react"
+import { Search, Wallet, TrendingUp, Minus, Plus, ShoppingCart, XCircle, ArrowLeft, CheckCircle2, SearchX } from "lucide-react"
 import { BalanceCard } from "@/components/shared-components/balance-card"
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction } from "@/components/ui/alert-dialog"
 import {
   type RetailManualConsumeData,
   type RetailManualConsumeSearchPayload,
@@ -32,6 +36,7 @@ type Step = 'selection' | 'confirmation';
 
 export default function RetailManualConsumeTab() {
   const toast = useAppToast()
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState<Step>('selection');
 
   // Search State
@@ -50,6 +55,7 @@ export default function RetailManualConsumeTab() {
   // Pagination State
   const pager = usePagination({ pageSize: 10 });
 
+  const [isBalanceAlertOpen, setIsBalanceAlertOpen] = useState(false);
   const [isConsumeSearching, setIsConsumeSearching] = useState(false)
   const [isExecuting, setIsExecuting] = useState(false)
 
@@ -156,7 +162,7 @@ export default function RetailManualConsumeTab() {
     const totalAmount = mappedItems.reduce((sum, item) => sum + item.amount, 0);
 
     if (consumeSearchResult.creditBalance < totalAmount) {
-         toast.error("Insufficient Balance", "Credit balance too low.");
+         setIsBalanceAlertOpen(true);
         return;
     }
 
@@ -179,12 +185,41 @@ export default function RetailManualConsumeTab() {
     try {
         const response = await itPoswfService.executeManualConsumeRetail(executePayload);
         if (response.success) {
+            const newInvoice = response.data?.invoiceNo;
+
+            const receiptData: ReceiptData = {
+                invoiceNo: newInvoice || "N/A",
+                date: new Date().toISOString(),
+                customerEmail: email || "Walk-in Customer",
+                customerName: consumeSearchResult.accID ? "Registered User" : "Guest",
+                status: "Consumed",
+                totalAmount: totalAmount,
+                items: mappedItems.map(item => {
+                    const original = consumeSearchResult.items.find(i => i.itemID === item.itemID);
+                    return {
+                        name: original?.itemName || "Unknown Item",
+                        amount: item.amount,
+                        qty: item.quantity
+                    };
+                })
+            };
+
+            // 2. SAVE TO SESSION STORAGE (Temporary bridge)
+            if (typeof window !== 'undefined') {
+                sessionStorage.setItem(`receipt_cache_${newInvoice}`, JSON.stringify(receiptData));
+            }
+
             setConsumeSearchResult(null);
             setQuantities({});
             setEmail("");
             setInvoiceNo("");
             setCurrentStep('selection');
-            toast.success("Success", `Invoice: ${response.data?.invoiceNo}`);
+
+            toast.success("Transaction Successful", `Invoice: ${newInvoice} created.`);
+
+            if (newInvoice) {
+                  router.push(`/portal/themepark-support/receipt?invoiceNo=${newInvoice}`);
+                }
         } else {
             throw new Error(response.error || "Consumption failed.");
         }
@@ -201,10 +236,8 @@ export default function RetailManualConsumeTab() {
   }, [consumeSearchResult, quantities]);
 
   const paginatedItems = useMemo(() => {
-      if (!consumeSearchResult) return [];
-      const startIndex = (pager.currentPage - 1) * pager.pageSize;
-      return consumeSearchResult.items.slice(startIndex, startIndex + pager.pageSize);
-  }, [consumeSearchResult, pager.currentPage]);
+      return pager.paginate(consumeSearchResult?.items || []);
+  }, [consumeSearchResult, pager.paginate]);
 
   const totalPages = consumeSearchResult ? Math.ceil(consumeSearchResult.items.length / pager.pageSize) : 0;
 
@@ -350,7 +383,7 @@ export default function RetailManualConsumeTab() {
                 <CardContent className="space-y-6">
                     <div className="flex justify-between items-center bg-muted/50 p-4 rounded-lg border">
                         <span className="text-sm font-medium text-muted-foreground">Credit Balance</span>
-                        <span className="text-xl font-bold text-primary">{formatCurrency(cartTotal)}</span>
+                        <span className="text-xl font-bold text-primary">{formatCurrency(creditBalance)}</span>
                     </div>
                     <Separator />
                     <div className="space-y-4">
@@ -419,7 +452,12 @@ export default function RetailManualConsumeTab() {
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="email">Email Address {isSuperApp && "*"}</Label>
-                    <Input id="email" className="h-11" value={email} onChange={(e) => setEmail(e.target.value)} disabled={isEmailDisabled} placeholder="customer@email.com"/>
+                    <EmailAutocomplete 
+                        id="email" 
+                        className="h-11" 
+                        value={email} onChange={(e) => setEmail(e.target.value)} 
+                        disabled={isEmailDisabled} 
+                        placeholder="customer@email.com"/>
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="mobileNo">Mobile No</Label>
@@ -466,6 +504,26 @@ export default function RetailManualConsumeTab() {
       )}
 
       {consumeSearchResult && (currentStep === 'selection' ? renderSelectionView() : renderConfirmationView())}
+
+      <AlertDialog open={isBalanceAlertOpen} onOpenChange={setIsBalanceAlertOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <div className="flex items-center gap-2 text-red-600 mb-2">
+                        <XCircle className="h-6 w-6" />
+                        <AlertDialogTitle>Insufficient Balance</AlertDialogTitle>
+                    </div>
+                    <AlertDialogDescription>
+                        The user's credit balance is <strong>{formatCurrency(consumeSearchResult?.creditBalance)}</strong>, 
+                        but the total cart amount is <strong>{formatCurrency(cartTotal)}</strong>.
+                        <br/><br/>
+                        Please ask the user to top up or reduce the cart items.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogAction onClick={() => setIsBalanceAlertOpen(false)}>Okay, understood</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </>
   )
 }

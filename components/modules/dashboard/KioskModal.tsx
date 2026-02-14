@@ -17,31 +17,31 @@ interface Props {
 }
 
 export function KioskModal({ isOpen, onClose, data, onRefresh }: Props) {
-    const [seconds, setSeconds] = useState(30);
+    const [seconds, setSeconds] = useState(60);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [filter, setFilter] = useState<'all' | 'online' | 'offline'>('all');
     const onlineCount = data.filter(k => k.isActive).length;
     const offlineCount = data.length - onlineCount;
 
+
     const toggleFilter = (type: 'online' | 'offline') => {
         setFilter(prev => prev === type ? 'all' : type);
     };
+
 
     const filteredData = useMemo(() => {
         if (filter === 'all') return data;
         return data.filter(k => filter === 'online' ? k.isActive : !k.isActive);
     }, [data, filter]);
 
+
     const handleAutoRefresh = async () => {
         if (!onRefresh) return;
         setIsRefreshing(true);
-    
         const minLoadTime = new Promise(resolve => setTimeout(resolve, 800));
-        
         await Promise.all([onRefresh(), minLoadTime]);
-        
         setIsRefreshing(false);
-        setSeconds(30);
+        setSeconds(60);
     };
 
     // --- TIMER LOGIC ---
@@ -51,15 +51,21 @@ export function KioskModal({ isOpen, onClose, data, onRefresh }: Props) {
         const interval = setInterval(() => {
             setSeconds((prev) => {
                 if (prev <= 1) {
-                    handleAutoRefresh(); 
-                    return 30;
+                    return 0;
                 }
                 return prev - 1;
             });
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [isOpen, onRefresh]);
+    }, [isOpen]);
+
+    // Watch for "seconds" hitting 0 to trigger refresh safely
+    useEffect(() => {
+        if (seconds === 0 && isOpen && !isRefreshing) {
+            handleAutoRefresh();
+        }
+    }, [seconds, isOpen, isRefreshing]);
     
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>

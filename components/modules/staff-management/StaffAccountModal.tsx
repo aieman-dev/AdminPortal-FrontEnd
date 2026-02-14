@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
+import { EmailAutocomplete } from "@/components/ui/email-autocomplete"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, Loader2, UserPlus, User, Eye, EyeOff } from "lucide-react"
 import { useAppToast } from "@/hooks/use-app-toast"
@@ -90,7 +91,10 @@ export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAcco
     try {
       await staffService.assignRole(selectedUser.accId, selectedRole, password, expiryDate);
       
-      toast.success( "Success", `Role assigned to ${selectedUser.fullName || selectedUser.email}.`)
+      toast.success( 
+        "Role Assigned", 
+        `Access granted to ${selectedUser.fullName || selectedUser.email}. An automated email has been sent to them.`
+      )
       
       onSuccess()
       onOpenChange(false)
@@ -125,7 +129,7 @@ export function StaffAccountModal({ isOpen, onOpenChange, onSuccess }: StaffAcco
           <div className="space-y-3">
             <Label>Search User</Label>
             <div className="flex gap-2">
-              <Input 
+              <EmailAutocomplete 
                 placeholder="Search by name, email or mobile..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}

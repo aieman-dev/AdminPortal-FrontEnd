@@ -1,7 +1,7 @@
 // hooks/use-pagination.ts
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 
 interface UsePaginationProps {
   initialPage?: number;
@@ -21,17 +21,27 @@ export function usePagination({
   const [totalRecords, setTotalRecords] = useState(initialTotalRecords);
 
   // Reset to page 1 (Useful when search query changes)
-  const reset = () => {
+  const reset = useCallback(() => {
     setCurrentPage(1);
     setTotalPages(1);
     setTotalRecords(0);
-  };
+  }, []);
 
   // Bulk update metadata from API response
-  const setMetaData = (totalP: number, totalR: number) => {
+  const setMetaData = useCallback((totalP: number, totalR: number) => {
     setTotalPages(totalP);
     setTotalRecords(totalR);
-  };
+  }, []);
+
+  // --- NEW: Client-Side Slicing Helpers ---
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+
+  // Helper to slice an array based on current state
+  const paginate = useCallback(<T,>(items: T[]): T[] => {
+    if (!items) return [];
+    return items.slice(startIndex, endIndex);
+  }, [startIndex, endIndex]);
 
   return {
     currentPage,
@@ -41,6 +51,9 @@ export function usePagination({
     pageSize,
     setMetaData,
     reset,
+    startIndex, 
+    endIndex,
+    paginate,
     paginationProps: {
       currentPage,
       totalPages,

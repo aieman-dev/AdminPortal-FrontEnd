@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
+import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { SearchField } from "@/components/shared-components/search-field" // <--- Import
 import { PasswordDisplay } from "@/components/shared-components/password-display"
@@ -15,6 +14,9 @@ export default function UpdateQrPasswordTab() {
 
   const [qrInvoiceNo, setQrInvoiceNo] = useState("")
   const [qrSearchResult, setQrSearchResult] = useState<PasswordData | null>(null)
+
+  const [oldPassword, setOldPassword] = useState<string | null>(null)
+
   const [isQrSearching, setIsQrSearching] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
   const [resetSuccess, setResetSuccess] = useState(false)
@@ -28,12 +30,14 @@ export default function UpdateQrPasswordTab() {
     setIsQrSearching(true)
     setResetSuccess(false)
     setQrSearchResult(null);
+    setOldPassword(null);
     
     try {
         const response = await itPoswfService.searchQrPassword(qrInvoiceNo.trim());
         
         if (response.success && response.data) {
             setQrSearchResult(response.data);
+            setOldPassword(response.data.currentPassword);
             toast.success("Success", "QR Password retrieved.");
         } else {
             setQrSearchResult(null);
@@ -91,7 +95,8 @@ export default function UpdateQrPasswordTab() {
       {qrSearchResult && (
         <PasswordDisplay
           invoiceNo={qrSearchResult.invoiceNo}
-          currentPassword={qrSearchResult.currentPassword}
+          currentPassword={oldPassword || qrSearchResult.currentPassword}
+          newPassword={resetSuccess ? qrSearchResult.currentPassword : null}
           onReset={handleResetPassword}
           isResetting={isResetting}
           resetSuccess={resetSuccess}

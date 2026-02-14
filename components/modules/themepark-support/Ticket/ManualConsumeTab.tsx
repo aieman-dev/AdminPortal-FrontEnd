@@ -2,11 +2,14 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
+import { ReceiptData } from "@/components/modules/themepark-support/Receipt/ReceiptView"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
+import { EmailAutocomplete } from "@/components/ui/email-autocomplete"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge" 
 import { Separator } from "@/components/ui/separator"
@@ -28,11 +31,13 @@ import { cn } from "@/lib/utils"
 import { CONSUME_TYPES, TICKET_TYPES, TICKET_STATUSES } from "@/lib/constants"
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
 import { PaginationControls } from "@/components/ui/pagination-controls"
+import { usePagination } from "@/hooks/use-pagination"
 
 type Step = 'selection' | 'confirmation';
 
 export default function ManualConsumeTab() {
   const toast = useAppToast()
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState<Step>('selection');
 
   // -- Form State --
@@ -55,8 +60,7 @@ export default function ManualConsumeTab() {
   const [isExecuting, setIsExecuting] = useState(false)
 
   // -- Pagination State --
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 5;
+  const pager = usePagination({ pageSize: 5 });
 
   const isSuperApp = consumeType === "superapp";
   const isReceipt = consumeType === "receipt";
@@ -101,7 +105,7 @@ export default function ManualConsumeTab() {
     setIsConsumeSearching(true);
     setConsumeSearchResult(null);
     setQuantities({}); 
-    setCurrentPage(1);
+    pager.setCurrentPage(1);
     setCurrentStep('selection');
 
     const searchPayload: any = {
@@ -211,18 +215,57 @@ export default function ManualConsumeTab() {
             const response = await itPoswfService.executeManualConsume(executePayload);
             
             if (response.success) {
+                const virtualRefId = `MC-${Date.now().toString().slice(-6)}`;
+
+                // 2. Prepare Receipt Data
+                const receiptData: ReceiptData = {
+                    invoiceNo: virtualRefId,
+                    date: new Date().toISOString(),
+                    customerEmail: email || "Walk-in Redemption",
+                    customerName: consumeSearchResult.accID ? "Registered User" : "Guest",
+                    status: "Consumed", 
+                    totalAmount: 0, 
+                    items: selectedTickets.map(ticket => ({
+                        name: `${ticket.packageName} - ${ticket.itemName}`, 
+                        qty: quantities[ticket.id],
+                        amount: 0
+                    }))
+                };
+
+                // 3. Save to Session Storage (The Receipt Page will look for this!)
+                if (typeof window !== 'undefined') {
+                    sessionStorage.setItem(`receipt_cache_${virtualRefId}`, JSON.stringify(receiptData));
+                }
+
                 setConsumeSearchResult(null);
                 setQuantities({});
                 setEmail("");
                 setInvoiceNo("");
                 setCurrentStep('selection');
-                toast.success("Consumption Success", response.data?.message || "Tickets consumed successfully.");
+                
+                const totalItems = Object.values(quantities).reduce((a, b) => a + b, 0);
+                const target = email || invoiceNo || "User Account";
+                
+                toast.success(
+                    "Consumption Successful", 
+                    `Successfully consumed ${totalItems} ticket(s) for ${target}.`);
+
+                router.push(`/portal/themepark-support/receipt?invoiceNo=${virtualRefId}`);
             } else {
                 throw new Error(response.error || "Consumption failed.");
             }
-        } catch (error) {
+        } catch (error : any) {
             console.error("Consume Execute Error:", error);
-            toast.error("Consumption Failed", error instanceof Error ? error.message : "An unexpected error occurred.");
+        
+            let errorMsg = error instanceof Error ? error.message : "An unexpected error occurred.";
+            const lowerMsg = errorMsg.toLowerCase();
+
+            if (lowerMsg.includes("bad request") || lowerMsg.includes("400")) {
+                errorMsg = "Invalid Request: Please check ticket status and quantity.";
+            } else if (lowerMsg.includes("500") || lowerMsg.includes("server error")) {
+                errorMsg = "System Error: Consumption could not be processed. Try again.";
+            }
+            toast.error("Action Failed", errorMsg);
         } finally {
             setIsExecuting(false);
         }
@@ -232,12 +275,10 @@ export default function ManualConsumeTab() {
   
   // --- Pagination Logic ---
   const paginatedTickets = useMemo(() => {
-      if (!consumeSearchResult) return [];
-      const start = (currentPage - 1) * ITEMS_PER_PAGE;
-      return consumeSearchResult.tickets.slice(start, start + ITEMS_PER_PAGE);
-  }, [consumeSearchResult, currentPage]);
+    return pager.paginate(consumeSearchResult?.tickets || []);
+}, [consumeSearchResult, pager.paginate]);
 
-  const totalPages = consumeSearchResult ? Math.ceil(consumeSearchResult.tickets.length / ITEMS_PER_PAGE) : 0;
+  const totalPages = consumeSearchResult ? Math.ceil(consumeSearchResult.tickets.length / pager.pageSize) : 0;
 
   // --- DATA TABLE COLUMNS ---
   const ticketColumns: TableColumn<AvailableTicket>[] = useMemo(() => [
@@ -277,14 +318,12 @@ export default function ManualConsumeTab() {
         accessor: "consumeTerminal", 
         className: "text-center text-xs font-mono text-muted-foreground" 
     },
-    // NEW: Available / Balance Column
     { 
         header: "Available", 
         accessor: "balanceQty", 
         className: "text-center font-bold text-foreground",
         cell: (val) => val
     },
-    // UPDATED: Quantity Selector
     { 
         header: "Consume Qty", 
         accessor: "id", 
@@ -372,11 +411,11 @@ export default function ManualConsumeTab() {
                 {totalPages > 1 && (
                     <div className="px-6 pb-4">
                         <PaginationControls 
-                            currentPage={currentPage}
+                            currentPage={pager.currentPage}
                             totalPages={totalPages}
                             totalRecords={consumeSearchResult?.tickets.length}
-                            pageSize={ITEMS_PER_PAGE}
-                            onPageChange={setCurrentPage}
+                            pageSize={pager.pageSize}
+                            onPageChange={pager.setCurrentPage}
                         />
                     </div>
                 )}
@@ -410,6 +449,7 @@ export default function ManualConsumeTab() {
   const renderConfirmationView = () => {
       const selectedTickets = consumeSearchResult?.tickets.filter(t => (quantities[t.id] || 0) > 0) || [];
       const creditBalance = consumeSearchResult?.creditBalance || 0;
+      const totalConsumeQty = Object.values(quantities).reduce((a, b) => a + b, 0);
 
       return (
         <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-300 mt-8">
@@ -422,16 +462,19 @@ export default function ManualConsumeTab() {
                     <CardDescription>Please review the tickets to consume.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div className="flex justify-between items-center bg-muted/50 p-4 rounded-lg border">
-                        <span className="text-sm font-medium text-muted-foreground">Credit Balance</span>
-                        <span className="text-xl font-bold text-primary">RM {creditBalance.toFixed(2)}</span>
+                    <div className="flex justify-between items-center bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-lg border border-indigo-100 dark:border-indigo-800">
+                        <span className="text-sm font-medium text-indigo-900 dark:text-indigo-200">Total To Consume</span>
+                        <span className="text-2xl font-bold text-indigo-700 dark:text-indigo-400">{totalConsumeQty} Tickets</span>
                     </div>
+
                     <Separator />
+
                     <div className="space-y-4">
                         <h4 className="text-sm font-medium text-muted-foreground">Selected Items:</h4>
                         <div className="max-h-[300px] overflow-y-auto pr-2 space-y-3">
                             {selectedTickets.map(ticket => {
                                 const qty = quantities[ticket.id];
+                                const remaining = ticket.balanceQty - qty;
                                 return (
                                     <div key={ticket.id} className="flex justify-between items-start text-sm border-b border-dashed pb-3 last:border-0 last:pb-0">
                                         <div className="space-y-1">
@@ -439,6 +482,9 @@ export default function ManualConsumeTab() {
                                             <div className="text-muted-foreground text-xs">
                                                 {ticket.itemName} <span className="mx-1">•</span> ID: {ticket.ticketItemID}
                                             </div>
+                                            <Badge variant="outline" className="text-[10px] font-mono mt-1">
+                                                Remaining after: {remaining}
+                                            </Badge>
                                         </div>
                                         <div className="text-right">
                                             <div className="font-bold text-foreground">x {qty}</div>
@@ -489,7 +535,7 @@ export default function ManualConsumeTab() {
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="email">Email Address {isSuperApp && "*"}</Label>
-                    <Input 
+                    <EmailAutocomplete 
                         id="email"
                         value={email} onChange={(e) => setEmail(e.target.value)} 
                         disabled={isReceipt} 

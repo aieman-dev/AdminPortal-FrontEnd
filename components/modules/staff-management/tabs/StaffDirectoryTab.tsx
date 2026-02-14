@@ -74,6 +74,7 @@ export default function StaffDirectoryTab({ onRowClick, refreshTrigger }: StaffD
                         onChange={setQuery} 
                         onSearch={() => fetchStaff(query)}
                         isSearching={isLoading} 
+                        inputType="email"
                     />
                 </div>
                 <DataTable 

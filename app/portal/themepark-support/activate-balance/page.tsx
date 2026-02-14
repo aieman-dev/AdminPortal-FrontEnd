@@ -65,6 +65,7 @@ export default function ActivateBalancePage() {
             onChange={setEmail}
             onSearch={handleSearch}
             isSearching={isSearching}
+            inputType="email"
           />
         </CardContent>
       </Card>

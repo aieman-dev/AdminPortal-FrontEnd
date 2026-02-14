@@ -389,8 +389,8 @@ export const itPoswfService = {
         return { success: true, data: terminals };
     },
 
-    updateTerminalUUID: async (terminalId: string, newUUID: string): Promise<ApiResponse<{ message: string }>> => {
-        const payload = { TerminalID: Number(terminalId), NewUUID: newUUID.trim() };
+    updateTerminalUUID: async (terminalId: string, newUUID: string, terminalType: string): Promise<ApiResponse<{ message: string }>> => {
+        const payload = { TerminalID: Number(terminalId), NewUUID: newUUID.trim(), TerminalType: terminalType }; //terminal type is not ready yet
         const response = await apiClient.post<{ message: string }>(ENDPOINTS.TERMINAL_UPDATE, payload);
         if (!response.success) return { success: false, error: response.error || "Failed to update terminal UUID." };
         return { success: true, data: getDataObject(response.data) };

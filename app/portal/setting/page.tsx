@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { PageHeader } from "@/components/portal/page-header"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -24,11 +25,18 @@ import { StaffMember } from "@/type/staff"
 import { formatDate } from "@/lib/formatter"
 import { settingService, BroadcastPayload } from "@/services/setting-services"
 import { ROLES } from "@/lib/constants"
+import { cn } from "@/lib/utils"
 import ExpirySelector, { ExpiryData } from "@/components/portal/ExpirySelector"
 
 export default function SettingsPage() {
   const  toast = useAppToast()
   const { user } = useAuth()
+
+  //  ROUTER HOOKS
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+  const activeTab = searchParams.get("tab") || "account"
 
   // --- PROFILE STATE ---
   const [profile, setProfile] = useState<StaffMember | null>(null)
@@ -179,7 +187,7 @@ export default function SettingsPage() {
       const t = type.toLowerCase();
       if (t === 'critical') return <XCircle className="h-4 w-4" />;
       if (t === 'warning') return <AlertTriangle className="h-4 w-4" />;
-      return <Info className="h-4 w-4" />; // Default to Info
+      return <Info className="h-4 w-4" />; 
   };
 
   const handleExpiryUpdate = useCallback((data: ExpiryData) => {
@@ -193,134 +201,114 @@ export default function SettingsPage() {
     });
   }, []);
 
+  const handleTabChange = (value: string) => {
+      const params = new URLSearchParams(searchParams.toString())
+      params.set("tab", value)
+      router.replace(`${pathname}?${params.toString()}`)
+  }
+
+
+  const ProfileContent = (
+    <div className="grid gap-4 lg:grid-cols-3 items-stretch">
+      <div className="lg:col-span-2 flex flex-col">
+        <Card className="h-full flex flex-col">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Profile Information</CardTitle>
+                <CardDescription>Your account details from i-City SuperApp.</CardDescription>
+              </div>
+              <StatusBadge status="Synced" colorMap={{ synced: "bg-blue-100 text-blue-700 border-blue-200" }} />
+            </div>
+          </CardHeader>
+          <CardContent className="flex-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 p-5 bg-muted/30 rounded-lg border border-border/50 h-fit content-start">
+              <ProfileField label="User ID" icon={<Shield className="h-3 w-3" />} value={isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (profile?.accId || user?.id || "N/A")} isMono />
+              <ProfileField label="Full Name" icon={<User className="h-3 w-3" />} value={isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (profile?.fullName || user?.name || "N/A")} />
+              <ProfileField label="Email Address" icon={<Mail className="h-3 w-3" />} value={isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (profile?.email || user?.email || "N/A")} />
+              <ProfileField label="System Role" icon={<Building className="h-3 w-3" />} value={isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (profile?.roleName || user?.department || "N/A")} />
+              <ProfileField label="Date Created" icon={<Calendar className="h-3 w-3" />} value={isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : formatDate(profile?.createdDate)} />
+              <div className="space-y-1">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Activity className="h-3 w-3" /> Account Status</div>
+                <div className="pl-5 h-5 flex items-center">{isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <StatusBadge status={profile?.status || "Unknown"} />}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="space-y-3 flex flex-col h-full">
+        <Card>
+          <CardHeader className="pb-2"><CardTitle>Notifications</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {showPackageAlerts && (
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium flex items-center gap-2"><Bell className="h-4 w-4 text-muted-foreground" /> Package Updates</Label>
+                <Switch checked={preferences.packageUpdates} onCheckedChange={handleToggle} />
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium flex items-center gap-2"><Info className="h-4 w-4 text-muted-foreground" /> System News</Label>
+              <Switch checked={preferences.systemAnnouncements} onCheckedChange={handleToggle} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="flex-1 flex flex-col">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2"><Shield className="h-4 w-4 text-indigo-600" /> My Access Rights</CardTitle>
+            <CardDescription>Based on: <span className="font-semibold text-foreground">{user?.department}</span></CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-1 flex-1">
+            {permissions.map((perm, idx) => (
+              <div key={idx} className="flex items-center justify-between text-sm py-1 px-2 rounded-md hover:bg-muted/50 transition-colors">
+                <span className="text-muted-foreground">{perm.label}</span>
+                {perm.allowed ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <XCircle className="h-4 w-4 text-muted-foreground/30" />}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-4 pb-20 md:pb-0">
       <PageHeader 
         title="Settings" 
-        description="View your profile details, permissions, and system preferences." 
+        description={isSuperAdmin ? "Manage profile and system broadcasts." : "View your profile and system preferences."}
       />
 
-      <Tabs defaultValue="account" className="space-y-3">
-        
-        <div className="w-full overflow-x-auto scrollbar-hide pb-1">
+      {!isSuperAdmin ? (
+      <div className="animate-in fade-in-50 duration-300">
+        {ProfileContent}
+      </div>
+    ) : (
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-3">
+            <div className="w-full overflow-x-auto scrollbar-hide pb-1">
             <TabsList className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground w-auto">
-                <TabsTrigger 
-                    value="account" 
-                    className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm gap-2 min-w-[140px]">
+                <TabsTrigger value="account" className="gap-2 min-w-[140px]">
                     <User className="h-4 w-4" /> My Account
                 </TabsTrigger>
-                
-                {isSuperAdmin && (
-                    <TabsTrigger 
-                        value="system" 
-                        className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm gap-2 min-w-[180px]">
-                        <Megaphone className="h-4 w-4" /> System Announcement
-                    </TabsTrigger>
-                )}
+                <TabsTrigger value="system" className="gap-2 min-w-[180px]">
+                    <Megaphone className="h-4 w-4" /> System Announcement
+                </TabsTrigger>
             </TabsList>
-        </div>
+            </div>
 
         {/* === TAB 1: MY ACCOUNT === */}
         <TabsContent value="account" className="space-y-3 animate-in fade-in-50 duration-300">
-            <div className="grid gap-4 lg:grid-cols-3 items-stretch">
-                
-                {/* Left Column: Profile */}
-                <div className="lg:col-span-2 flex flex-col">
-                     <Card className="h-full flex flex-col">
-                        <CardHeader className="pb-2">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <CardTitle>Profile Information</CardTitle>
-                                    <CardDescription>Your account details from i-City SuperApp.</CardDescription>
-                                </div>
-                                <StatusBadge status="Synced" colorMap={{ synced: "bg-blue-100 text-blue-700 border-blue-200" }} />
-                            </div>
-                        </CardHeader>
-                        <CardContent className="flex-1">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 p-5 bg-muted/30 rounded-lg border border-border/50 h-fit content-start">
-                                <div className="space-y-1">
-                                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Shield className="h-3 w-3" /> User ID</div>
-                                    <div className="font-mono text-sm font-medium text-foreground pl-5 h-5 flex items-center">{isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (profile?.accId || user?.id || "N/A")}</div>
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><User className="h-3 w-3" /> Full Name</div>
-                                    <div className="text-sm font-medium text-foreground pl-5 h-5 flex items-center">{isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (profile?.fullName || user?.name || "N/A")}</div>
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Mail className="h-3 w-3" /> Email Address</div>
-                                    <div className="text-sm font-medium text-foreground pl-5 h-5 flex items-center">{isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (profile?.email || user?.email || "N/A")}</div>
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Building className="h-3 w-3" /> System Role</div>
-                                    <div className="text-sm font-medium text-foreground pl-5 h-5 flex items-center">{isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (profile?.roleName || user?.department || "N/A")}</div>
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Calendar className="h-3 w-3" /> Date Created</div>
-                                    <div className="text-sm font-medium text-foreground pl-5 h-5 flex items-center">{isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : formatDate(profile?.createdDate)}</div>
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Activity className="h-3 w-3" /> Account Status</div>
-                                    <div className="pl-5 h-5 flex items-center">{isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <StatusBadge status={profile?.status || "Unknown"} />}</div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Right Column: Notifications & Permissions */}
-                <div className="space-y-3 flex flex-col h-full"> 
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle>Notifications</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                            {showPackageAlerts && (
-                                <div className="flex items-center justify-between">
-                                    <Label className="text-sm font-medium flex items-center gap-2">
-                                        <Bell className="h-4 w-4 text-muted-foreground" /> Package Updates
-                                    </Label>
-                                    <Switch checked={preferences.packageUpdates} onCheckedChange={handleToggle} />
-                                </div>
-                            )}
-                            <div className="flex items-center justify-between">
-                                <Label className="text-sm font-medium flex items-center gap-2">
-                                    <Info className="h-4 w-4 text-muted-foreground" /> System News
-                                </Label>
-                                <Switch checked={preferences.packageUpdates} onCheckedChange={handleToggle} />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="flex-1 flex flex-col"> 
-                        <CardHeader className="pb-2">
-                            <CardTitle className="flex items-center gap-2"><Shield className="h-4 w-4 text-indigo-600" /> My Access Rights</CardTitle>
-                            <CardDescription>Based on: <span className="font-semibold text-foreground">{user?.department}</span></CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-1 flex-1"> 
-                            {/* COMPACT: Reduced padding (py-1) to shave height */}
-                            {permissions.map((perm, idx) => (
-                                <div key={idx} className="flex items-center justify-between text-sm py-1 px-2 rounded-md hover:bg-muted/50 transition-colors">
-                                    <span className="text-muted-foreground">{perm.label}</span>
-                                    {perm.allowed ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <XCircle className="h-4 w-4 text-muted-foreground/30" />}
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
+            {ProfileContent}
         </TabsContent>
 
-       {/* === TAB 2: SYSTEM CONTROL (Modified for Compactness) === */}
-        {isSuperAdmin && (
-            <TabsContent value="system" className="space-y-4 animate-in fade-in-50 duration-300">
-                <div className="grid gap-6 lg:grid-cols-12 items-start">
-                    
-                    <div className="lg:col-span-8 flex flex-col h-full">
-                         <Card className="border-muted bg-card h-full flex flex-col shadow-sm">
-                            <CardHeader className="pb-4 border-b">
-                                <CardTitle className="flex items-center gap-2">
-                                    <Megaphone className="h-5 w-5 text-indigo-600" /> Create Broadcast
-                                </CardTitle>
+       {/* === TAB 2: SYSTEM CONTROL  === */}
+        <TabsContent value="system" className="space-y-4 animate-in fade-in-50 duration-300">
+           <div className="grid gap-6 lg:grid-cols-12 items-start">
+              <div className="lg:col-span-8 flex flex-col h-full">
+                 <Card className="border-muted bg-card h-full flex flex-col shadow-sm">
+                    <CardHeader className="pb-4 border-b">
+                       <CardTitle className="flex items-center gap-2">
+                               <Megaphone className="h-5 w-5 text-indigo-600" /> Create Broadcast                                </CardTitle>
                                 <CardDescription>Post a new system-wide announcement.</CardDescription>
                             </CardHeader>
                             <CardContent className="flex-1 space-y-6 pt-6">
@@ -401,8 +389,19 @@ export default function SettingsPage() {
                     </div>
                 </div>
             </TabsContent>
-        )}
-      </Tabs>
+        </Tabs>
+      )}
     </div>
-  )
+  );
+}
+
+
+// Helper component for cleaner fields
+function ProfileField({ label, icon, value, isMono = false }: { label: string, icon: React.ReactNode, value: React.ReactNode, isMono?: boolean }) {
+  return (
+    <div className="space-y-1">
+      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">{icon} {label}</div>
+      <div className={cn("text-sm font-medium text-foreground pl-5 h-5 flex items-center", isMono && "font-mono")}>{value}</div>
+    </div>
+  );
 }

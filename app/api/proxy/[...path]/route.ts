@@ -25,18 +25,59 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
   }
 
   try {
-    let body: any = undefined;
-    if (request.method === "POST" || request.method === "PUT" || request.method === "PATCH") {
-      const contentType = request.headers.get("content-type");
-      if (contentType?.includes("application/json")) {
-        try {
-                body = await request.json();
+    let finalBody: BodyInit | null | undefined = undefined;
+    let requestContentType = request.headers.get("content-type");
+
+    if (["POST", "PUT", "PATCH"].includes(request.method)) {
+
+        // SCENARIO A: Client explicitly says "This is JSON"
+        if (requestContentType?.includes("application/json")) {
+            try {
+                const jsonBody = await request.json();
+                finalBody = JSON.stringify(jsonBody);
             } catch (e) {
-                console.warn("Failed to parse request JSON, forwarding empty body.");
-                body = undefined;
+                console.warn("Client sent content-type:json but body was invalid.");
+                finalBody = null; 
             }
-        } else {
-            console.warn("Proxy received non-JSON content-type:", contentType);
+        }
+
+        // SCENARIO B: Client didn't specify JSON (Could be "Forgetful Client" OR "File Upload")
+        else {
+            try {
+                // ⚠️ SAFETY CHECK: Don't clone huge files (e.g., > 5MB) to save RAM
+                const contentLength = Number(request.headers.get("content-length") || "0");
+                
+                if (contentLength > 0 && contentLength < 5 * 1024 * 1024) { 
+                    // Attempt to peek inside using a CLONE
+                    const clone = request.clone();
+                    const jsonBody = await clone.json(); // Try parsing the clone
+                    
+                    // SUCCESS! It was JSON disguised with the wrong label.
+                    console.log("Recovered JSON from forgetful client:", jsonBody);
+                    finalBody = JSON.stringify(jsonBody);
+                    
+                    // Force the header to be correct for the backend
+                    if (!headers["Content-Type"]) {
+                        (headers as any)["Content-Type"] = "application/json";
+                    }
+                } else {
+                    throw new Error("Too big or empty");
+                }
+            } catch (e) {
+                // FAIL! It wasn't JSON (or was too big). 
+                // We assume it's a File/Binary.
+                // We use the ORIGINAL stream.
+                finalBody = request.body; 
+                
+                // Important: Remove 'Content-Type: application/json' from our default headers
+                // so the browser/backend can auto-detect the boundary for files.
+                delete (headers as any)["Content-Type"];
+                
+                // Forward the original content type if it exists
+                if (requestContentType) {
+                    (headers as any)["Content-Type"] = requestContentType;
+                }
+            }
         }
     }
 
@@ -44,7 +85,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     const apiResponse = await fetch(backendUrl, {
       method: request.method,
       headers: headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: finalBody,
       cache: "no-store",
     });
 
@@ -91,3 +132,4 @@ export async function GET(req: NextRequest, ctx: any) { return handleRequest(req
 export async function POST(req: NextRequest, ctx: any) { return handleRequest(req, ctx); }
 export async function PUT(req: NextRequest, ctx: any) { return handleRequest(req, ctx); }
 export async function DELETE(req: NextRequest, ctx: any) { return handleRequest(req, ctx); }
+export async function PATCH(req: NextRequest, ctx: any) { return handleRequest(req, ctx); }

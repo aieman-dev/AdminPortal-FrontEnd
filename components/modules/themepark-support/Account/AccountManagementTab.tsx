@@ -14,6 +14,7 @@ import { itPoswfService } from "@/services/themepark-support"
 import { Account } from "@/type/themepark-support" 
 import { useAppToast } from "@/hooks/use-app-toast"
 import { useAutoSearch } from "@/hooks/use-auto-search"
+import { formatDate, getAccountAge } from "@/lib/formatter"
 
 const LOCAL_STORAGE_KEY = 'accountMasterEmailSearch';
 
@@ -89,7 +90,12 @@ export default function AccountManagementTab() {
     { header: "Email", accessor: "email" },
     { header: "First Name", accessor: "firstName" },
     { header: "Mobile No", accessor: "mobile" },
-    { header: "Created Date", accessor: "createdDate" },
+    { header: "Created Date", accessor: "createdDate", cell: (val) => <span className="text-muted-foreground">{formatDate(val as string)}</span> },
+    { 
+        header: "Account Age", 
+        accessor: "createdDate", 
+        cell: (val) => <span className="text-xs font-medium text-muted-foreground bg-muted/50 px-2 py-1 rounded">{getAccountAge(val as string)}</span> 
+    },
     { 
       header: "Status", 
       accessor: "accountStatus", 
@@ -118,8 +124,9 @@ export default function AccountManagementTab() {
             placeholder="Enter email address"
             value={searchEmail}
             onChange={setSearchEmail}
-            onSearch={handleSearchClick} // Calls the function that triggers the API call
+            onSearch={handleSearchClick} 
             isSearching={isSearching}
+            inputType="email"
           />
         </CardContent>
       </Card>

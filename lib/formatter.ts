@@ -1,6 +1,7 @@
 // lib/formatter.ts
 
 import { STATUS_STYLES } from "./constants";
+import { differenceInDays, parseISO } from "date-fns";
 /**
  * Helper to determine if a package type implies points vs currency.
  */
@@ -108,6 +109,17 @@ export const formatTime = (seconds: number) => {
     const s = (seconds % 60).toString().padStart(2, '0');
     return `${m} m : ${s} s`;
   };
+
+export const getAccountAge = (dateStr: string) => {
+    if (!dateStr || dateStr === "N/A") return "N/A";
+    try {
+        const days = differenceInDays(new Date(), parseISO(dateStr));
+        if (days < 1) return "New Today";
+        if (days < 30) return `${days} days`;
+        if (days < 365) return `${Math.floor(days / 30)} months`;
+        return `${Math.floor(days / 365)} years`;
+    } catch { return "-"; }
+};
 
 /**
  * Returns the CSS classes for a given status key.

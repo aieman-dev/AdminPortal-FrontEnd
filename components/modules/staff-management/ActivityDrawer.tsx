@@ -18,6 +18,33 @@ interface ActivityDrawerProps {
   onClose: () => void
 }
 
+// --- HELPER FUNCTION: PARSE TABLE AFFECTED ---
+const parseAffectedTables = (raw: string | string[] | null | undefined): string[] => {
+    if (!raw) return [];
+
+    if (Array.isArray(raw)) {
+        // CASE 1: It's already a real array
+        return raw.map(String);
+    }
+
+    if (typeof raw === 'string') {
+        try {
+            // CASE 2: Try parsing as JSON array string (e.g. '["TableA", "TableB"]')
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                return parsed.map(String);
+            }
+            return [String(parsed)];
+        } catch (e) {
+            // CASE 3: It's a comma-separated string (e.g. "TableA, TableB")
+            // The regex removes brackets [] and quotes " if they exist
+            return raw.replace(/[\[\]"]/g, '').split(',');
+        }
+    }
+
+    return [];
+};
+
 export function ActivityDrawer({ log, isOpen, onClose }: ActivityDrawerProps) {
   const  toast = useAppToast()
   const [activeTab, setActiveTab] = useState("new");
@@ -38,7 +65,7 @@ export function ActivityDrawer({ log, isOpen, onClose }: ActivityDrawerProps) {
       try {
           return JSON.parse(jsonString);
       } catch (e) {
-          return jsonString; // Return as plain text if parse fails
+          return jsonString; 
       }
   };
 
@@ -46,13 +73,14 @@ export function ActivityDrawer({ log, isOpen, onClose }: ActivityDrawerProps) {
   const oldData = parseJsonField(log.oldValue);
   const hasChanges = newData || oldData;
 
+  const affectedTables = parseAffectedTables(log.tableAffected);
+
   const handleCopy = (text: string) => {
     if (!text) return;
 
     let contentToCopy = text;
     try {
         const parsed = JSON.parse(text);
-        
         contentToCopy = JSON.stringify(parsed, null, 2);
     } catch (e) {
         console.warn("Could not format JSON, copying raw text.");
@@ -137,8 +165,17 @@ export function ActivityDrawer({ log, isOpen, onClose }: ActivityDrawerProps) {
                     <span>({log.userRole || "User"})</span>
                 </div>
                 {log.tableAffected && (
-                    <div className="flex items-center gap-1.5 ml-auto font-mono bg-muted px-1.5 py-0.5 rounded">
-                        <Database className="h-3 w-3" /> {log.tableAffected}
+                    <div className="flex flex-wrap gap-1.5 ml-auto justify-end max-w-[250px]">
+                        {affectedTables.map((table, idx) => (
+                            <Badge 
+                                key={idx} 
+                                variant="outline" 
+                                className="font-mono text-[10px] bg-muted/50 border-indigo-200 text-indigo-700 dark:text-indigo-300 px-2 py-0.5"
+                            >
+                                <Database className="h-3 w-3 mr-1 opacity-70" />
+                                {table.trim()}
+                            </Badge>
+                        ))}
                     </div>
                 )}
             </div>

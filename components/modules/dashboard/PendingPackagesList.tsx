@@ -22,7 +22,7 @@ export function PendingPackagesList({ data, count }: Props) {
         <Card className="hover:shadow-md transition-shadow duration-200">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">Pending Packages</CardTitle>
+                    <CardTitle className="text-base">Pending Approval</CardTitle>
                     <Badge variant="secondary" className="bg-orange-100 text-orange-700 hover:bg-orange-100">
                         {displayCount} Pending
                     </Badge>

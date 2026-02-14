@@ -117,6 +117,7 @@ export default function ApplicationsPage() {
                         onChange={setSearchTerm}
                         onSearch={handleSearchClick}
                         isSearching={loading}
+                        inputType="email"
                     />
                 </CardContent>
             </Card>

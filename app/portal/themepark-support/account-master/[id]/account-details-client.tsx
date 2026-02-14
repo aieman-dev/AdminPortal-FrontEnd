@@ -16,6 +16,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { isValidEmail } from "@/lib/security"; 
+import { EmailAutocomplete } from "@/components/ui/email-autocomplete";
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { StatusBadge } from "@/components/shared-components/status-badge"
 import { BalanceCard } from "@/components/shared-components/balance-card"
@@ -155,7 +157,10 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
     useEffect(() => { fetchBalanceDetails(); }, [account.email])
 
   const handleChangeEmail = async () => {
-    if (!newEmail.trim()) return
+    if (!newEmail.trim() || !isValidEmail(newEmail)) {
+        toast.error("Invalid Email", "Please enter a valid email address containing '@'.");
+        return;
+    }
     setIsProcessing(true)
     try {
         const response = await itPoswfService.updateAccountEmail(account.accId, newEmail.trim());
@@ -279,8 +284,14 @@ export function AccountDetailsClient({ account: initialAccount }: AccountDetails
                   <div className="px-6 flex-1 max-w-lg">
                     <div className="space-y-4 p-6 border rounded-lg bg-muted/10">
                         <div className="space-y-2">
-                            <Label htmlFor="new-email">New Email Address</Label>
-                            <Input id="new-email" type="email" placeholder="Enter new email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className="h-11" />
+                            <Label 
+                                htmlFor="new-email">New Email Address</Label>
+                            <EmailAutocomplete 
+                                id="new-email" 
+                                placeholder="Enter new email" 
+                                value={newEmail} 
+                                onChange={(e) => setNewEmail(e.target.value)} 
+                                className="h-11" />
                         </div>
                         <div className="flex justify-end gap-3 pt-2">
                              <Button variant="outline" onClick={handleBackToHistory}>Cancel</Button>

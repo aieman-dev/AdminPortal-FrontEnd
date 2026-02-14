@@ -130,6 +130,7 @@ export default function ActivityAuditTab({ onRowClick }: { onRowClick: (log: Aud
 
     // Auto-search effect
     useEffect(() => {
+        pager.setCurrentPage(1);
         fetchLogs(1)
     }, [debouncedSearch, moduleFilter, startDate, endDate])
 
@@ -302,9 +303,6 @@ export default function ActivityAuditTab({ onRowClick }: { onRowClick: (log: Aud
                             </div>
                         </div>
                         <div className="flex gap-2">
-                            <Button onClick={() => fetchLogs(1)} size="sm" className="h-11 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm gap-2 rounded-md">
-                                <Play size={14} className="mr-2" /> Run
-                            </Button>
                             <Button variant="ghost" size="sm" onClick={handleReset} className="h-11 text-muted-foreground hover:text-foreground ">
                                 <RotateCcw size={12} className="mr-2" /> Reset
                             </Button>

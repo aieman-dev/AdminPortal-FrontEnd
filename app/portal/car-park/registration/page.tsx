@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { EmailAutocomplete } from "@/components/ui/email-autocomplete"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { useBeforeUnload } from "@/hooks/use-before-unload";
@@ -242,11 +243,16 @@ export default function NewRegistrationPage() {
                     <div className="w-px h-6 bg-border" />
                     
                     <div className="relative">
-                        <Input 
+                        <EmailAutocomplete 
                             placeholder={searchType === "email" ? "user@example.com" : "QR Code"} 
                             {...register("searchTerm")}
+                            value={watch("searchTerm")}
                             className="h-9 border-0 bg-transparent focus-visible:ring-0 w-full md:w-[280px] text-sm shadow-none pl-0"
-                            onKeyDown={(e) => e.key === "Enter" && handleVerify()}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.defaultPrevented) {
+                                    handleVerify()
+                                }
+                            }}
                         />
                     </div>
 

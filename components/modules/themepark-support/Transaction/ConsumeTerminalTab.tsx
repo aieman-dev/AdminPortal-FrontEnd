@@ -83,14 +83,12 @@ export default function ConsumeTerminalTab() {
 
     // Updated Slicing Logic using Hook State
     const paginatedPurchase = useMemo(() => {
-        const start = (purchasePager.currentPage - 1) * purchasePager.pageSize;
-        return purchaseHistory.slice(start, start + purchasePager.pageSize);
-    }, [purchaseHistory, purchasePager.currentPage, purchasePager.pageSize]);
+        return purchasePager.paginate(purchaseHistory);
+    }, [purchaseHistory, purchasePager.paginate]);
 
     const paginatedConsume = useMemo(() => {
-        const start = (consumePager.currentPage - 1) * consumePager.pageSize;
-        return consumeHistory.slice(start, start + consumePager.pageSize);
-    }, [consumeHistory, consumePager.currentPage, consumePager.pageSize]);
+        return consumePager.paginate(consumeHistory);
+    }, [consumeHistory, consumePager.paginate]);
 
     const commonColumns: TableColumn<TerminalTransaction>[] = useMemo(() => [
         { header: "Transaction ID", accessor: "trxID",className: "pl-6", cell: (value) => <span className="font-medium">{value}</span> },

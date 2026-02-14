@@ -1,23 +1,19 @@
-//app/portal/DashboardClient.tsx
+// app/portal/dashboard/DashboardClient.tsx
 "use client"
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { motion } from "framer-motion";
 import { PageHeader } from "@/components/portal/page-header";
-import { ShieldAlert, TabletSmartphone } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import { EmptyState } from "@/components/portal/empty-state";
-import { useAppToast } from "@/hooks/use-app-toast";
 import { formatCurrency } from "@/lib/formatter";
 
 // Config & Types
-import { DASHBOARD_CONFIG, DashboardRole } from "@/config/dashboard";
+import { DASHBOARD_CONFIG, DashboardRole, MASTER_ACTIONS, MasterAction } from "@/config/dashboard";
+import { useDashboard } from "@/context/DashboardContext"
 import { ROLES } from "@/lib/constants";
-import { DashboardSummary, KioskStatus } from "@/type/dashboard";
 import { Package } from "@/type/packages";
-
-// Services
 import { dashboardService } from "@/services/dashboard-service";
 
 // Modular Components
@@ -36,104 +32,86 @@ interface DashboardClientProps {
 
 export default function DashboardClient({ initialPendingPackages }: DashboardClientProps) {
   const { user } = useAuth();
-  const toast = useAppToast();
-  
-  // State
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [pendingPackages, setPendingPackages] = useState<Package[]>(initialPendingPackages);
-  const [kioskData, setKioskData] = useState<KioskStatus[]>([]);
-  const [unsyncedCount, setUnsyncedCount] = useState(0);
-  
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("ThisWeek");
-  const [isKioskOpen, setIsKioskOpen] = useState(false);
-  const [systemStatus, setSystemStatus] = useState("Checking...");
 
-  // Role Config
   const viewMode = user?.department ? (
       user.department.toUpperCase().includes("MIS") ? ROLES.MIS_SUPER :
       user.department.toUpperCase().includes("FINANCE") ? ROLES.FINANCE :
+      user.department.toUpperCase().includes("IT")? ROLES.IT_ADMIN:
       user.department.toUpperCase().includes("TP") ? ROLES.TP_ADMIN :
-      user.department.toUpperCase().includes("IT") ? ROLES.IT_ADMIN : undefined
+      user.department.toUpperCase().includes("HR") ? ROLES.HR_Admin : 
+      user.department.toUpperCase().includes("CP") ? ROLES.CP_Admin : undefined
   ) as DashboardRole : undefined;
   
   const roleConfig = viewMode ? DASHBOARD_CONFIG[viewMode] : undefined;
+  
+  //GENERATE PERMITTED ACTIONS
+  const permittedActions = useMemo(() => {
+      if (!user?.department) return [];
+      return MASTER_ACTIONS.filter(action => action.isVisible(user.department));
+  }, [user]);
 
-  // 1. Define the lightweight Kiosk fetcher
-  const fetchKioskHeartbeat = useCallback(async () => {
-    if (!roleConfig?.stats.some(s => s.id === 'kiosk_status')) return;
 
-    try {
-        const kiosks = await dashboardService.getKioskStatus();
-        setKioskData(kiosks); 
-    } catch (e) {
-        console.error("Kiosk heartbeat failed", e);
+  // State & Context
+  const { summary, kioskData, refreshKiosks, isLoading } = useDashboard()
+  const [pendingPackages] = useState<Package[]>(initialPendingPackages);
+  const [unsyncedCount, setUnsyncedCount] = useState(0);
+  
+  const [filter, setFilter] = useState("ThisWeek");
+  const [isKioskOpen, setIsKioskOpen] = useState(false);
+
+  const [systemStatus, setSystemStatus] = useState("Checking...");
+  const [systemLatency, setSystemLatency] = useState("");
+
+  // --Check System Health (Simulating SystemDiagnostics) ---
+  useEffect(() => {
+    const checkSystemHealth = async () => {
+        try {
+            const start = performance.now();
+            await dashboardService.getSummary("ThisWeek");
+            const latency = Math.round(performance.now() - start);
+            
+            setSystemStatus("200"); 
+            setSystemLatency(`Response Time: ${latency}ms`);
+        } catch (error) {
+            console.error("System Health Check Failed:", error);
+            const errCode = (error as any)?.statusCode || "500";
+            setSystemStatus(String(errCode));
+            setSystemStatus("Service Unavailable");
+        }
+    };
+    checkSystemHealth();
+    
+    // Optional: Poll every 30 seconds for live status
+    const interval = setInterval(checkSystemHealth, 3600000);
+    return () => clearInterval(interval);
+  }, []);
+
+
+  useEffect(() => {
+    const fetchUnsynced = async () => {
+      if (viewMode === ROLES.MIS_SUPER || viewMode === ROLES.IT_ADMIN) {
+        try {
+          const count = await dashboardService.getUnsyncedCount();
+          setUnsyncedCount(count);
+        } catch (error) {
+          console.error("Failed to load unsynced packages:", error);
+        }
+      }
+    };
+
+    if (viewMode) {
+        fetchUnsynced();
     }
-  }, [roleConfig]);
+  }, [viewMode]);
 
-  // Unified Data Fetching
-  useEffect(() => {
-    if (!roleConfig) { setLoading(false); return; }
+  if (!roleConfig) return (
+    <div className="h-[60vh] flex items-center justify-center">
+        <EmptyState icon={ShieldAlert} title="Access Denied" description="Role not configured." />
+    </div>
+  );
 
-    const loadFullDashboard = async () => {
-        setLoading(true);
-        try {
-            // Run all primary data fetches in parallel so slow pings don't block fast ones
-            const [summaryData, recentPkgs, unsynced, initialKiosks] = await Promise.all([
-                dashboardService.getSummary(filter),
-                viewMode !== ROLES.IT_ADMIN ? dashboardService.getRecentPendingPackages() : Promise.resolve([]),
-                roleConfig.stats.some(s => s.id === 'package_sync') ? dashboardService.getUnsyncedCount() : Promise.resolve(0),
-                roleConfig.stats.some(s => s.id === 'kiosk_status') ? dashboardService.getKioskStatus() : Promise.resolve([])
-            ]);
-
-            setSummary(summaryData);
-            setPendingPackages(recentPkgs);
-            setUnsyncedCount(unsynced);
-            setKioskData(initialKiosks); 
-            setSystemStatus("200 OK");
-        } catch (e) {
-            console.error(e);
-            setSystemStatus("Connection Failed");
-            toast.error("Dashboard Error", "Failed to load latest data.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    loadFullDashboard();
-}, [viewMode, roleConfig, filter]);
-
-// Independent Interval for Kiosk (Runs every 30s)
-  useEffect(() => {
-      const intervalId = setInterval(() => {
-          if (!document.hidden) {
-              fetchKioskHeartbeat();
-          }
-      }, 30000);
-
-      return () => clearInterval(intervalId);
-  }, [fetchKioskHeartbeat]);
-
-  if (!roleConfig) return 
-  <div className="h-[60vh] flex items-center justify-center">
-    <EmptyState 
-    icon={ShieldAlert} 
-    title="Access Denied" 
-    description="Role not configured." />
-    </div>;
-
-    const refreshKiosks = async () => {
-        try {
-            const kiosks = await dashboardService.getKioskStatus();
-            setKioskData(kiosks);
-        } catch (e) {
-            console.error("Failed to auto-refresh kiosks", e);
-        }
-    };
-
-  // Helper for Stats Values
   const getStatValue = (id: string) => {
-    if (loading && !summary && id !== "kiosk_status") return "...";
+    if (isLoading && !summary && id !== "kiosk_status" && id !== "package_sync") return "...";
     switch(id) {
         case "revenue": return formatCurrency(summary?.salesAmount || 0);
         case "kiosk_status": {
@@ -147,76 +125,67 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
         case "consumption": return (summary?.ticketConsumption || 0).toString();
         case "drafts": return (summary?.draftPackages || 0).toString();
         case "package_sync": return unsyncedCount.toString();
-        case "system_load": return ((summary?.salesCount || 0) + (summary?.ticketConsumption || 0)).toLocaleString();
         case "avg_trx": return formatCurrency((summary?.salesCount || 0) > 0 ? (summary?.salesAmount || 0) / summary!.salesCount : 0);
         case "system_health": return systemStatus;
         default: return "0";
     }
   };
 
-  // --- RESTORED: STAT CARD ITEM LOGIC ---
-  const StatCardItem = ({ stat, value, description, systemStatus, kioskData, setIsKioskOpen 
-}: { stat: any, value: string, description: string, systemStatus: string, kioskData: any[], setIsKioskOpen: (val: boolean) => void }) => {
+  const StatCardItem = ({ stat, value, description }: { stat: any, value: string, description: string }) => {
     let finalColor = stat.color;
-    let finalDescription = description;
+    let finalDesc = description;
     
     if (stat.id === "system_health") {
         finalColor = systemStatus.startsWith("200") ? "text-green-600" : "text-red-600";
+        finalDesc = systemLatency;
     }
     if (stat.id === "kiosk_status") {
         const down = kioskData.filter((k: any) => !k.isActive).length;
         finalColor = down > 0 ? "text-red-600" : "text-green-600";
-        finalDescription = down > 0 ? `${down} kiosks offline` : "All systems normal";
     }
-
     if (finalColor === "default") finalColor = undefined; 
 
     return (
       <StatCard 
           title={stat.label} 
           value={value} 
-          description={finalDescription}
+          description={description}
           icon={stat.icon} 
           valueColor={finalColor} 
           trend={stat.trend ? { value: "Live", positive: true } : undefined} 
           onClick={stat.id === "kiosk_status" ? () => setIsKioskOpen(true) : undefined}
       />
     );
-};
+  };
+
+  // Helper to check if a widget should be shown
+  const showWidget = (key: string) => roleConfig?.widgets?.includes(key as any);
 
   return (
     <motion.div className="space-y-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <PageHeader title={`Hello, ${user?.name?.split(' ')[0]}`} description="Dashboard Overview" />
 
-        {/* Stats Grid (Desktop) */}
+        {/* Stats Grid */}
         <div className="hidden md:grid grid-cols-4 gap-4">
             {roleConfig.stats.map(stat => (
                 <StatCardItem 
-                        key={stat.id} 
-                        stat={stat} 
-                        value={getStatValue(stat.id)} 
-                        description={stat.id === "package_sync" ? (unsyncedCount > 0 ? `${unsyncedCount} unsynced` : "All Synced") : ""}
-                        systemStatus={systemStatus}
-                        kioskData={kioskData}
-                        setIsKioskOpen={setIsKioskOpen}
-                    />
+                    key={stat.id} 
+                    stat={stat} 
+                    value={getStatValue(stat.id)} 
+                    description={stat.id === "package_sync" ? "Synced" : ""}
+                />
             ))}
         </div>
 
-        {/* Stats Carousel (Mobile) */}
         <div className="md:hidden -mx-6 px-6">
              <Carousel className="w-full">
                 <CarouselContent>
                     {roleConfig.stats.map(stat => (
                         <CarouselItem key={stat.id} className="basis-[85%] pl-4">
-                            {/* Pass all required props exactly like the desktop grid */}
                             <StatCardItem 
                                 stat={stat} 
                                 value={getStatValue(stat.id)} 
-                                description={stat.id === "package_sync" ? (unsyncedCount > 0 ? `${unsyncedCount} unsynced` : "All Synced") : ""}
-                                systemStatus={systemStatus}
-                                kioskData={kioskData}
-                                setIsKioskOpen={setIsKioskOpen}
+                                description={stat.id === "package_sync" ? "Synced" : ""}
                             />
                         </CarouselItem>
                     ))}
@@ -224,17 +193,22 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
              </Carousel>
         </div>
 
-        {/* Main Content Area */}
+        {/* --- DYNAMIC WIDGET LAYOUT --- */}
         <div className="grid gap-6 md:grid-cols-7 items-start">
             <div className="col-span-7 lg:col-span-4 flex flex-col gap-6">
-                <PerformanceChart 
-                    data={summary?.weeklySalesChart || []} 
-                    loading={loading} 
-                    filter={filter} 
-                    onFilterChange={setFilter} 
-                />
-                <TopPackagesCard data={summary?.bestSellingPackages || []} />
-                {viewMode === ROLES.MIS_SUPER && (
+                {showWidget('performance_chart') && (
+                    <PerformanceChart 
+                        data={summary?.weeklySalesChart || []} 
+                        loading={isLoading} 
+                        filter={filter} 
+                        onFilterChange={setFilter} 
+                    />
+                )}
+                {showWidget('top_packages') && (
+                    <TopPackagesCard data={summary?.bestSellingPackages || []} loading={isLoading} />
+                )}
+
+                {showWidget('system_diagnostics') && (
                     <div className="mt-2">
                         <SystemDiagnostics autoRun={true} />
                     </div>
@@ -242,8 +216,11 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
             </div>
             
             <div className="col-span-7 lg:col-span-3 flex flex-col gap-6 h-full">
-                <PendingPackagesList data={pendingPackages} count={summary?.pendingPackages} />
-                <QuickAccess actions={roleConfig.quickActions} />
+                {showWidget('pending_list') && (
+                    <PendingPackagesList data={pendingPackages} count={summary?.pendingPackages} />
+                )}
+
+                <QuickAccess availableActions={permittedActions} />
             </div>
         </div>
 
@@ -251,8 +228,8 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
             isOpen={isKioskOpen} 
             onClose={() => setIsKioskOpen(false)} 
             data={kioskData} 
-            onRefresh={fetchKioskHeartbeat}
-            />
+            onRefresh={refreshKiosks}
+        />
     </motion.div>
   )
 }

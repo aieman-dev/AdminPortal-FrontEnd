@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
+import { EmailAutocomplete } from "@/components/ui/email-autocomplete"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SearchField } from "@/components/shared-components/search-field"
@@ -154,14 +155,12 @@ export default function SearchHistoryRecordTab() {
 
   // Pagination Logic
   const paginatedTransactions = useMemo(() => {
-      const start = (trxPager.currentPage - 1) * trxPager.pageSize;
-      return sortedTransactions.slice(start, start + trxPager.pageSize);
-  }, [sortedTransactions, trxPager.currentPage, trxPager.pageSize]);
+      return trxPager.paginate(sortedTransactions);
+  }, [sortedTransactions, trxPager.paginate]);
 
   const paginatedTickets = useMemo(() => {
-      const start = (ticketPager.currentPage - 1) * ticketPager.pageSize;
-      return ticketData.slice(start, start + ticketPager.pageSize);
-  }, [ticketData, ticketPager.currentPage, ticketPager.pageSize]);
+      return ticketPager.paginate(ticketData);
+  }, [ticketData, ticketPager.paginate]);
 
   // Handler for DataTable sorting
   const handleSort = (key: string) => {
@@ -192,12 +191,7 @@ export default function SearchHistoryRecordTab() {
       )},
       { header: "Total Amount", accessor: "totalAmount", sortable: true, className: "w-[150px] text-right", cell: (val) => formatCurrency(val)},
       { header: "Type", accessor: "trxType", sortable: true, className: "text-center", cell: (val) => <StatusBadge status={val} /> },
-      { header: "Created Date", accessor: "createdDate", sortable: true, className: "text-center", cell: (val) => <span className="text-muted-foreground text-sm">{formatDate(val as string)}</span> },
-      { header: "Actions", accessor: "id", className: "text-right pr-20", cell: () => (
-          <Button variant="ghost" size="sm" className="h-8 gap-1 text-muted-foreground hover:text-foreground" onClick={(e) => e.stopPropagation()}>
-              <Pencil className="h-3.5 w-3.5" /> Edit
-          </Button>
-      )}
+      { header: "Created Date", accessor: "createdDate", sortable: true, className: "text-center", cell: (val) => <span className="text-muted-foreground text-sm">{formatDate(val as string)}</span> }
   ];
 
   const ticketColumns: TableColumn<TicketHistory>[] = useMemo (() => [
@@ -258,6 +252,7 @@ export default function SearchHistoryRecordTab() {
               onChange={setSearchTerm}
               onSearch={handleManualSearch}
               isSearching={isSearching}
+              inputType="email"
             />
           </div>
         </CardContent>

@@ -193,6 +193,10 @@ export interface ExtendTicketData {
   effectiveDate: string
   expiryDate: string
   lastValidDate: string
+  recordStatus: string
+  packageID: number
+  packageNo: string
+
 }
 
 export interface Terminal {

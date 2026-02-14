@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/navigation"
 import { Loader2, Eye, EyeOff, Info } from "lucide-react"
-
+import { EmailAutocomplete } from "@/components/ui/email-autocomplete"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -47,13 +47,21 @@ export function LoginForm({ onSubmitting }: LoginFormProps) {
 
   // 2. Handle Submission
   const onSubmit = async (values: LoginValues) => {
+    const cleanEmail = values.email.trim();
+    const cleanPassword = values.password.trim();
+
     setGeneralError("")
     setForgotMsg(false)
+
+    if (!cleanEmail || !cleanPassword) {
+        setGeneralError("Email and Password cannot be empty or just spaces.");
+        return; 
+    }
 
     if (onSubmitting) onSubmitting(true);
 
     try {
-      const response = await login(values.email, values.password, values.rememberMe)
+      const response = await login(cleanEmail, cleanPassword, values.rememberMe)
 
       if (response.success) {
         router.push("/portal")
@@ -79,7 +87,7 @@ export function LoginForm({ onSubmitting }: LoginFormProps) {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input 
+                <EmailAutocomplete 
                   placeholder="Enter your email" 
                   type="email" 
                   className="h-11"

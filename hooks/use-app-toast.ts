@@ -9,7 +9,7 @@ export const useAppToast = () => {
       title,
       description,
       variant: "success", 
-      duration: 5000,
+      duration: 10000,
     });
   };
 
@@ -18,7 +18,7 @@ export const useAppToast = () => {
       title,
       description,
       variant: "destructive",
-      duration: 5000, 
+      duration: 10000, 
     });
   };
 
@@ -27,7 +27,7 @@ export const useAppToast = () => {
       title,
       description,
       variant: "default",
-      duration: 5000,
+      duration: 10000,
     });
   };
 

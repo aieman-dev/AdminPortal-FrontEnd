@@ -1,107 +1,103 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Settings2, Save, RotateCcw } from "lucide-react";
-import { DashboardAction } from "@/config/dashboard";
-import { SIDEBAR_NAVIGATION } from "@/config/navigation";
+import { MasterAction } from "@/config/dashboard"; 
 import { useAppToast } from "@/hooks/use-app-toast";
 import { cn } from "@/lib/utils";
 
+
 interface Props {
-    actions: DashboardAction[];
+    availableActions: MasterAction[];
 }
 
 const STORAGE_KEY = "user_quick_actions_v1";
 const MAX_ITEMS = 6;
 
-export function QuickAccess({ actions: defaultActions }: Props) {
+export function QuickAccess({ availableActions }: Props) {
     const router = useRouter();
     const toast = useAppToast();
     
-    const [currentActions, setCurrentActions] = useState<DashboardAction[]>(defaultActions);
+    // Default: Show first 6 available actions
+    const [currentActions, setCurrentActions] = useState<MasterAction[]>([]);
     const [isEditOpen, setIsEditOpen] = useState(false);
-    const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
     
-    const allOptions = useMemo(() => {
-        const options: DashboardAction[] = [];
-        SIDEBAR_NAVIGATION.forEach(nav => {
-            if (nav.href && !nav.children) {
-                options.push({ label: nav.name, path: nav.href, icon: nav.icon || Settings2, color: "text-slate-600" });
-            }
-            if (nav.children) {
-                nav.children.forEach(child => {
-                    options.push({ label: child.name, path: child.href, icon: nav.icon || Settings2, color: "text-slate-600" });
-                });
-            }
-        });
-        return options;
-    }, []);
-
+    //  Load preferences BUT filter against permitted actions
     useEffect(() => {
         const saved = localStorage.getItem(STORAGE_KEY);
+        
         if (saved) {
             try {
-                const savedPaths: string[] = JSON.parse(saved);
-                const recoveredActions = savedPaths
-                    .map(path => {
-                        const inDefault = defaultActions.find(d => d.path === path);
-                        if (inDefault) return inDefault;
-                        return allOptions.find(o => o.path === path);
-                    })
-                    .filter(Boolean) as DashboardAction[];
+                const savedIds: string[] = JSON.parse(saved);
+                const validActions = savedIds
+                    .map(id => availableActions.find(a => a.id === id))
+                    .filter(Boolean) as MasterAction[];
                 
-                if (recoveredActions.length > 0) setCurrentActions(recoveredActions);
-            } catch (e) { console.error(e); }
+                if (validActions.length > 0) {
+                    setCurrentActions(validActions);
+                    return;
+                }
+            } catch (e) { 
+                console.error("Failed to load quick actions", e); 
+            }
         }
-    }, [defaultActions, allOptions]);
+        
+        setCurrentActions(availableActions.slice(0, 4));
+    }, [availableActions]);
 
+    // Open Edit Modal
     const openEdit = () => {
-        setSelectedPaths(currentActions.map(a => a.path));
+        setSelectedIds(currentActions.map(a => a.id));
         setIsEditOpen(true);
     };
 
-    const toggleSelection = (path: string) => {
-        // 1. Check if we are removing the item (always allowed)
-        if (selectedPaths.includes(path)) {
-            setSelectedPaths(prev => prev.filter(p => p !== path));
-            return;
+    // Toggle Checkbox
+    const toggleSelection = (id: string) => {
+        if (selectedIds.includes(id)) {
+            setSelectedIds(prev => prev.filter(p => p !== id));
+        } else {
+            if (selectedIds.length >= MAX_ITEMS) {
+                toast.error("Limit Reached", `You can only select up to ${MAX_ITEMS} items.`);
+                return;
+            }
+            setSelectedIds(prev => [...prev, id]);
         }
-        // 2. Check limit BEFORE setting state
-        if (selectedPaths.length >= MAX_ITEMS) {
-            toast.error("Limit Reached", `You can only select up to ${MAX_ITEMS} items.`);
-            return;
-        }
-        // 3. Add item
-        setSelectedPaths(prev => [...prev, path]);
-        };
+    };
 
+    // Save Changes
     const handleSave = () => {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedPaths));
-        const newActions = selectedPaths
-            .map(path => defaultActions.find(d => d.path === path) || allOptions.find(o => o.path === path))
-            .filter(Boolean) as DashboardAction[];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedIds));
+        
+        // Convert IDs back to Action Objects
+        const newActions = selectedIds
+            .map(id => availableActions.find(a => a.id === id))
+            .filter(Boolean) as MasterAction[];
 
         setCurrentActions(newActions);
         setIsEditOpen(false);
-        toast.success("Saved", "Quick actions updated.");
+        toast.success("Saved", "Quick access updated.");
     };
 
+    //  Reset to Default
     const handleReset = () => {
         localStorage.removeItem(STORAGE_KEY);
-        setCurrentActions(defaultActions);
-        setSelectedPaths(defaultActions.map(a => a.path));
+        
+        const defaults = availableActions.slice(0, 4);
+        setCurrentActions(defaults);
+        setSelectedIds(defaults.map(a => a.id));
+        
         setIsEditOpen(false);
-        toast.info("Reset", "Restored default actions.");
+        toast.info("Reset", "Restored default view.");
     };
 
-    if (!currentActions || currentActions.length === 0) return null;
+    if (availableActions.length === 0) return null;
 
     const SHORT_NAMES: Record<string, string> = {
     "Transaction Master": "Transactions",
@@ -152,16 +148,19 @@ export function QuickAccess({ actions: defaultActions }: Props) {
                     
                     <div className="flex-1 overflow-y-auto p-4 sm:p-6">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 py-2">
-                            {allOptions.map((option) => {
-                                const isSelected = selectedPaths.includes(option.path);
+                            {availableActions.map((option) => {
+                                const isSelected = selectedIds.includes(option.id);
                                 const displayName = SHORT_NAMES[option.label] || option.label;
                                 return (
                                     <div 
-                                        key={option.path} 
-                                        className={`flex items-start space-x-3 p-3 rounded-lg border transition-all cursor-pointer select-none ${isSelected ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20" : "hover:bg-muted"}`}
-                                        onClick={() => toggleSelection(option.path)}
+                                        key={option.id} 
+                                        className={cn(
+                                            "flex items-start space-x-3 p-3 rounded-lg border transition-all cursor-pointer select-none",
+                                            isSelected ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20" : "hover:bg-muted"
+                                        )}
+                                        onClick={() => toggleSelection(option.id)}
                                     >
-                                        <Checkbox checked={isSelected} id={option.path} className="mt-1 pointer-events-none" />
+                                        <Checkbox checked={isSelected} id={option.id} className="mt-1 pointer-events-none" />
 
                                         <div className="flex items-center gap-3 flex-1 min-w-0 pointer-events-none">
                                             <div className={cn("p-2 bg-background rounded-md shadow-sm border shrink-0", isSelected ? "border-indigo-200" : "")}>
@@ -175,25 +174,25 @@ export function QuickAccess({ actions: defaultActions }: Props) {
                                             </div>
                                         </div>
                                     </div>
-                                    )
-                                 })}
-                            </div>
+                                )
+                            })}
                         </div>
+                    </div>
 
                     <DialogFooter className="p-4 shrink-0 border-t bg-muted/20 flex flex-col sm:flex-row gap-2">
                         <Button 
-                        variant="outline" 
-                        onClick={handleReset} 
-                        className="w-full sm:w-auto gap-2 order-2 sm:order-1"
+                            variant="outline" 
+                            onClick={handleReset} 
+                            className="w-full sm:w-auto gap-2 order-2 sm:order-1"
                         >
-                        <RotateCcw className="h-4 w-4" /> Reset Default
+                            <RotateCcw className="h-4 w-4" /> Reset Default
                         </Button>
                         <Button 
-                        onClick={handleSave} 
-                        disabled={selectedPaths.length === 0} 
-                        className="w-full sm:w-auto gap-2 bg-indigo-600 hover:bg-indigo-700 text-white order-1 sm:order-2"
+                            onClick={handleSave} 
+                            disabled={selectedIds.length === 0} 
+                            className="w-full sm:w-auto gap-2 bg-indigo-600 hover:bg-indigo-700 text-white order-1 sm:order-2"
                         >
-                        <Save className="h-4 w-4" /> Save Changes ({selectedPaths.length}/{MAX_ITEMS})
+                            <Save className="h-4 w-4" /> Save Changes ({selectedIds.length}/{MAX_ITEMS})
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Label } from "@/components/ui/label"
+import { EmailAutocomplete } from "@/components/ui/email-autocomplete"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { hrService } from "@/services/hr-services"
@@ -149,17 +150,23 @@ export default function NewStaffNonCPPage() {
                                 <Label>SuperApp Email <span className="text-red-500">*</span></Label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-                                    <Input 
+                                    <EmailAutocomplete 
                                         {...register("email")}
+                                        value={emailValue}
                                         placeholder="user@example.com" 
                                         className="pl-9 pr-10 h-11"
                                         disabled={isVerified}
-                                        onKeyDown={(e) => e.key === "Enter" && handleVerify()}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" && !e.defaultPrevented) {
+                                                e.preventDefault(); 
+                                                handleVerify();
+                                            }
+                                        }}
                                     />
                                     {emailValue && !isVerified && (
                                         <button
                                             type="button"
-                                            onClick={() => setValue("email", "")} // Clears the form value
+                                            onClick={() => setValue("email", "")} 
                                             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 transition-colors"
                                             tabIndex={-1} 
                                             title="Clear email"

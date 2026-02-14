@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { DatePicker } from "@/components/ui/date-picker"
+import { EmailAutocomplete } from "@/components/ui/email-autocomplete"
 import { useDebounce } from "@/hooks/use-debounce"
 import { cn } from "@/lib/utils"
 import { CarParkPhase, CarParkUnit, CarParkPackage, CarParkDepartment } from "@/type/car-park"
@@ -113,9 +114,10 @@ export function UniversalParkingForm({
                     {/* Account Email (Read Only) */}
                     <div>
                         <Label className={labelClass}>Account Email</Label>
-                        <Input 
+                        <EmailAutocomplete 
                             {...register("userEmail")} 
-                            readOnly 
+                            value={watch("userEmail")} 
+                            readOnly={readOnlyUser} 
                             className={cn(inputClass, "bg-muted/30 border-border text-muted-foreground")} 
                         />
                         {errors.userEmail && <span className="text-[10px] text-red-500 font-medium mt-1">{errors.userEmail.message}</span>}
