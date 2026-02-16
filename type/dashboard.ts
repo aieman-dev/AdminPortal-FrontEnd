@@ -1,4 +1,8 @@
 // type/dashboard.ts
+import { ROLES } from "@/lib/constants";
+
+export type DashboardRole = typeof ROLES[keyof typeof ROLES];
+
 
 export interface KioskStatus {
     kioskName: string;

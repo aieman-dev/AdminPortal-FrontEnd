@@ -2,17 +2,17 @@
 
 import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation";
-import { ReceiptData } from "@/components/modules/themepark-support/Receipt/ReceiptView"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { EmailAutocomplete } from "@/components/ui/email-autocomplete"
+import { ReceiptView, ReceiptData } from "@/components/modules/themepark-support/Receipt/ReceiptView"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Search, Wallet, TrendingUp, Minus, Plus, ShoppingCart, XCircle, ArrowLeft, CheckCircle2, SearchX } from "lucide-react"
+import { Search, Wallet, TrendingUp, Minus, Plus, ShoppingCart, XCircle, ArrowLeft, CheckCircle2, SearchX, FlaskConical, Loader2 } from "lucide-react"
 import { BalanceCard } from "@/components/shared-components/balance-card"
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction } from "@/components/ui/alert-dialog"
 import {
@@ -26,8 +26,11 @@ import { itPoswfService } from "@/services/themepark-support"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { TerminalSelector } from "@/components/shared-components/terminal-selector"
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
+import { SimulationWrapper } from "@/components/shared-components/simulation-wrapper"
+import { SimulationToggle } from "@/components/shared-components/simulation-toggle"
 import { formatCurrency } from "@/lib/formatter"
 import { CONSUME_TYPES, TERMINAL_GROUPS } from "@/lib/constants"
+import { cn } from "@/lib/utils"
 import { PaginationControls } from "@/components/ui/pagination-controls" 
 import { usePagination } from "@/hooks/use-pagination"
 
@@ -59,12 +62,30 @@ export default function RetailManualConsumeTab() {
   const [isConsumeSearching, setIsConsumeSearching] = useState(false)
   const [isExecuting, setIsExecuting] = useState(false)
 
+  // Simulation State
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simResult, setSimResult] = useState<any>(null);
+  const [simulatedReceipt, setSimulatedReceipt] = useState<ReceiptData | null>(null);
+
   // Logic
   const isSuperApp = consumeType === "superapp";
   const isReceipt = consumeType === "receipt";
   const isEmailDisabled = isReceipt;   
   const isMobileDisabled = isReceipt; 
   const isInvoiceDisabled = isSuperApp;
+
+
+  // simlation logic (testing purposes)
+const simulateTransaction = (balance: number, cost: number) => {
+    return {
+        success: true,
+        newBalance: balance - cost,
+        isAllowed: balance >= cost,
+        message: balance >= cost 
+            ? "Simulation: Transaction would succeed." 
+            : "Simulation: Transaction would FAIL (Insufficient Funds)."
+    };
+};
 
   // --- Search Logic ---
   const handleConsumeSearch = async () => {
@@ -133,6 +154,7 @@ export default function RetailManualConsumeTab() {
       });
   };
 
+
   const handleNextStep = () => {
       const totalSelected = Object.values(quantities).reduce((a, b) => a + b, 0);
       if (totalSelected === 0) {
@@ -142,12 +164,10 @@ export default function RetailManualConsumeTab() {
       setCurrentStep('confirmation');
   };
 
-  const handleBackStep = () => setCurrentStep('selection');
-
   const handleConsumeExecute = async () => {
     if (!consumeSearchResult) return;
-    const selectedItems = consumeSearchResult.items.filter(item => (quantities[item.id] || 0) > 0);
 
+    const selectedItems = consumeSearchResult.items.filter(item => (quantities[item.id] || 0) > 0);
     const mappedItems: ConsumeExecuteItem[] = selectedItems.map(item => {
         const qty = quantities[item.id]; 
         return {
@@ -160,6 +180,53 @@ export default function RetailManualConsumeTab() {
     });
 
     const totalAmount = mappedItems.reduce((sum, item) => sum + item.amount, 0);
+
+    // --- INTERCEPTION FOR SIMULATION ---
+    if (isSimulating) {
+        setIsExecuting(true);
+        
+        // 1. Simulate Math Check
+        const mathResult = simulateTransaction(consumeSearchResult.creditBalance, totalAmount);
+        await new Promise(resolve => setTimeout(resolve, 800)); // Fake loading
+
+        if (!mathResult.isAllowed) {
+            toast.error("Simulation Failed", mathResult.message);
+            setIsExecuting(false);
+            return;
+        }
+
+        // 2. Generate REALISTIC Invoice Number (Faked)
+        // Format: DSA-YYYYMMDDxxxxx (Faked)
+        const today = new Date();
+        const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ""); // e.g., 20260216
+        const randomSequence = Math.floor(10000 + Math.random() * 90000); // 5 digit random
+        const fakeInvoiceNo = `DSA-${dateStr}${randomSequence}`;
+
+        // 3. Construct Receipt Data
+        const mockReceipt: ReceiptData = {
+            invoiceNo: fakeInvoiceNo,
+            date: new Date().toISOString(),
+            customerName: consumeSearchResult.accID ? "Simulated User" : "Guest Simulator",
+            customerEmail: email || "simulation@preview.com",
+            status: "Paid", 
+            totalAmount: totalAmount,
+            items: mappedItems.map(item => {
+                const original = consumeSearchResult.items.find(i => i.itemID === item.itemID);
+                return {
+                    name: original?.itemName || "Unknown Item",
+                    qty: item.quantity,
+                    amount: item.amount
+                };
+            })
+        };
+
+        // 4. Trigger the View
+        setSimulatedReceipt(mockReceipt);
+        toast.success("Simulation Success", `Invoice: ${fakeInvoiceNo} (Faked) created.`);
+        
+        setIsExecuting(false);
+        return; 
+    }
 
     if (consumeSearchResult.creditBalance < totalAmount) {
          setIsBalanceAlertOpen(true);
@@ -228,6 +295,18 @@ export default function RetailManualConsumeTab() {
     } finally {
         setIsExecuting(false);
     }
+  }
+
+  const handleBackStep = () => {
+      setSimResult(null);
+      setCurrentStep('selection');
+  };
+
+  // Helper to exit simulation view
+  const closeSimulation = () => {
+      setSimulatedReceipt(null);
+      // Optional: Reset form?
+      // handleBackStep(); 
   }
 
   const cartTotal = useMemo(() => {
@@ -366,6 +445,45 @@ export default function RetailManualConsumeTab() {
     );
   };
 
+
+  // 1. If we have a Simulated Receipt, show it instead of the form
+  if (simulatedReceipt) {
+      return (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              
+              {/* Simulation Banner */}
+              <div className="bg-amber-100 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg flex items-center justify-between shadow-sm">
+                  <div className="flex items-center gap-2">
+                      <FlaskConical className="h-5 w-5" />
+                      <div className="flex flex-col">
+                          <span className="font-bold text-sm uppercase tracking-wide">Simulation Mode</span>
+                          <span className="text-xs opacity-90">This receipt is a generated preview. No data was saved.</span>
+                      </div>
+                  </div>
+                  <Button size="sm" onClick={closeSimulation} className="bg-amber-600 hover:bg-amber-700 text-white border-none shadow-none">
+                      <ArrowLeft className="mr-2 h-4 w-4" /> Edit / Back
+                  </Button>
+              </div>
+
+              {/* The Receipt Component (Reused) */}
+              <div className="relative pointer-events-none select-none">
+                   {/* Watermark Overlay */}
+                   <div className="absolute inset-0 z-50 flex items-center justify-center opacity-[0.08] pointer-events-none overflow-hidden">
+                        <div className="transform -rotate-45 text-9xl font-black text-slate-900 whitespace-nowrap">
+                            SIMULATION
+                        </div>
+                   </div>
+                   
+                   {/* Pass the fake data to your existing component */}
+                   <ReceiptView 
+                        data={simulatedReceipt} 
+                        onBack={closeSimulation} 
+                   />
+              </div>
+          </div>
+      )
+  }
+
   const renderConfirmationView = () => {
       const selectedItems = consumeSearchResult?.items.filter(item => (quantities[item.id] || 0) > 0) || [];
       const creditBalance = consumeSearchResult?.creditBalance || 0;
@@ -422,9 +540,9 @@ export default function RetailManualConsumeTab() {
                         onClick={handleConsumeExecute} 
                         isLoading={isExecuting} 
                         loadingText="Submitting..."
-                        className="min-w-[140px]"
+                        className={isSimulating ? "bg-amber-500 hover:bg-amber-600" : ""}
                     >
-                        Submit
+                        {isSimulating ? "Run Simulation" : "Confirm Purchase"}
                     </LoadingButton>
                 </CardFooter>
             </Card>
@@ -434,76 +552,99 @@ export default function RetailManualConsumeTab() {
 
   return (
     <>
-      {currentStep === 'selection' && (
-        <Card>
-            <CardContent>
-            {/* Same Search Form logic as before, already correct */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-end">
-                <div className="space-y-2">
-                    <Label htmlFor="consumeType">Consume Type</Label>
-                    <Select value={consumeType} onValueChange={setConsumeType}>
-                        <SelectTrigger id="consumeType" className="!h-11"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            {CONSUME_TYPES.map((type) => (
-                                <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="email">Email Address {isSuperApp && "*"}</Label>
-                    <EmailAutocomplete 
-                        id="email" 
-                        className="h-11" 
-                        value={email} onChange={(e) => setEmail(e.target.value)} 
-                        disabled={isEmailDisabled} 
-                        placeholder="customer@email.com"/>
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="mobileNo">Mobile No</Label>
-                   <Input id="mobileNo" className="h-11" value={mobileNo} onChange={(e) => setMobileNo(e.target.value)} disabled={isMobileDisabled} />
-                </div>
-                
-                <div className="space-y-2">
-                    <Label htmlFor="invoiceNo">Invoice No {isReceipt && "*"}</Label>
-                    <Input id="invoiceNo" className="h-11" value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} disabled={isInvoiceDisabled} />
-                </div>
+    {/* Simulation Toggle */}
+    <div className="flex justify-end mb-4">
+         <SimulationToggle isSimulating={isSimulating} onToggle={(val) => { 
+             setIsSimulating(val); 
+             setSimResult(null); 
+         }} />
+      </div>
 
-                 <div className="space-y-2 col-span-1">
-                     <TerminalSelector value={terminalId} onChange={setTerminalId} label="Terminal Search & Select *" className="h-11"/>
-                </div>
-                
-                <div className="space-y-2">
-                     <Label htmlFor="tGroupId">Terminal Group ID</Label>
-                     <Select value={tGroupId} onValueChange={setTGroupId}>
-                         <SelectTrigger id="tGroupId" className="!h-11"><SelectValue placeholder="Select Group" /></SelectTrigger>
-                         <SelectContent>
-                             {TERMINAL_GROUPS.map((group) => (
-                                 <SelectItem key={group.value} value={group.value}>{group.label}</SelectItem>
-                             ))}
-                         </SelectContent>
-                     </Select>
-                </div>
+      <SimulationWrapper isSimulating={isSimulating}>
 
-                <div className="space-y-2">
-                     <Label htmlFor="itemName">Item Name (Search)</Label>
-                     <Input id="itemName" className="h-11" value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="e.g. Burger" />
-                </div>
+        {currentStep === 'selection' && (
+            <Card className={cn(isSimulating && "border-amber-200 shadow-none bg-transparent")}>
+                <CardContent>
+                {/* Same Search Form logic as before, already correct */}
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-end">
+                        <div className="space-y-2">
+                            <Label htmlFor="consumeType">Consume Type</Label>
+                            <Select value={consumeType} onValueChange={setConsumeType}>
+                                <SelectTrigger id="consumeType" className="!h-11"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    {CONSUME_TYPES.map((type) => (
+                                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email Address {isSuperApp && "*"}</Label>
+                            <EmailAutocomplete 
+                                id="email" 
+                                className="h-11" 
+                                value={email} onChange={(e) => setEmail(e.target.value)} 
+                                disabled={isEmailDisabled} 
+                                placeholder="customer@email.com"/>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="mobileNo">Mobile No</Label>
+                        <Input id="mobileNo" className="h-11" value={mobileNo} onChange={(e) => setMobileNo(e.target.value)} disabled={isMobileDisabled} />
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <Label htmlFor="invoiceNo">Invoice No {isReceipt && "*"}</Label>
+                            <Input id="invoiceNo" 
+                             value={invoiceNo} 
+                             onChange={(e) => setInvoiceNo(e.target.value)} 
+                             disabled={isInvoiceDisabled}
+                            className={cn("h-11", isSimulating && "bg-white/80 dark:bg-black/50 border-amber-200 focus-visible:ring-amber-400")}
+                            />
+                        </div>
 
-                <div></div>
-                
-                <div className="flex justify-end pt-2">
-                    <Button onClick={handleConsumeSearch} disabled={isConsumeSearching} className="w-full h-11">
-                         <Search className="mr-2 h-4 w-4" />
-                         {isConsumeSearching ? "Searching..." : "Search Items"}
-                     </Button>
-                </div>
-            </div>
-            </CardContent>
-        </Card>
-      )}
+                        <div className="space-y-2 col-span-1">
+                            <TerminalSelector value={terminalId} onChange={setTerminalId} label="Terminal Search & Select *" className="h-11"/>
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <Label htmlFor="tGroupId">Terminal Group ID</Label>
+                            <Select value={tGroupId} onValueChange={setTGroupId}>
+                                <SelectTrigger id="tGroupId" className="!h-11"><SelectValue placeholder="Select Group" /></SelectTrigger>
+                                <SelectContent>
+                                    {TERMINAL_GROUPS.map((group) => (
+                                        <SelectItem key={group.value} value={group.value}>{group.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-      {consumeSearchResult && (currentStep === 'selection' ? renderSelectionView() : renderConfirmationView())}
+                        <div className="space-y-2">
+                            <Label htmlFor="itemName">Item Name (Search)</Label>
+                            <Input id="itemName" className="h-11" value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="e.g. Burger" />
+                        </div>
+
+                        <div></div>
+                        
+                        <div className="flex justify-end pt-2">
+                            <Button onClick={handleConsumeSearch} 
+                            disabled={isConsumeSearching} 
+                            className={cn(
+                                        "w-full h-11 transition-colors",
+                                        isSimulating ? "bg-amber-500 hover:bg-amber-600 text-white" : ""
+                                    )}
+                                >
+                                    {isConsumeSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+                                    {isConsumeSearching ? "Simulating Search..." : "Search Items"}
+                            </Button>
+                        </div>
+                     </div>
+                </CardContent>
+            </Card>
+        )}
+
+        {consumeSearchResult && (currentStep === 'selection' ? renderSelectionView() : renderConfirmationView())}
+            
+      </SimulationWrapper>
 
       <AlertDialog open={isBalanceAlertOpen} onOpenChange={setIsBalanceAlertOpen}>
             <AlertDialogContent>

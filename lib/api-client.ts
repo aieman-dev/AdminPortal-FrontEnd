@@ -45,8 +45,13 @@ class ApiClient {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const headers = new Headers(options.headers);
 
-    if (!(options.body instanceof FormData)) {
-      headers.set("Content-Type", "application/json");
+    if (options.body && typeof options.body === 'string' && !headers.has("Content-Type")) {
+        try {
+            JSON.parse(options.body as string);
+            headers.set("Content-Type", "application/json");
+        } catch (e) {
+            // Not JSON, ignore
+        }
     }
 
     const cleanEndpoint = endpoint.startsWith("/") ? endpoint.slice(1) : endpoint;
@@ -79,7 +84,6 @@ class ApiClient {
             if (typeof window !== "undefined") {
                localStorage.removeItem(USER_DATA_KEY);
                try { await fetch("/api/auth/logout", { method: "POST" }); } catch (e) {}
-               // Add error param so login page can show a toast
                window.location.href = "/login?error=session_expired";
             }
             return { success: false, error: finalMessage };

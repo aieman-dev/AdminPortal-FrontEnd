@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/portal/page-header";
 import { ShieldAlert } from "lucide-react";
 import { EmptyState } from "@/components/portal/empty-state";
 import { formatCurrency } from "@/lib/formatter";
+import { getDashboardRole } from "@/lib/auth";
 
 // Config & Types
 import { DASHBOARD_CONFIG, DashboardRole, MASTER_ACTIONS, MasterAction } from "@/config/dashboard";
@@ -32,16 +33,7 @@ interface DashboardClientProps {
 
 export default function DashboardClient({ initialPendingPackages }: DashboardClientProps) {
   const { user } = useAuth();
-
-  const viewMode = user?.department ? (
-      user.department.toUpperCase().includes("MIS") ? ROLES.MIS_SUPER :
-      user.department.toUpperCase().includes("FINANCE") ? ROLES.FINANCE :
-      user.department.toUpperCase().includes("IT")? ROLES.IT_ADMIN:
-      user.department.toUpperCase().includes("TP") ? ROLES.TP_ADMIN :
-      user.department.toUpperCase().includes("HR") ? ROLES.HR_Admin : 
-      user.department.toUpperCase().includes("CP") ? ROLES.CP_Admin : undefined
-  ) as DashboardRole : undefined;
-  
+  const viewMode = getDashboardRole(user?.department);
   const roleConfig = viewMode ? DASHBOARD_CONFIG[viewMode] : undefined;
   
   //GENERATE PERMITTED ACTIONS

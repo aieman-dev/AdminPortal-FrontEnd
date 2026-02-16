@@ -1,5 +1,7 @@
 // config/navigation.ts
-import { LayoutDashboard, Ticket, ServerCog, Users, Settings, Car, FileUser } from "lucide-react"
+import { LayoutDashboard, Ticket, ServerCog, Users, Settings, Car, FileUser,
+  FlaskConical
+ } from "lucide-react"
 
 export const SIDEBAR_NAVIGATION = [
   {
@@ -100,5 +102,9 @@ export const SIDEBAR_NAVIGATION = [
     href: "/portal/setting",
     icon: Settings,
   },
-  // FUTURE: Add "Software A" here easily!
+  {
+    name: "Simulation Lab",
+    href: "/portal/simulation-lab",
+    icon: FlaskConical, 
+  },
 ]

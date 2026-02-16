@@ -45,8 +45,8 @@ const ENDPOINTS = {
   DUPLICATE: "Package/duplicate",
 
   // IT-POSWF Support
-  GET_ITPOSWF_LIST: "support/package-group/list",
-  UPDATE_ITPOSWF: "package/extend",
+  PACKAGE_LISTING: "support/package-group/list",
+  PACKAGE_EXTEND: "package/extend",
   BCOMPARE_SEARCH: "Package/unsynced",
   BCOMPARE_SYNC: "package/sync",
 };
@@ -291,7 +291,7 @@ export const packageService = {
   },
 
   // 7. IT-POSWF Specifics (Legacy Support / Migration)
-  getItPoswfPackages: async (searchQuery: string = "", page: number = 1) => {
+  getPackagesListing: async (searchQuery: string = "", page: number = 1) => {
     const payload = {
         Status: "Active",
         SearchQuery: searchQuery || null,
@@ -300,7 +300,7 @@ export const packageService = {
         StartDate: null, EndDate: null
     };
     
-    const response = await apiClient.post<any>(ENDPOINTS.GET_ITPOSWF_LIST, payload);
+    const response = await apiClient.post<any>(ENDPOINTS.PACKAGE_LISTING, payload);
     
     if (!response.success) return { packages: [], totalPages: 0, totalRecords: 0 };
 
@@ -328,13 +328,13 @@ export const packageService = {
     };
   },
 
-  updateItPoswfPackage: async (id: number | string, lastValidDate: string, remark: string) => {
+  updatePackagesExtend: async (id: number | string, lastValidDate: string, remark: string) => {
     const payload = {
         id: Number(id),
         newLastValidDate: lastValidDate.split('T')[0],
         remark: remark
     };
-    const response = await apiClient.post(ENDPOINTS.UPDATE_ITPOSWF, payload);
+    const response = await apiClient.post(ENDPOINTS.PACKAGE_EXTEND, payload);
     if (!response.success) throw new Error(response.error || "Update failed");
     return response.data;
   },

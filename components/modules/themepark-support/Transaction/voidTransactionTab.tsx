@@ -2,19 +2,22 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardHeader,CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { XCircle, Clock, SearchX } from "lucide-react" 
+import { XCircle, Clock, SearchX, FlaskConical, CheckCircle2 } from "lucide-react" 
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
 import { StatusBadge } from "@/components/shared-components/status-badge"
-import { SearchField } from "@/components/shared-components/search-field" // <--- Import
+import { SearchField } from "@/components/shared-components/search-field" 
 import { type VoidTransaction } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
 import { formatCurrency, formatDate } from "@/lib/formatter";
 import { useAppToast } from "@/hooks/use-app-toast"
 import { Badge } from "@/components/ui/badge" 
 import { useAutoSearch } from "@/hooks/use-auto-search"
+import { SimulationToggle } from "@/components/shared-components/simulation-toggle"
+import { SimulationWrapper } from "@/components/shared-components/simulation-wrapper"
+import { cn } from "@/lib/utils"
 
 
 export default function VoidTransactionTab() {
@@ -27,6 +30,16 @@ export default function VoidTransactionTab() {
   const [voidingTransaction, setVoidingTransaction] = useState<VoidTransaction | null>(null)
   const [isVoiding, setIsVoiding] = useState(false)
 
+  // --- SIMULATION STATE ---
+  const [isSimulating, setIsSimulating] = useState(false)
+  const [simResult, setSimResult] = useState<{
+      id: string, 
+      invoice: string, 
+      amount: number, 
+      timestamp: string 
+  } | null>(null)
+
+
   const handleVoidSearch = async (query: string) => {
     if (!query) return
     
@@ -34,6 +47,7 @@ export default function VoidTransactionTab() {
     setVoidInvoiceNo(query);
     setIsVoidSearching(true)
     setVoidSearchResult([])
+    setSimResult(null)
 
     try {
       const response = await itPoswfService.searchVoidTransactions(voidInvoiceNo.trim());
@@ -67,6 +81,31 @@ export default function VoidTransactionTab() {
     if (!voidingTransaction) return
     setIsVoiding(true)
     
+    // --- SIMULATION LOGIC ---
+    if (isSimulating) {
+        await new Promise(r => setTimeout(r, 800)); 
+
+        // 1. Visually update the table (Local only)
+        setVoidSearchResult((prev) => 
+            prev.map((t) => (t.trxID === voidingTransaction.trxID ? { ...t, recordStatus: "Voided" } : t))
+        )
+
+        // 2. Set Result Card Data
+        setSimResult({
+            id: voidingTransaction.trxID,
+            invoice: voidingTransaction.invoiceNo,
+            amount: voidingTransaction.amount,
+            timestamp: new Date().toISOString()
+        })
+
+        toast.success("Simulation Success", `Transaction ${voidingTransaction.trxID} voided (Preview).`)
+        setIsVoidConfirmOpen(false)
+        setVoidingTransaction(null)
+        setIsVoiding(false)
+        return
+    }
+
+    // Real API 
     try {
       const payload = {
         TrxID: Number(voidingTransaction.trxID), 
@@ -128,63 +167,108 @@ export default function VoidTransactionTab() {
             size="sm" 
             onClick={() => handleVoidClick(row)} 
             disabled={row.recordStatus === "Voided"} 
+            className={cn(isSimulating && "bg-amber-600 hover:bg-amber-700 text-white")}
         >
-          <XCircle className="h-4 w-4 mr-2" /> Void
+          <XCircle className="h-4 w-4 mr-2" /> {isSimulating ? "Simulate Void" : "Void"}
         </Button>
       ),
     },
-  ], []);
+  ], [isSimulating]);
 
   return (
     <>
-      <Card>
-        <CardContent>
-          <SearchField 
-            label="Invoice Number"
-            placeholder="Enter invoice number"
-            value={voidInvoiceNo}
-            onChange={setVoidInvoiceNo}
-            onSearch={() => handleVoidSearch(voidInvoiceNo)}
-            isSearching={isVoidSearching}
-          />
-        </CardContent>
-      </Card>
+    <div className="flex justify-end mb-4">
+         <SimulationToggle isSimulating={isSimulating} onToggle={(val) => { 
+             setIsSimulating(val); 
+             setSimResult(null);
+             if(!val && voidInvoiceNo) handleVoidSearch(voidInvoiceNo);
+         }} />
+      </div>
 
-      {(isVoidSearching || voidSearchResult.length > 0) && (
-        <Card>
-          <div className="p-6 border-b">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <XCircle className="h-4 w-4" />
-                Transaction Details
-              </div>
-            </div>
-            <CardContent className="p-0">
-              <DataTable
-                columns={columns}
-                data={voidSearchResult}
-                keyExtractor={(row) => String(row.trxID)}
-                isLoading={isVoidSearching}
-                emptyIcon={SearchX}
-                emptyTitle="No Transactions Found"
-                emptyMessage="No voidable transactions found for this invoice."
+      <SimulationWrapper isSimulating={isSimulating}>
+          <Card>
+            <CardContent>
+              <SearchField 
+                label="Invoice Number"
+                placeholder="Enter invoice number"
+                value={voidInvoiceNo}
+                onChange={setVoidInvoiceNo}
+                onSearch={() => handleVoidSearch(voidInvoiceNo)}
+                isSearching={isVoidSearching}
               />
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          {(isVoidSearching || voidSearchResult.length > 0) && (
+            <Card>
+              <div className="p-6 border-b">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <XCircle className="h-4 w-4" />
+                    Transaction Details
+                  </div>
+                </div>
+                <CardContent className="p-0">
+                  <DataTable
+                    columns={columns}
+                    data={voidSearchResult}
+                    keyExtractor={(row) => String(row.trxID)}
+                    isLoading={isVoidSearching}
+                    emptyIcon={SearchX}
+                    emptyTitle="No Transactions Found"
+                    emptyMessage="No voidable transactions found for this invoice."
+                  />
+              </CardContent>
+            </Card>
+          )}
+      </SimulationWrapper>
+
+      {/* SIMULATION RESULT CARD */}
+      {isSimulating && simResult && (
+          <div className="mt-8 animate-in slide-in-from-bottom-4 fade-in max-w-2xl mx-auto">
+             <Card className="border-green-200 bg-green-50 dark:bg-green-900/10 shadow-md">
+                 <CardHeader className="pb-3 border-b border-green-100 dark:border-green-900/30">
+                     <CardTitle className="text-green-800 dark:text-green-400 flex items-center gap-2 text-lg">
+                         <CheckCircle2 className="h-5 w-5" /> 
+                         Void Successful (Simulation)
+                     </CardTitle>
+                 </CardHeader>
+                 <CardContent className="pt-4 grid grid-cols-2 gap-6">
+                     <div>
+                         <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Transaction ID</p>
+                         <p className="font-mono font-medium">{simResult.id}</p>
+                     </div>
+                     <div className="text-right">
+                         <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Refund Amount</p>
+                         <p className="font-bold text-xl text-green-700">{formatCurrency(simResult.amount)}</p>
+                     </div>
+                 </CardContent>
+             </Card>
+          </div>
       )}
 
+      {/* CONFIRMATION DIALOG */}
       <AlertDialog open={isVoidConfirmOpen} onOpenChange={setIsVoidConfirmOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className={cn(isSimulating && "border-amber-200")}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Void Transaction</AlertDialogTitle>
+            <AlertDialogTitle className={cn(isSimulating && "text-amber-700 flex items-center gap-2")}>
+                {isSimulating && <FlaskConical className="h-5 w-5" />}
+                {isSimulating ? "Simulate Void?" : "Void Transaction"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to void transaction {voidingTransaction?.trxID}? This action cannot be
-              undone and will mark the transaction as voided.
+               {isSimulating 
+                 ? <span>You are about to simulate voiding transaction <strong>{voidingTransaction?.trxID}</strong>. <br/>The status will update locally, but no changes will be saved to the server.</span>
+                 : <span>Are you sure you want to void transaction <strong>{voidingTransaction?.trxID}</strong>? <br/>This action cannot be undone and will mark the transaction as voided.</span>
+               }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isVoiding}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleVoidConfirm} disabled={isVoiding} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {isVoiding ? "Voiding..." : "Void Transaction"}
+            <AlertDialogAction 
+                onClick={handleVoidConfirm} 
+                disabled={isVoiding} 
+                className={cn(isSimulating ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
+            >
+              {isVoiding ? "Processing..." : isSimulating ? "Run Simulation" : "Void Transaction"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

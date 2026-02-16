@@ -1,9 +1,9 @@
 // components/themepark-support/tabs/Ticket/ManualConsumeTab.tsx
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { ReceiptData } from "@/components/modules/themepark-support/Receipt/ReceiptView"
+import { ReceiptData, ReceiptView } from "@/components/modules/themepark-support/Receipt/ReceiptView"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -13,7 +13,7 @@ import { EmailAutocomplete } from "@/components/ui/email-autocomplete"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge" 
 import { Separator } from "@/components/ui/separator"
-import { Search, Wallet, Ticket, ArrowLeft, CheckCircle2, Loader2, Minus, Plus, SearchX, AlertTriangle } from "lucide-react"
+import { Search, Wallet, Ticket, ArrowLeft, CheckCircle2, Loader2, Minus, Plus, SearchX, AlertTriangle, FlaskConical } from "lucide-react"
 import { BalanceCard } from "@/components/shared-components/balance-card"
 import { StatusBadge } from "@/components/shared-components/status-badge"
 import { TerminalSelector } from "@/components/shared-components/terminal-selector"
@@ -32,8 +32,32 @@ import { CONSUME_TYPES, TICKET_TYPES, TICKET_STATUSES } from "@/lib/constants"
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
 import { PaginationControls } from "@/components/ui/pagination-controls"
 import { usePagination } from "@/hooks/use-pagination"
+import { SimulationToggle } from "@/components/shared-components/simulation-toggle"
+import { SimulationWrapper } from "@/components/shared-components/simulation-wrapper"
 
 type Step = 'selection' | 'confirmation';
+
+
+const simulateTicketCheck = (selectedTickets: AvailableTicket[], quantities: Record<string, number>) => {
+    const totalQty = selectedTickets.reduce((sum, t) => sum + (quantities[t.id] || 0), 0);
+    
+    const hasInvalidTickets = selectedTickets.some(t => {
+        const qty = quantities[t.id] || 0;
+        return qty > t.balanceQty || t.packageStatus.toLowerCase() !== 'active';
+    });
+
+    const isAllowed = totalQty > 0 && !hasInvalidTickets;
+
+    return {
+        success: true,
+        isAllowed,
+        message: isAllowed 
+            ? `Simulation: ${totalQty} ticket(s) valid for consumption.` 
+            : "Simulation: Selection contains invalid or expired tickets.",
+        totalConsumed: totalQty
+    };
+};
+
 
 export default function ManualConsumeTab() {
   const toast = useAppToast()
@@ -59,6 +83,11 @@ export default function ManualConsumeTab() {
   const [isConsumeSearching, setIsConsumeSearching] = useState(false)
   const [isExecuting, setIsExecuting] = useState(false)
 
+  // -- Simulation State --
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simResult, setSimResult] = useState<any>(null);
+  const [simulatedReceipt, setSimulatedReceipt] = useState<ReceiptData | null>(null);
+
   // -- Pagination State --
   const pager = usePagination({ pageSize: 5 });
 
@@ -66,7 +95,7 @@ export default function ManualConsumeTab() {
   const isReceipt = consumeType === "receipt";
 
   // --- 1. Main Search Logic ---
-  const handleConsumeSearch = async (query?: string) => {
+  const handleConsumeSearch = useCallback(async (query?: string) => {
     let typeToUse = consumeType;
     let emailToUse = email;
     let invoiceToUse = invoiceNo;
@@ -146,14 +175,13 @@ export default function ManualConsumeTab() {
     } finally {
         setIsConsumeSearching(false);
     }
-  }
+  }, [consumeType, email, mobileNo, invoiceNo, terminalId, ticketType, ticketStatus, pager, toast]);
 
   useAutoSearch(handleConsumeSearch);
 
-  // --- 3. Quantity Handlers ---
+  // --- Quantity Handlers ---
   const updateQuantity = (itemId: string, val: number, maxQty: number) => {
       setQuantities(prev => {
-          // Ensure quantity doesn't exceed balanceQty (maxQty)
           const updated = Math.min(Math.max(0, val), maxQty); 
           const newMap = { ...prev, [itemId]: updated };
           if (updated === 0) delete newMap[itemId]; 
@@ -172,6 +200,7 @@ export default function ManualConsumeTab() {
   };
 
   const handleBackStep = () => {
+    setSimResult(null);
       setCurrentStep('selection');
   };
 
@@ -182,9 +211,53 @@ export default function ManualConsumeTab() {
         const selectedTickets = consumeSearchResult.tickets.filter(t => (quantities[t.id] || 0) > 0);
         if (selectedTickets.length === 0) return;
         
-        // Even if points are removed from UI, we assume 0 cost if not displayed.
         const totalPoints = selectedTickets.reduce((sum, item) => sum + (item.itemPoint * quantities[item.id]), 0);
 
+        // --- SIMULATION BRANCH ---
+        if (isSimulating) {
+            setIsExecuting(true);
+            
+            const checkResult = simulateTicketCheck(selectedTickets, quantities);
+            setSimResult(checkResult);
+
+            await new Promise(r => setTimeout(r, 800));
+
+            if (!checkResult.isAllowed) {
+                 toast.error("Simulation Failed", checkResult.message);
+                 setIsExecuting(false);
+                 return;
+            }
+
+        // Fake Ticket No Pattern
+            const now = new Date();
+            const yy = now.getFullYear().toString().slice(-2);
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+            
+            const fakeTicketNo = `T${yy}${mm}${dd}${randomSuffix} (Faked)`;
+
+            const mockReceipt: ReceiptData = {
+                invoiceNo: fakeTicketNo,
+                date: new Date().toISOString(),
+                customerName: consumeSearchResult.accID ? "Simulated User" : "Guest Simulator",
+                customerEmail: email || "simulation@preview.com",
+                status: "Consumed",
+                totalAmount: totalPoints,
+                items: selectedTickets.map(ticket => ({
+                    name: `${ticket.packageName} - ${ticket.itemName}`,
+                    qty: quantities[ticket.id],
+                    amount: ticket.itemPoint * quantities[ticket.id] 
+                }))
+            };
+
+            setSimulatedReceipt(mockReceipt);
+            toast.success("Simulation Success", `Ticket No : ${fakeTicketNo} (Faked) has been consumed.`);
+            setIsExecuting(false);
+            return;
+        }
+
+        // --- LIVE EXECUTION ---
         const consumeList: ConsumeTicketItem[] = selectedTickets.map(item => ({
             packageName: item.packageName,
             itemName: item.itemName,
@@ -194,6 +267,7 @@ export default function ManualConsumeTab() {
             ticketItemID: item.ticketItemID, 
             consumeQty: quantities[item.id], 
         }));
+
 
         const numericTerminalId = Number(terminalId.split('-').pop() || terminalId) || 0; 
         
@@ -285,7 +359,7 @@ export default function ManualConsumeTab() {
     { 
         header: "Item Details", 
         accessor: "id", 
-        className: "w-[50%] pl-6", // Increased width since we removed columns
+        className: "w-[50%] pl-6", 
         cell: (_, row) => (
             <div className="flex flex-col gap-1">
                 <span className={cn("font-medium text-sm transition-colors", (quantities[row.id] || 0) > 0 ? "text-indigo-700 dark:text-indigo-300" : "text-foreground")}>
@@ -359,11 +433,18 @@ export default function ManualConsumeTab() {
         }
     }
   ], [quantities]);
+  
+
+  // --- HELPER: Close Simulation ---
+  const closeSimulation = () => {
+      setSimulatedReceipt(null);
+  };
+
 
   // --- VIEW: SELECTION TABLE ---
   const renderSelectionView = () => {
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 mt-6">
         <div className="grid gap-4 md:grid-cols-2">
             <BalanceCard
                 title="Credit Balance"
@@ -386,7 +467,7 @@ export default function ManualConsumeTab() {
             </Card>
         </div>
 
-        <Card>
+        <Card className={cn(isSimulating && "border-amber-200 shadow-none bg-transparent")}>
             <CardContent className="p-0 overflow-hidden">
                 <div className="bg-muted/40 px-6 py-3 border-b flex justify-between items-center">
                     <h3 className="font-semibold flex items-center gap-2">
@@ -432,7 +513,7 @@ export default function ManualConsumeTab() {
                                 onClick={handleNextStep} 
                                 disabled={Object.keys(quantities).length === 0 || isExecuting} 
                                 size="lg"
-                                className="min-w-[150px]"
+                                className={cn("min-w-[150px]", isSimulating && "bg-amber-500 hover:bg-amber-600")}
                             >
                                 Next
                             </Button>
@@ -453,7 +534,7 @@ export default function ManualConsumeTab() {
 
       return (
         <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-300 mt-8">
-            <Card>
+            <Card className={cn(isSimulating && "border-amber-200 shadow-none bg-transparent")}>
                 <CardHeader>
                     <CardTitle className="text-xl flex items-center gap-2">
                         <CheckCircle2 className="h-6 w-6 text-green-600" />
@@ -462,7 +543,10 @@ export default function ManualConsumeTab() {
                     <CardDescription>Please review the tickets to consume.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div className="flex justify-between items-center bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-lg border border-indigo-100 dark:border-indigo-800">
+                    <div className={cn(
+                        "flex justify-between items-center p-4 rounded-lg border",
+                        isSimulating ? "bg-amber-50 border-amber-200 text-amber-900" : "bg-indigo-50 border-indigo-100 text-indigo-900"
+                    )}>
                         <span className="text-sm font-medium text-indigo-900 dark:text-indigo-200">Total To Consume</span>
                         <span className="text-2xl font-bold text-indigo-700 dark:text-indigo-400">{totalConsumeQty} Tickets</span>
                     </div>
@@ -503,9 +587,9 @@ export default function ManualConsumeTab() {
                         onClick={handleConsumeExecute} 
                         isLoading={isExecuting} 
                         loadingText="Submitting..."
-                        className="min-w-[140px]"
+                        className={cn("min-w-[140px]", isSimulating && "bg-amber-500 hover:bg-amber-600")}
                     >
-                        Confirm Consume
+                        {isSimulating ? "Run Simulation" : "Confirm Consume"}
                     </LoadingButton>
                 </CardFooter>
             </Card>
@@ -513,106 +597,182 @@ export default function ManualConsumeTab() {
       );
   };
 
+  // --- RENDER VIEW: SIMULATION RECEIPT ---
+  if (simulatedReceipt) {
+      return (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              {/* Simulation Banner */}
+              <div className="bg-amber-100 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg flex items-center justify-between shadow-sm">
+                  <div className="flex items-center gap-2">
+                      <FlaskConical className="h-5 w-5" />
+                      <div className="flex flex-col">
+                          <span className="font-bold text-sm uppercase tracking-wide">Simulation Mode</span>
+                          <span className="text-xs opacity-90">This receipt is a generated preview. No data was saved.</span>
+                      </div>
+                  </div>
+                  <Button size="sm" onClick={closeSimulation} className="bg-amber-600 hover:bg-amber-700 text-white border-none shadow-none">
+                      <ArrowLeft className="mr-2 h-4 w-4" /> Edit / Back
+                  </Button>
+              </div>
+
+              {/* Receipt with Watermark */}
+              <div className="relative select-none">
+                   <div className="absolute inset-0 z-50 flex items-center justify-center opacity-[0.08] pointer-events-none overflow-hidden">
+                        <div className="transform -rotate-45 text-9xl font-black text-slate-900 whitespace-nowrap">
+                            SIMULATION
+                        </div>
+                   </div>
+                   
+                   <ReceiptView 
+                        data={simulatedReceipt} 
+                        onBack={closeSimulation}
+                   />
+              </div>
+          </div>
+      )
+  }
+
   return (
     <>
-      {currentStep === 'selection' && (
-        <Card>
-            <CardContent>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-end">
-                
-                {/* ROW 1: Consume Type | Email | Mobile */}
-                <div className="space-y-2">
-                    <Label htmlFor="consumeType">Consume Type</Label>
-                    <Select value={consumeType} onValueChange={setConsumeType}>
-                        {/* Standardized h-11 */}
-                        <SelectTrigger id="consumeType" className="h-11"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            {CONSUME_TYPES.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                        ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="email">Email Address {isSuperApp && "*"}</Label>
-                    <EmailAutocomplete 
-                        id="email"
-                        value={email} onChange={(e) => setEmail(e.target.value)} 
-                        disabled={isReceipt} 
-                        placeholder="customer@email.com"
-                        className="h-11"
+    <div className="flex justify-end mb-4">
+         <SimulationToggle isSimulating={isSimulating} onToggle={(val) => { 
+             setIsSimulating(val); 
+             setSimResult(null); 
+         }} />
+      </div>
+
+      <SimulationWrapper isSimulating={isSimulating}>
+        {currentStep === 'selection' && (
+            <Card className={cn(isSimulating && "border-amber-200 shadow-none bg-transparent")}>
+                <CardContent>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-end">
+                    
+                    {/* ROW 1: Consume Type | Email | Mobile */}
+                    <div className="space-y-2">
+                        <Label htmlFor="consumeType">Consume Type</Label>
+                        <Select value={consumeType} onValueChange={setConsumeType}>
+                            {/* Standardized h-11 */}
+                            <SelectTrigger id="consumeType" className="h-11"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {CONSUME_TYPES.map((type) => (
+                                <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="email">Email Address {isSuperApp && "*"}</Label>
+                        <EmailAutocomplete 
+                            id="email"
+                            value={email} onChange={(e) => setEmail(e.target.value)} 
+                            disabled={isReceipt} 
+                            placeholder="customer@email.com"
+                            className="h-11"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="mobileNo">Mobile No</Label>
+                        <Input 
+                            id="mobileNo"
+                            value={mobileNo} onChange={(e) => setMobileNo(e.target.value)} 
+                            disabled={isReceipt}
+                            className="h-11"
+                        />
+                    </div>
+
+                    {/* ROW 2: Invoice No | Terminal Combobox | Ticket Type */}
+                    <div className="space-y-2">
+                        <Label htmlFor="invoiceNo">Invoice No {isReceipt && "*"}</Label>
+                        <Input 
+                            id="invoiceNo"
+                            value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} 
+                            disabled={isSuperApp}
+                            className="h-11"
+                        />
+                    </div>
+                    
+                    {/* Standardized Terminal Selector */}
+                    <TerminalSelector 
+                        value={terminalId}
+                        onChange={setTerminalId}
+                        label="Terminal Search & Select *"
+                        className="h-11" 
                     />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="mobileNo">Mobile No</Label>
-                    <Input 
-                        id="mobileNo"
-                        value={mobileNo} onChange={(e) => setMobileNo(e.target.value)} 
-                        disabled={isReceipt}
-                        className="h-11"
-                    />
-                </div>
+                    
+                    <div className="space-y-2">
+                        <Label htmlFor="ticketType">Ticket Type</Label>
+                        <Select value={ticketType} onValueChange={setTicketType}>
+                            <SelectTrigger id="ticketType" className="!h-11"><SelectValue placeholder="Select type" /></SelectTrigger>
+                            <SelectContent>
+                                {TICKET_TYPES.map((type) => (
+                                <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
 
-                {/* ROW 2: Invoice No | Terminal Combobox | Ticket Type */}
-                <div className="space-y-2">
-                    <Label htmlFor="invoiceNo">Invoice No {isReceipt && "*"}</Label>
-                    <Input 
-                        id="invoiceNo"
-                        value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} 
-                        disabled={isSuperApp}
-                        className="h-11"
-                    />
-                </div>
-                
-                 {/* Standardized Terminal Selector */}
-                 <TerminalSelector 
-                    value={terminalId}
-                    onChange={setTerminalId}
-                    label="Terminal Search & Select *"
-                    className="h-11" 
-                 />
-                
-                <div className="space-y-2">
-                    <Label htmlFor="ticketType">Ticket Type</Label>
-                    <Select value={ticketType} onValueChange={setTicketType}>
-                        <SelectTrigger id="ticketType" className="!h-11"><SelectValue placeholder="Select type" /></SelectTrigger>
-                        <SelectContent>
-                            {TICKET_TYPES.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                        ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+                    {/* ROW 3: Ticket Status | [Empty] | Search Button */}
+                    <div className="space-y-2">
+                        <Label htmlFor="ticketStatus">Ticket Status</Label>
+                        <Select value={ticketStatus} onValueChange={setTicketStatus}>
+                            <SelectTrigger id="ticketStatus" className="!h-11"><SelectValue placeholder="Select status" /></SelectTrigger>
+                            <SelectContent>
+                                {TICKET_STATUSES.map((status) => (
+                                <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
 
-                {/* ROW 3: Ticket Status | [Empty] | Search Button */}
-                <div className="space-y-2">
-                    <Label htmlFor="ticketStatus">Ticket Status</Label>
-                    <Select value={ticketStatus} onValueChange={setTicketStatus}>
-                        <SelectTrigger id="ticketStatus" className="!h-11"><SelectValue placeholder="Select status" /></SelectTrigger>
-                        <SelectContent>
-                            {TICKET_STATUSES.map((status) => (
-                            <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>
-                        ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+                    {/* Empty Spacer Column */}
+                    <div></div>
 
-                {/* Empty Spacer Column */}
-                <div></div>
-
-                <div className="flex justify-end pt-2"> 
-                    <Button onClick={() => handleConsumeSearch()} disabled={isConsumeSearching} className="w-full h-11">
-                        <Search className="mr-2 h-4 w-4" />
-                        {isConsumeSearching ? "Searching..." : "Search"}
-                    </Button>
+                    <div className="flex justify-end pt-2"> 
+                        <Button 
+                            onClick={() => handleConsumeSearch()} 
+                             disabled={isConsumeSearching} 
+                             className={cn("w-full h-11", isSimulating && "bg-amber-500 hover:bg-amber-600")}
+                             >
+                            <Search className="mr-2 h-4 w-4" />
+                            {isConsumeSearching ? "Searching..." : "Search"}
+                        </Button>
+                    </div>
+                    
                 </div>
-                
-            </div>
-            </CardContent>
-        </Card>
+                </CardContent>
+            </Card>
+        )}
+
+        {consumeSearchResult && (currentStep === 'selection' ? renderSelectionView() : renderConfirmationView())}
+    </SimulationWrapper>
+
+    {/* Small Sim Result - Pre-Flight Check */}
+      {isSimulating && simResult && !simulatedReceipt && (
+          <div className="mt-6 animate-in slide-in-from-bottom-4 fade-in max-w-xl mx-auto">
+               <Card className="border-amber-200 bg-amber-50 dark:bg-amber-900/10">
+                  <CardContent className="p-4 flex items-center justify-between">
+                       <div className="flex items-center gap-2">
+                           <Ticket className="h-4 w-4 text-amber-700" />
+                           <span className="text-sm font-semibold text-amber-800">Pre-Flight Check</span>
+                       </div>
+                       <div className="flex items-center gap-3">
+                           {simResult.isAllowed && (
+                               <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
+                                   {simResult.totalConsumed} Items Selected
+                               </Badge>
+                           )}
+                           <span className={cn("text-sm font-bold flex items-center gap-1", simResult.isAllowed ? "text-green-600" : "text-red-600")}>
+                               {simResult.isAllowed ? (
+                                   <><CheckCircle2 className="h-4 w-4" /> VALID</>
+                               ) : (
+                                   <><AlertTriangle className="h-4 w-4" /> INVALID SELECTION</>
+                               )}
+                           </span>
+                       </div>
+                  </CardContent>
+               </Card>
+          </div>
       )}
-
-      {consumeSearchResult && (currentStep === 'selection' ? renderSelectionView() : renderConfirmationView())}
     </>
   )
 }

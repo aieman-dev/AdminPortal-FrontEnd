@@ -4,123 +4,57 @@ import { NextRequest, NextResponse } from "next/server";
 import { BACKEND_API_BASE } from "@/lib/config";
 import { cookies } from "next/headers";
 
-// Helper to handle all HTTP methods
 async function handleRequest(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const resolvedParams = await params;
   const path = resolvedParams.path.join("/"); 
-
   const query = request.nextUrl.search;
   const backendUrl = `${BACKEND_API_BASE}/api/${path}${query}`;
   
   const cookieStore = await cookies();
-  const accessToken = cookieStore.get("accessToken")?.value
+  const accessToken = cookieStore.get("accessToken")?.value;
 
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    "ngrok-skip-browser-warning": "true",
-  };
+  // 1. Prepare Headers
+  const headers = new Headers(request.headers);
+  headers.set("ngrok-skip-browser-warning", "true");
+  
+  // Remove host headers to prevent conflicts
+  headers.delete("host");
+  headers.delete("connection");
+  headers.delete("content-length"); // Let fetch recalculate this
 
   if (accessToken) {
-    headers["Authorization"] = `Bearer ${accessToken}`;
+    headers.set("Authorization", `Bearer ${accessToken}`);
   }
 
   try {
-    let finalBody: BodyInit | null | undefined = undefined;
-    let requestContentType = request.headers.get("content-type");
+    const method = request.method;
+    const body = (method === "GET" || method === "HEAD") ? undefined : request.body;
 
-    if (["POST", "PUT", "PATCH"].includes(request.method)) {
-
-        // SCENARIO A: Client explicitly says "This is JSON"
-        if (requestContentType?.includes("application/json")) {
-            try {
-                const jsonBody = await request.json();
-                finalBody = JSON.stringify(jsonBody);
-            } catch (e) {
-                console.warn("Client sent content-type:json but body was invalid.");
-                finalBody = null; 
-            }
-        }
-
-        // SCENARIO B: Client didn't specify JSON (Could be "Forgetful Client" OR "File Upload")
-        else {
-            try {
-                // ⚠️ SAFETY CHECK: Don't clone huge files (e.g., > 5MB) to save RAM
-                const contentLength = Number(request.headers.get("content-length") || "0");
-                
-                if (contentLength > 0 && contentLength < 5 * 1024 * 1024) { 
-                    // Attempt to peek inside using a CLONE
-                    const clone = request.clone();
-                    const jsonBody = await clone.json(); // Try parsing the clone
-                    
-                    // SUCCESS! It was JSON disguised with the wrong label.
-                    console.log("Recovered JSON from forgetful client:", jsonBody);
-                    finalBody = JSON.stringify(jsonBody);
-                    
-                    // Force the header to be correct for the backend
-                    if (!headers["Content-Type"]) {
-                        (headers as any)["Content-Type"] = "application/json";
-                    }
-                } else {
-                    throw new Error("Too big or empty");
-                }
-            } catch (e) {
-                // FAIL! It wasn't JSON (or was too big). 
-                // We assume it's a File/Binary.
-                // We use the ORIGINAL stream.
-                finalBody = request.body; 
-                
-                // Important: Remove 'Content-Type: application/json' from our default headers
-                // so the browser/backend can auto-detect the boundary for files.
-                delete (headers as any)["Content-Type"];
-                
-                // Forward the original content type if it exists
-                if (requestContentType) {
-                    (headers as any)["Content-Type"] = requestContentType;
-                }
-            }
-        }
-    }
-
-    // 2. Forward Request
+    // 2. Stream the request directly (No Cloning, No Parsing)
+    // This pipes the data straight to the backend with zero memory overhead
     const apiResponse = await fetch(backendUrl, {
-      method: request.method,
-      headers: headers,
-      body: finalBody,
+      method,
+      headers,
+      body: body as any, // Cast to any to satisfy TS types for BodyInit
       cache: "no-store",
+      // @ts-ignore - 'duplex' is a valid option in Node/Next.js fetch but missing in some type defs
+      duplex: "half" 
     });
 
-    const responseText = await apiResponse.text();
-    let data;
-    try {
-        data = responseText ? JSON.parse(responseText) : {};
-    } catch {
-        return NextResponse.json(
-            { error: "Backend returned non-JSON response", details: responseText.slice(0, 200) }, 
-            { status: 502 }
-        );
-    }
+    // 3. Handle Response
+    const responseBody = apiResponse.body;
+    
+    // Forward the status and headers exactly as received
+    const newHeaders = new Headers(apiResponse.headers);
+    
+    // Security: Clean up headers we don't want to leak
+    newHeaders.delete("www-authenticate");
 
-    if (apiResponse.status === 401) {
-       return NextResponse.json({ error: "Unauthorized or Token Expired" }, { status: 401 });
-    }
-
-    if (!apiResponse.ok) {
-      return NextResponse.json(
-        { error: data.message || data.error || `Backend Error: ${apiResponse.statusText}`, ...data }, 
-        { status: apiResponse.status }
-      );
-    }
-
-    const nextResponse = NextResponse.json(data, { status: 200 });
-    const setCookieHeader = apiResponse.headers.get("Set-Cookie");
-
-    if (setCookieHeader) {
-        // Forward the cookie to the browser
-        // Note: You might need to adjust domain/path if backend sets them strictly
-        nextResponse.headers.set("Set-Cookie", setCookieHeader);
-    }
-
-    return nextResponse;
+    return new NextResponse(responseBody as any, {
+      status: apiResponse.status,
+      statusText: apiResponse.statusText,
+      headers: newHeaders,
+    });
 
   } catch (error) {
     console.error(`Proxy Error [${request.method} ${path}]:`, error);

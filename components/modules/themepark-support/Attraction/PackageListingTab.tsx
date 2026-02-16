@@ -51,7 +51,7 @@ export default function PackageListingTab() {
     if (page !== pagination.currentPage) pagination.setCurrentPage(page);
 
     try {
-        const { packages: livePackages, totalPages, totalRecords } = await packageService.getItPoswfPackages(
+        const { packages: livePackages, totalPages, totalRecords } = await packageService.getPackagesListing(
             term.trim(),
             page 
         );
@@ -81,7 +81,7 @@ export default function PackageListingTab() {
     if (!editingPackage) return
     setIsPackageUpdating(true)
     try {
-        await packageService.updateItPoswfPackage(
+        await packageService.updatePackagesExtend(
             editingPackage.packageId,
             editingPackage.lastValidDate,
             packageRemark

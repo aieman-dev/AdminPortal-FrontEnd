@@ -1,5 +1,6 @@
 // lib/auth.ts
 import { ROLES } from "./constants";
+import { DashboardRole } from "@/config/dashboard";
 
 export type Department = typeof ROLES[keyof typeof ROLES];
 
@@ -87,6 +88,23 @@ export function isAuthenticated(): boolean {
 // Get auth token for API requests
 export function getAuthToken(): string | null {
   return null; // Token is now in HttpOnly cookies; no access from JS
+}
+
+// -- Role Mapper Helper ---
+export function getDashboardRole(department: string | undefined): DashboardRole | undefined {
+    if (!department) return undefined;
+
+    const deptUpper = department.toUpperCase();
+
+    // Map your departments to the Dashboard Roles
+    if (deptUpper.includes("MIS")) return ROLES.MIS_SUPER;
+    if (deptUpper.includes("FINANCE")) return ROLES.FINANCE;
+    if (deptUpper.includes("IT")) return ROLES.IT_ADMIN;
+    if (deptUpper.includes("TP")|| deptUpper.includes("THEME")) return ROLES.TP_ADMIN;
+    if (deptUpper.includes("HR")) return ROLES.HR_Admin;
+    if (deptUpper.includes("CP")|| deptUpper.includes("CAR")) return ROLES.CP_Admin;
+    
+    return undefined;
 }
 
 // --- PERMISSION HELPERS ---

@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { Ticket, Loader2, SearchX, ShoppingBag } from "lucide-react" 
+import { Ticket, Loader2, SearchX, ShoppingBag, FlaskConical } from "lucide-react" 
 import { StatusBadge } from "@/components/shared-components/status-badge"
 import { SearchField } from "@/components/shared-components/search-field"
 import { useAppToast } from "@/hooks/use-app-toast"
@@ -24,7 +24,8 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-
+import { SimulationToggle } from "@/components/shared-components/simulation-toggle"
+import { SimulationWrapper } from "@/components/shared-components/simulation-wrapper"
 
 
 export default function DeactivateTicketTab() {
@@ -43,6 +44,8 @@ export default function DeactivateTicketTab() {
   const [selectedTicket, setSelectedTicket] = useState<DeactivatableTicket | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
+  // --- SIMULATION STATE ---
+  const [isSimulating, setIsSimulating] = useState(false);
   
   // Core Fetch Logic
   const fetchData = async (query: string, retainState: boolean = false) => {
@@ -121,6 +124,7 @@ export default function DeactivateTicketTab() {
       fetchData(searchQuery.trim(), false);
   }
 
+
   const handleDeactivateClick = (row: ConsumptionHistory) => {
     const isActive = row.status.toLowerCase() === "active";
     if (!isActive) {
@@ -131,11 +135,30 @@ export default function DeactivateTicketTab() {
     setIsConfirmOpen(true)
   }
   
+
   const handleDeactivateConfirm = async () => {
     if (!deactivatingRow) return;
     setIsConfirmOpen(false);
+
     const rowId = deactivatingRow.id;
     setUpdatingRowIds(prev => new Set(prev).add(rowId));
+
+    // --- SIMULATION LOGIC ---
+    if (isSimulating) {
+        await new Promise(r => setTimeout(r, 800)); 
+
+        setConsumptionHistory(prev => prev.map(c => 
+            c.id === rowId ? { ...c, status: "Deactivated" } : c
+        ));
+
+        toast.success("Simulation Success", `Consumption entry ${deactivatingRow.consumptionNo} deactivated (Preview).`);
+        
+        setUpdatingRowIds(prev => { const next = new Set(prev); next.delete(rowId); return next; });
+        setDeactivatingRow(null);
+        return;
+    }
+
+    // --- REAL LOGIC ---
     try {
         const response = await itPoswfService.deactivateConsumption(deactivatingRow.consumptionNo);
         if (!response.success) throw new Error(response.error || "Deactivation failed.");
@@ -161,9 +184,9 @@ export default function DeactivateTicketTab() {
             isLoading={isRowUpdating} 
             loadingText="Wait..."
             disabled={isAlreadyDeactivated || isRowUpdating} 
-            className="h-7 px-3 text-xs w-[100px]"
+            className={cn("h-7 px-3 text-xs w-[100px]", isSimulating && "bg-amber-600 hover:bg-amber-700 text-white")}
         >
-            {isAlreadyDeactivated ? "Deactivated" : "Deactivate"}
+            {isAlreadyDeactivated ? "Deactivated" : isSimulating ? "Simulate" : "Deactivate"}
         </LoadingButton>
     )
   }
@@ -177,13 +200,11 @@ export default function DeactivateTicketTab() {
   // --- UPDATED COLUMN DEFINITIONS WITH BADGE ---
   const masterColumns: TableColumn<DeactivatableTicket>[] = useMemo(() => [
       { header: "Ticket No", accessor: "ticketNo", cell: (value, row) => {
-          // Calculate the count of child consumption items for this ticket
           const childCount = consumptionHistory.filter(c => c.ticketNo === row.ticketNo).length;
 
           return (
             <div className="flex items-center gap-2">
                 <span className="font-medium text-blue-600 dark:text-blue-400">{value}</span>
-                {/* Only show badge if there are children */}
                 {childCount > 0 && (
                     <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-blue-100 px-1 text-[10px] font-bold text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
                         {childCount}
@@ -197,7 +218,7 @@ export default function DeactivateTicketTab() {
       { header: "Total Qty", accessor: "quantity", className: "text-center pr-8" },
       { header: "Purchase Date", accessor: "purchaseDate", cell: (value) => formatDateTime(value as string) },
       { header: "Status", accessor: "status", cell: (value) => <StatusBadge status={value} /> },
-  ], []);
+  ], [consumptionHistory]);
 
 
   // --- DESKTOP SUB-COMPONENT ---
@@ -240,42 +261,52 @@ export default function DeactivateTicketTab() {
 
   return (
     <>
-      <Card>
-        <CardContent>
-          <SearchField
-            label="Invoice No / Ticket No"
-            placeholder="Enter Invoice or Ticket Number"
-            value={searchQuery}
-            onChange={setSearchQuery}
-            onSearch={handleSearch}
-            isSearching={isSearching}
-          />
-        </CardContent>
-      </Card>
+    {/* Header with Toggle */}
+      <div className="flex justify-end mb-4">
+         <SimulationToggle isSimulating={isSimulating} onToggle={(val) => { 
+             setIsSimulating(val);
+             if (!val && searchQuery) fetchData(searchQuery, true);
+         }} />
+      </div>
 
-      {(isSearching || ticketDetails.length > 0 || consumptionHistory.length > 0) && (
-        <Card>
-          <div className="p-6 border-b">
-                <div className="flex items-center gap-2 text-lg font-semibold">
-                    <Ticket className="h-5 w-5 text-muted-foreground" />
-                    Ticket & Consumption Details
-                </div>
-            </div>
-            <CardContent className="p-0">
-                <DataTable 
-                    columns={masterColumns}
-                    data={ticketDetails}
-                    keyExtractor={(row) => row.ticketNo}
-                    isLoading={isSearching}
-                    emptyIcon={SearchX}
-                    emptyTitle="No Ticket Headers Found"
-                    emptyMessage="If you see this, we found consumption records but no parent ticket headers."
-                    renderSubComponent={isMobile ? undefined : renderDetailRow}
-                    onRowClick={isMobile ? handleRowClick : undefined}
-                />
-          </CardContent>
+      <SimulationWrapper isSimulating={isSimulating}>
+          <Card className={cn(isSimulating && "border-amber-200 shadow-none bg-transparent")}>
+            <CardContent>
+            <SearchField
+                label="Invoice No / Ticket No"
+                placeholder="Enter Invoice or Ticket Number"
+                value={searchQuery}
+                onChange={setSearchQuery}
+                onSearch={handleSearch}
+                isSearching={isSearching}
+            />
+            </CardContent>
         </Card>
-      )}
+
+        {(isSearching || ticketDetails.length > 0 || consumptionHistory.length > 0) && (
+            <Card className={cn(isSimulating && "border-amber-200 shadow-none bg-transparent mt-4")}>
+            <div className="p-6 border-b">
+                    <div className="flex items-center gap-2 text-lg font-semibold">
+                        <Ticket className="h-5 w-5 text-muted-foreground" />
+                        Ticket & Consumption Details
+                    </div>
+                </div>
+                <CardContent className="p-0">
+                    <DataTable 
+                        columns={masterColumns}
+                        data={ticketDetails}
+                        keyExtractor={(row) => row.ticketNo}
+                        isLoading={isSearching}
+                        emptyIcon={SearchX}
+                        emptyTitle="No Ticket Headers Found"
+                        emptyMessage="If you see this, we found consumption records but no parent ticket headers."
+                        renderSubComponent={isMobile ? undefined : renderDetailRow}
+                        onRowClick={isMobile ? handleRowClick : undefined}
+                    />
+            </CardContent>
+            </Card>
+        )}
+      </SimulationWrapper>
 
       {/* MOBILE SHEET FOR CONSUMPTION DETAILS */}
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
@@ -322,14 +353,14 @@ export default function DeactivateTicketTab() {
                                             <Button 
                                                 variant="destructive" 
                                                 size="sm" 
-                                                className="w-full"
+                                                className={cn("w-full", isSimulating && "bg-amber-600 hover:bg-amber-700 text-white")}
                                                 disabled={child.status.toLowerCase() !== "active" || updatingRowIds.has(child.id)}
                                                 onClick={() => {
                                                     setDeactivatingRow(child);
                                                     setIsConfirmOpen(true);
                                                 }}
                                             >
-                                                {updatingRowIds.has(child.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : "Deactivate Entry"}
+                                                {updatingRowIds.has(child.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : isSimulating ? "Simulate Deactivate" : "Deactivate Entry"}
                                             </Button>
                                         </div>
                                     </div>
@@ -348,14 +379,35 @@ export default function DeactivateTicketTab() {
       {/* CONFIRMATION DIALOG */}
       {isConfirmOpen && deactivatingRow && (
         <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-          <AlertDialogContent>
+          <AlertDialogContent className={cn(isSimulating && "border-amber-200")}>
             <AlertDialogHeader>
-              <AlertDialogTitle>Confirm Deactivation</AlertDialogTitle>
-              <AlertDialogDescription>Are you sure you want to deactivate Consumption Entry <span className="font-medium text-foreground ml-1">{deactivatingRow.consumptionNo}</span>?<br/><br/>This action cannot be undone.</AlertDialogDescription>
+              <AlertDialogTitle className={cn(isSimulating && "text-amber-700 flex items-center gap-2")}>
+                  {isSimulating && <FlaskConical className="h-5 w-5" />}
+                  {isSimulating ? "Simulate Deactivation?" : "Confirm Deactivation"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {isSimulating ? (
+                    <span>
+                        You are about to simulate deactivating Consumption Entry <span className="font-medium text-foreground ml-1">{deactivatingRow.consumptionNo}</span>.
+                        <br/>The status will update locally for preview purposes only.
+                    </span>
+                ) : (
+                    <span>
+                        Are you sure you want to deactivate Consumption Entry <span className="font-medium text-foreground ml-1">{deactivatingRow.consumptionNo}</span>?
+                        <br/><br/>This action cannot be undone.
+                    </span>
+                )}
+              </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={updatingRowIds.has(deactivatingRow.id)}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeactivateConfirm} disabled={updatingRowIds.has(deactivatingRow.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Deactivate</AlertDialogAction>
+              <AlertDialogAction 
+                  onClick={handleDeactivateConfirm} 
+                  disabled={updatingRowIds.has(deactivatingRow.id)} 
+                  className={cn(isSimulating ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
+              >
+                  {isSimulating ? "Run Simulation" : "Deactivate"}
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
