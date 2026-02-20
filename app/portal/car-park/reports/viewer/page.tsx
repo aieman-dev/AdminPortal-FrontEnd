@@ -50,7 +50,7 @@ const validateFilters = () => {
     if (!meta) return false;
     
     const missing = meta.parameters
-        .filter(p => p.required && !dynamicFilters[p.name]) // Check if required & empty
+        .filter(p => p.required && !dynamicFilters[p.name]) 
         .map(p => p.label);
 
     if (missing.length > 0) {
@@ -69,30 +69,43 @@ const validateFilters = () => {
     return true;
 };
 
-    // --- 1. FETCH METADATA (LOOP FIX APPLIED) ---
+    // --- 1. FETCH METADATA  ---
     useEffect(() => {
         if (!reportCode) return;
 
-        let isMounted = true;
+        // Create Controller
+        const controller = new AbortController();
+        const signal = controller.signal;
+
         const loadMetadata = async () => {
             setIsMetaLoading(true);
             try {
-                const metadata = await carParkService.getReportMetadata(reportCode);
-                if (isMounted) {
+                //  Pass signal to service
+                const metadata = await carParkService.getReportMetadata(reportCode, { signal });
+                
+                //  Only update state if not aborted (Double check implicitly handled by catch, but good practice)
+                if (!signal.aborted) {
                     setMeta(metadata);
                     setDynamicFilters({}); 
                 }
-            } catch (error) {
+            } catch (error: any) {
+                // Ignore AbortErrors (They are intentional)
+                if (error.name === 'AbortError') {
+                    console.log('Fetch aborted');
+                    return;
+                }
                 console.error("Meta Load Error:", error);
-                if (isMounted) toast.error("Config Error", "Failed to load report definition.");
+                toast.error("Config Error", "Failed to load report definition.");
             } finally {
-                if (isMounted) setIsMetaLoading(false);
+                if (!signal.aborted) setIsMetaLoading(false);
             }
         };
 
         loadMetadata();
-        return () => { isMounted = false; };
-    }, [reportCode]); // toast removed to prevent infinite loops
+        return () => {
+            controller.abort();
+        };
+    }, [reportCode]); 
 
     // --- 2. THEME-CONSISTENT COLUMN GENERATOR ---
     const generateColumns = useCallback((firstRow: any): TableColumn<any>[] => {

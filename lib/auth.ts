@@ -85,10 +85,6 @@ export function isAuthenticated(): boolean {
   return !!localStorage.getItem(USER_DATA_KEY);
 }
 
-// Get auth token for API requests
-export function getAuthToken(): string | null {
-  return null; // Token is now in HttpOnly cookies; no access from JS
-}
 
 // -- Role Mapper Helper ---
 export function getDashboardRole(department: string | undefined): DashboardRole | undefined {

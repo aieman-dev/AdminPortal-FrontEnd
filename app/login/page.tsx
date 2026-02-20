@@ -5,12 +5,10 @@ import { Building2 } from "lucide-react"
 import { APP_VERSION } from "@/lib/constants"
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
-import { useTheme } from "next-themes"
 import Image from "next/image"
 
 export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
-  const { resolvedTheme } = useTheme();
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -25,15 +23,16 @@ export default function LoginPage() {
             fill 
             className={cn(
                 "object-cover object-bottom transition-all duration-700",
-                resolvedTheme === 'dark' 
-                    ? "opacity-20 invert hue-rotate-180 contrast-125" 
-                    : "opacity-40 mix-blend-multiply sepia-[.25] contrast-125" 
+                // Light mode classes (Default)
+                "opacity-40 mix-blend-multiply sepia-[.25] contrast-125",
+                // Dark mode classes
+                "dark:opacity-20 dark:invert dark:hue-rotate-180 dark:mix-blend-normal dark:sepia-0" 
             )}
             priority
           />
           <div className={cn(
             "absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/80",
-            resolvedTheme === 'dark' ? "dark:from-background dark:via-background/20" : ""
+            "dark:from-background dark:via-background/20"
           )} />
       </div>
 

@@ -12,23 +12,47 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { itPoswfService } from "@/services/themepark-support"
 import { type TerminalTransaction } from "@/type/themepark-support"
-import { formatDateTime } from "@/lib/formatter";
-import { PaginationControls } from "@/components/ui/pagination-controls"
-import { usePagination } from "@/hooks/use-pagination"
+import { formatCurrency, formatDateTime } from "@/lib/formatter";
+import { useDataTable } from "@/hooks/use-data-table"
 
 
 export default function ConsumeTerminalTab() {
     const toast = useAppToast();
     const [selectedTerminalId, setSelectedTerminalId] = useState<string>("")
     const [searchDate, setSearchDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    
+    // Data States
     const [purchaseHistory, setPurchaseHistory] = useState<TerminalTransaction[]>([])
     const [consumeHistory, setConsumeHistory] = useState<TerminalTransaction[]>([])
+    
     const [isHistorySearching, setIsHistorySearching] = useState(false)
     const [hasSearched, setHasSearched] = useState(false)
     
-    // Pagination States
-    const purchasePager = usePagination({ pageSize: 10 });
-    const consumePager = usePagination({ pageSize: 10 });
+
+    // Hook for Purchase Table (Adds Sorting + Pagination)
+    const {
+        paginatedData: paginatedPurchase,
+        sortConfig: purchaseSort,
+        onSort: onPurchaseSort,
+        paginationProps: purchasePagination,
+        resetPagination: resetPurchasePager
+    } = useDataTable({ 
+        data: purchaseHistory, 
+        pageSize: 10 
+    });
+
+    // Hook for Consume Table
+    const {
+        paginatedData: paginatedConsume,
+        sortConfig: consumeSort,
+        onSort: onConsumeSort,
+        paginationProps: consumePagination,
+        resetPagination: resetConsumePager
+    } = useDataTable({ 
+        data: consumeHistory, 
+        pageSize: 10 
+    });
+
 
     const handleDateSelect = (date: Date | undefined) => {
         if (date) {
@@ -52,10 +76,10 @@ export default function ConsumeTerminalTab() {
 
         setIsHistorySearching(true);
         setHasSearched(true);
+        resetPurchasePager();
+        resetConsumePager();
         setPurchaseHistory([]);
         setConsumeHistory([]);
-        purchasePager.reset();
-        consumePager.reset();
 
         try {
             const response = await itPoswfService.searchTerminalHistory(selectedTerminalId, searchDate);
@@ -81,22 +105,13 @@ export default function ConsumeTerminalTab() {
         }
     }
 
-    // Updated Slicing Logic using Hook State
-    const paginatedPurchase = useMemo(() => {
-        return purchasePager.paginate(purchaseHistory);
-    }, [purchaseHistory, purchasePager.paginate]);
-
-    const paginatedConsume = useMemo(() => {
-        return consumePager.paginate(consumeHistory);
-    }, [consumeHistory, consumePager.paginate]);
-
     const commonColumns: TableColumn<TerminalTransaction>[] = useMemo(() => [
-        { header: "Transaction ID", accessor: "trxID",className: "pl-6", cell: (value) => <span className="font-medium">{value}</span> },
-        { header: "Invoice No", accessor: "invoiceNo" },
-        { header: "Transaction Type", accessor: "trxType", cell: (value) => <StatusBadge status={value} /> },
-        { header: "Amount", accessor: "amount", cell: (value) => `RM ${(value ?? 0).toFixed(2)}` },
-        { header: "Created Date", accessor: "createdDate", cell: (value) => formatDateTime(value) },
-        { header: "Status", accessor: "recordStatus", cell: (value) => <StatusBadge status={value} /> },
+        { header: "Transaction ID", accessor: "trxID", sortable: true,className: "pl-6", cell: (value) => <span className="font-medium">{value}</span> },
+        { header: "Invoice No", accessor: "invoiceNo", sortable: true, },
+        { header: "Transaction Type", accessor: "trxType", sortable: true, cell: (value) => <StatusBadge status={value} /> },
+        { header: "Amount", accessor: "amount", sortable: true, cell: (value) => formatCurrency(value) },
+        { header: "Created Date", accessor: "createdDate", sortable: true, cell: (value) => formatDateTime(value) },
+        { header: "Status", accessor: "recordStatus", sortable: true, cell: (value) => <StatusBadge status={value} /> },
         { header: "Created By", accessor: "createdBy" },
    ], []);
 
@@ -155,16 +170,10 @@ export default function ConsumeTerminalTab() {
                                         keyExtractor={(row) => row.id} 
                                         emptyMessage={isHistorySearching ? "Loading..." : "No purchase records found."}
                                         isLoading={isHistorySearching}
+                                        pagination={purchasePagination}
+                                        onSort={onPurchaseSort}
+                                        sortConfig={purchaseSort}
                                     />
-                                    <div className="p-6 border-t bg-muted/5">
-                                        <PaginationControls
-                                            currentPage={purchasePager.currentPage}
-                                            totalPages={Math.ceil(purchaseHistory.length / purchasePager.pageSize)}
-                                            totalRecords={purchaseHistory.length}
-                                            pageSize={purchasePager.pageSize}
-                                            onPageChange={purchasePager.setCurrentPage}
-                                        />
-                                    </div>
                                 </CardContent>
                             </Card>
                         </TabsContent>
@@ -178,16 +187,10 @@ export default function ConsumeTerminalTab() {
                                         keyExtractor={(row) => row.id}
                                         emptyMessage={isHistorySearching ? "Loading..." : "No consumption records found."}
                                         isLoading={isHistorySearching}
+                                        pagination={consumePagination}
+                                        onSort={onConsumeSort}
+                                        sortConfig={consumeSort}
                                     />
-                                    <div className="p-6 border-t bg-muted/5">
-                                        <PaginationControls
-                                            currentPage={consumePager.currentPage}
-                                            totalPages={Math.ceil(consumeHistory.length / consumePager.pageSize)}
-                                            totalRecords={consumeHistory.length}
-                                            pageSize={consumePager.pageSize}
-                                            onPageChange={consumePager.setCurrentPage}
-                                        />
-                                    </div>
                                 </CardContent>
                             </Card>
                         </TabsContent>

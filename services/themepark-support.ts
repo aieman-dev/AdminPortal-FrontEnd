@@ -3,6 +3,14 @@
 import { apiClient, ApiResponse, getContent, getDataObject } from "@/lib/api-client";
 import { parseAmount } from "@/lib/transformers/wallet";
 import { 
+    AvailableTicketSchema, 
+    TransactionHistorySchema,
+    DeactivatableTicketSchema,
+    ConsumptionHistorySchema,
+    AccountSchema,
+    TerminalSchema
+} from "@/lib/schemas/themepark-support";
+import { 
     // Domain Models
     Account,
     TransactionHistory, 
@@ -81,79 +89,121 @@ const ENDPOINTS = {
 
 // --- MAPPERS (Backend DTO -> Frontend Model) ---
 
-const mapToTransactionHistory = (raw: any): TransactionHistory => ({
-    trxID: raw.trxID,
-    transactionId: raw.transactionId,
-    invoiceNo: raw.invoiceNo,
-    email: raw.email,
-    mobile: raw.mobile,
-    attractionName: raw.attractionName,
-    amount: parseAmount(raw.amount),
-    trxType: raw.trxType,
-    createdDate: raw.createdDate
-});
+const mapToTransactionHistory = (raw: any): TransactionHistory => {
+    const result = TransactionHistorySchema.safeParse(raw);
+    if (!result.success) {
+        console.error("Transaction Mapping Error:", result.error);
+        return {
+            trxID: 0,
+            transactionId: "ERR",
+            invoiceNo: "Data Error",
+            email: "N/A",
+            mobile: "N/A",
+            attractionName: "Invalid Data Row",
+            amount: 0,
+            trxType: "Purchase",
+            createdDate: new Date().toISOString()
+        };
+    }
+    return result.data;
+};
 
 // Map PascalCase Backend to camelCase Frontend
-const mapToAvailableTicket = (raw: any): AvailableTicket => ({
-    id: String(raw.TicketItemID), 
-    packageName: raw.PackageName, 
-    itemName: raw.ItemName, 
-    consumeTerminal: raw.ConsumeTerminal, 
-    ticketType: raw.TicketType, 
-    itemPoint: raw.ItemPoint, 
-    packageStatus: raw.PackageStatus, 
-    balanceQty: raw.BalanceQty,
-    packageID: raw.PackageID,
-    packageItemID: raw.PackageItemID,
-    trxItemID: raw.TrxItemID,
-    sourceType: raw.SourceType,
-    ticketItemID: raw.TicketItemID,
-});
+const mapToAvailableTicket = (raw: any): AvailableTicket => {
+    const result = AvailableTicketSchema.safeParse(raw);
+    
+    if (!result.success) {
+        console.error("Ticket Mapping Error:", result.error);
+        return {
+            id: "ERR",
+            packageName: "Data Error",
+            itemName: "Invalid Data",
+            consumeTerminal: 0,
+            ticketType: "N/A",
+            itemPoint: 0,
+            packageStatus: "Inactive",
+            balanceQty: 0,
+            packageID: 0,
+            packageItemID: 0,
+            trxItemID: 0,
+            sourceType: "N/A",
+            ticketItemID: 0
+        };
+    }
+    return result.data;
+};
+const mapToDeactivatableTicket = (raw: any): DeactivatableTicket => {
+    const result = DeactivatableTicketSchema.safeParse(raw);
+    if (!result.success) {
+        console.error("DeactivatableTicket Mapping Error:", result.error);
+        return {
+            id: "ERR",
+            ticketID: 0,
+            ticketNo: "DATA ERROR",
+            ticketName: "Invalid Data",
+            quantity: 0,
+            purchaseDate: "",
+            status: "Error",
+            invoiceNo: "N/A"
+        };
+    }
+    return result.data;
+};
 
-const mapToDeactivatableTicket = (raw: any): DeactivatableTicket => ({
-    id: String(raw.ticketID), 
-    ticketID: raw.ticketID,
-    ticketNo: raw.ticketNo,
-    ticketName: raw.ticketName,
-    quantity: raw.ticketQty,
-    purchaseDate: raw.purchaseDate,
-    status: raw.usageStatus,
-    invoiceNo: raw.invoiceNo,
-});
+const mapToConsumptionHistory = (raw: any): ConsumptionHistory => {
+    const result = ConsumptionHistorySchema.safeParse(raw);
+    if (!result.success) {
+        console.error("ConsumptionHistory Mapping Error:", result.error);
+        return {
+            id: "ERR",
+            consumptionNo: "ERR",
+            trxNo: "N/A",
+            ticketNo: "N/A",
+            ticketItemNo: "N/A",
+            ticketName: "Invalid Data",
+            terminalID: 0,
+            ticketQty: 0,
+            consumeQty: 0,
+            modifiedDate: "",
+            status: "Error"
+        };
+    }
+    return result.data;
+};
 
-const mapToConsumptionHistory = (raw: any): ConsumptionHistory => ({
-    id: raw.ticketConsumptionNo, 
-    consumptionNo: raw.ticketConsumptionNo,
-    trxNo: raw.trxNo,
-    ticketNo: raw.ticketNo,
-    ticketItemNo: raw.ticketItemNo,
-    ticketName: raw.ticketName,
-    terminalID: raw.terminalID,
-    ticketQty: raw.ticketQty,
-    consumeQty: raw.consumeQty,
-    modifiedDate: raw.consumptionModifiedDate,
-    status: raw.consumptionRecordStatus,
-});
+const mapToAccount = (raw: any): Account => {
+    const result = AccountSchema.safeParse(raw);
+    if (!result.success) {
+        console.error("Account Mapping Error:", result.error);
+        return {
+            id: "0",
+            accId: "0",
+            email: "Data Error",
+            firstName: "Invalid",
+            mobile: "N/A",
+            createdDate: "",
+            accountStatus: "Inactive",
+            transactions: []
+        };
+    }
+    return result.data;
+};
 
-const mapToAccount = (raw: BackendAccountDTO): Account => ({
-    id: String(raw.accID),
-    accId: String(raw.accID),
-    email: raw.email || "N/A",
-    firstName: raw.firstName || "N/A",
-    mobile: raw.mobileNo || "N/A",
-    createdDate: raw.createdDate || "N/A",
-    accountStatus: (raw.recordStatus as "Active" | "Inactive" | "Suspended") || "N/A",
-    transactions: raw.transactionHistory || [],
-});
-
-const mapToTerminal = (raw: BackendTerminalDTO): Terminal => ({
-    id: String(raw.terminalID),
-    terminalName: raw.terminal || "N/A",
-    uuid: raw.uuid || "",
-    terminalType: raw.terminalType || "POS",
-    status: raw.status || "Active",
-    modifiedDate: raw.modifiedDate || "N/A"
-});
+const mapToTerminal = (raw: any): Terminal => {
+    const result = TerminalSchema.safeParse(raw);
+    if (!result.success) {
+        console.error("Terminal Mapping Error:", result.error);
+        return {
+            id: "0",
+            terminalName: "Invalid Terminal",
+            uuid: "N/A",
+            terminalType: "POS",
+            status: "Inactive",
+            modifiedDate: ""
+        };
+    }
+    return result.data;
+};
 
 // --- SERVICE IMPLEMENTATION ---
 

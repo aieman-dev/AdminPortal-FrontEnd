@@ -48,7 +48,7 @@ export interface RoleConfig {
 // 2. THE MASTER LIST (Define once, use everywhere)
 export const MASTER_ACTIONS: MasterAction[] = [
   // -- MIS ----
-  { id: "mis_mgmt", label: "User Management", icon: Users, path: "/portal/staff-management?tab=directory", color: "text-pink-600", isVisible: (dept) => dept === ROLES.MIS_SUPER},
+  { id: "mis_list", label: "Staff Directory", icon: Users, path: "/portal/staff-management?tab=directory", color: "text-pink-600", isVisible: (dept) => dept === ROLES.MIS_SUPER},
   { id: "mis_audit", label: "Activity Audit", icon: FileClock, path: "/portal/staff-management?tab=audit", color: "text-blue-600", isVisible: (dept) => dept === ROLES.MIS_SUPER},
   { id: "mis_broadcast", label: "Announcements", icon: Megaphone, path: "/portal/setting?tab=system", color: "text-red-600", isVisible: (dept) => dept === ROLES.MIS_SUPER},
 
@@ -69,7 +69,7 @@ export const MASTER_ACTIONS: MasterAction[] = [
   { id: "it_ticket",label:"Ticket Master", icon: Ticket, path: "/portal/themepark-support/ticket-master", color: "text-green-600" , isVisible: (dept) => canViewThemeParkSupport(dept)},
 
   // --- HR / STAFF ---
-  { id: "hr_list", label: "Staff Directory", icon: Users, path: "/portal/hr/staff-listing", color: "text-pink-600", isVisible: (dept) => canViewHRSupport(dept)},
+  { id: "hr_list", label: "Staff Listing", icon: Users, path: "/portal/hr/staff-listing", color: "text-pink-600", isVisible: (dept) => canViewHRSupport(dept)},
   
   // --- GENERAL (Everyone) ---
   { id: "gen_profile", label: "My Profile", icon: User, path: "/portal/setting", color: "text-slate-500", isVisible: () => true},

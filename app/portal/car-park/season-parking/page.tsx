@@ -38,22 +38,15 @@ export default function SeasonParkingPage() {
   const pagination = usePagination({ pageSize: 20 });
 
   // --- State ---
-  // Standardized to 'data' to match SuperApp Visitor
   const [data, setData] = useState<CarParkPass[]>([])
   const [isSearching, setIsSearching] = useState(false)
   
   // Initialize search from local storage
-  const [searchTerm, setSearchTerm] = useState(() => {
-      if (typeof window !== 'undefined') {
-        return localStorage.getItem(LOCAL_STORAGE_KEY) || "";
-      }
-      return "";
-  });
+  const [searchTerm, setSearchTerm] = useState("");
 
   // --- Main Fetch Logic ---
   const fetchData = useCallback(async (page: number, query: string) => {
     setIsSearching(true)
-    
     if (page !== pagination.currentPage) pagination.setCurrentPage(page);
 
     try {
@@ -74,6 +67,16 @@ export default function SeasonParkingPage() {
     }
   }, [pagination.pageSize, toast]) 
 
+  useEffect(() => {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY) || "";
+      
+      if (saved) {
+          setSearchTerm(saved);
+      }
+      
+      fetchData(1, saved);
+  }, []);
+
   // Auto-search hook
   useAutoSearch((query) => {
       setSearchTerm(query);
@@ -82,9 +85,7 @@ export default function SeasonParkingPage() {
 
   // Persist search term
   useEffect(() => {
-    if (typeof window !== 'undefined') {
       localStorage.setItem(LOCAL_STORAGE_KEY, searchTerm);
-    }
   }, [searchTerm]);
   
   // Initial Load

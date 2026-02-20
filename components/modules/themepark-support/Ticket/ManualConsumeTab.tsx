@@ -43,7 +43,7 @@ const simulateTicketCheck = (selectedTickets: AvailableTicket[], quantities: Rec
     
     const hasInvalidTickets = selectedTickets.some(t => {
         const qty = quantities[t.id] || 0;
-        return qty > t.balanceQty || t.packageStatus.toLowerCase() !== 'active';
+        return qty > t.balanceQty || !['active', 'unused'].includes(t.packageStatus.toLowerCase());
     });
 
     const isAllowed = totalQty > 0 && !hasInvalidTickets;
@@ -213,6 +213,9 @@ export default function ManualConsumeTab() {
         
         const totalPoints = selectedTickets.reduce((sum, item) => sum + (item.itemPoint * quantities[item.id]), 0);
 
+        const validTicketNos = selectedTickets.map(t => t.ticketNo).filter(t => t && t !== "N/A");
+        const referenceTicketNo = validTicketNos.length > 0 ? validTicketNos[0] : `MC-${Date.now().toString().slice(-6)}`;
+
         // --- SIMULATION BRANCH ---
         if (isSimulating) {
             setIsExecuting(true);
@@ -226,19 +229,11 @@ export default function ManualConsumeTab() {
                  toast.error("Simulation Failed", checkResult.message);
                  setIsExecuting(false);
                  return;
-            }
-
-        // Fake Ticket No Pattern
-            const now = new Date();
-            const yy = now.getFullYear().toString().slice(-2);
-            const mm = String(now.getMonth() + 1).padStart(2, '0');
-            const dd = String(now.getDate()).padStart(2, '0');
-            const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
-            
-            const fakeTicketNo = `T${yy}${mm}${dd}${randomSuffix} (Faked)`;
+            }   
 
             const mockReceipt: ReceiptData = {
-                invoiceNo: fakeTicketNo,
+                invoiceNo: referenceTicketNo,
+                referenceLabel: "Ticket Number",
                 date: new Date().toISOString(),
                 customerName: consumeSearchResult.accID ? "Simulated User" : "Guest Simulator",
                 customerEmail: email || "simulation@preview.com",
@@ -252,7 +247,7 @@ export default function ManualConsumeTab() {
             };
 
             setSimulatedReceipt(mockReceipt);
-            toast.success("Simulation Success", `Ticket No : ${fakeTicketNo} (Faked) has been consumed.`);
+            toast.success("Simulation Success", `Ticket No : ${referenceTicketNo} (Faked) has been consumed.`);
             setIsExecuting(false);
             return;
         }
@@ -289,11 +284,10 @@ export default function ManualConsumeTab() {
             const response = await itPoswfService.executeManualConsume(executePayload);
             
             if (response.success) {
-                const virtualRefId = `MC-${Date.now().toString().slice(-6)}`;
-
                 // 2. Prepare Receipt Data
                 const receiptData: ReceiptData = {
-                    invoiceNo: virtualRefId,
+                    invoiceNo: referenceTicketNo,
+                    referenceLabel: "Ticket Number",
                     date: new Date().toISOString(),
                     customerEmail: email || "Walk-in Redemption",
                     customerName: consumeSearchResult.accID ? "Registered User" : "Guest",
@@ -308,7 +302,7 @@ export default function ManualConsumeTab() {
 
                 // 3. Save to Session Storage (The Receipt Page will look for this!)
                 if (typeof window !== 'undefined') {
-                    sessionStorage.setItem(`receipt_cache_${virtualRefId}`, JSON.stringify(receiptData));
+                    sessionStorage.setItem(`receipt_cache_${referenceTicketNo}`, JSON.stringify(receiptData));
                 }
 
                 setConsumeSearchResult(null);
@@ -324,7 +318,8 @@ export default function ManualConsumeTab() {
                     "Consumption Successful", 
                     `Successfully consumed ${totalItems} ticket(s) for ${target}.`);
 
-                router.push(`/portal/themepark-support/receipt?invoiceNo=${virtualRefId}`);
+                const returnUrl = encodeURIComponent('/portal/themepark-support/ticket-master?tab=manual-consume');
+                router.push(`/portal/themepark-support/receipt?invoiceNo=${referenceTicketNo}&returnTo=${returnUrl}`);
             } else {
                 throw new Error(response.error || "Consumption failed.");
             }
@@ -345,7 +340,7 @@ export default function ManualConsumeTab() {
         }
     }
 
-  const activeTicketsCount = consumeSearchResult?.tickets.filter(t => t.packageStatus.toLowerCase() === 'active').length ?? 0;
+  const activeTicketsCount = consumeSearchResult?.tickets.filter(t => ['active', 'unused'].includes(t.packageStatus.toLowerCase())).length ?? 0;
   
   // --- Pagination Logic ---
   const paginatedTickets = useMemo(() => {
@@ -404,7 +399,7 @@ export default function ManualConsumeTab() {
         className: "text-right pr-6",
         cell: (_, row) => {
             const qty = quantities[row.id] || 0;
-            const isActive = row.packageStatus.toLowerCase() === 'active';
+            const isActive = ['active', 'unused'].includes(row.packageStatus.toLowerCase());
             const maxQty = row.balanceQty; 
 
             return (
@@ -453,7 +448,7 @@ export default function ManualConsumeTab() {
                 icon={Wallet}
                 valueColor="text-green-600"
             />
-            <Card>
+            <Card className="h-full flex flex-col justify-center">
                 <CardContent className="space-y-2 p-6">
                     <div className="flex items-center justify-between">
                         <div className="text-sm font-medium">Ticket Summary</div>
@@ -634,11 +629,14 @@ export default function ManualConsumeTab() {
 
   return (
     <>
-    <div className="flex justify-end mb-4">
-         <SimulationToggle isSimulating={isSimulating} onToggle={(val) => { 
-             setIsSimulating(val); 
-             setSimResult(null); 
-         }} />
+    {/* SIMULATION TOGGLE */}
+      <div className="w-full flex justify-end mb-4 md:mb-0 md:h-0 relative z-20">
+         <div className="md:absolute right-0 md:-top-[60px]">
+             <SimulationToggle isSimulating={isSimulating} onToggle={(val) => { 
+                 setIsSimulating(val); 
+                 setSimResult(null); 
+             }} />
+          </div>
       </div>
 
       <SimulationWrapper isSimulating={isSimulating}>

@@ -33,12 +33,7 @@ export default function SuperAppVisitor() {
   const [isSearching, setIsSearching] = useState(false)
   
   // Initialize search from local storage
-  const [searchTerm, setSearchTerm] = useState(() => {
-      if (typeof window !== 'undefined') {
-        return localStorage.getItem(LOCAL_STORAGE_KEY) || "";
-      }
-      return "";
-  });
+  const [searchTerm, setSearchTerm] = useState("");
 
   // --- Main Fetch Logic ---
   const fetchData = useCallback(async (query: string) => {
@@ -63,6 +58,15 @@ export default function SuperAppVisitor() {
     }
   }, [])
 
+  //  Restore & Fetch
+  useEffect(() => {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY) || "";
+      if (saved) {
+          setSearchTerm(saved);
+          fetchData(saved);
+      }
+  }, []);
+
   // Auto-search hook
   useAutoSearch((query) => {
       setSearchTerm(query);
@@ -71,9 +75,7 @@ export default function SuperAppVisitor() {
 
   // Persist search term
   useEffect(() => {
-    if (typeof window !== 'undefined') {
       localStorage.setItem(LOCAL_STORAGE_KEY, searchTerm);
-    }
   }, [searchTerm]);
   
   const handleSearchClick = () => {

@@ -48,6 +48,7 @@ export default function RetailManualConsumeTab() {
   const [mobileNo, setMobileNo] = useState("")
   const [invoiceNo, setInvoiceNo] = useState("")
   const [terminalId, setTerminalId] = useState<string>("") 
+  const [terminalName, setTerminalName] = useState<string>("")
   const [tGroupId, setTGroupId] = useState<string>("")
   const [itemName, setItemName] = useState<string>("")
   
@@ -76,16 +77,30 @@ export default function RetailManualConsumeTab() {
 
 
   // simlation logic (testing purposes)
-const simulateTransaction = (balance: number, cost: number) => {
-    return {
-        success: true,
-        newBalance: balance - cost,
-        isAllowed: balance >= cost,
-        message: balance >= cost 
-            ? "Simulation: Transaction would succeed." 
-            : "Simulation: Transaction would FAIL (Insufficient Funds)."
-    };
-};
+  const simulateTransaction = (balance: number, cost: number) => {
+      return {
+          success: true,
+          newBalance: balance - cost,
+          isAllowed: balance >= cost,
+          message: balance >= cost 
+              ? "Simulation: Transaction would succeed." 
+              : "Simulation: Transaction would FAIL (Insufficient Funds)."
+      };
+  };
+
+  // 2. ADD THIS ACRONYM GENERATOR HELPER
+  const getTerminalAcronym = (name: string) => {
+      if (!name) return "SIM";
+      // Remove special characters, keep letters and spaces
+      const cleanName = name.replace(/[^a-zA-Z\s]/g, "").trim();
+      const words = cleanName.split(/\s+/);
+      
+      // If it's a single word (e.g., "Kiosk"), take the first 3 letters
+      if (words.length === 1) return words[0].substring(0, 3).toUpperCase();
+      
+      // Otherwise, take the first letter of each word (e.g., "Digital Sport Arena" -> "DSA")
+      return words.map(w => w[0]).join("").toUpperCase();
+  };
 
   // --- Search Logic ---
   const handleConsumeSearch = async () => {
@@ -187,7 +202,7 @@ const simulateTransaction = (balance: number, cost: number) => {
         
         // 1. Simulate Math Check
         const mathResult = simulateTransaction(consumeSearchResult.creditBalance, totalAmount);
-        await new Promise(resolve => setTimeout(resolve, 800)); // Fake loading
+        await new Promise(resolve => setTimeout(resolve, 800));
 
         if (!mathResult.isAllowed) {
             toast.error("Simulation Failed", mathResult.message);
@@ -200,7 +215,8 @@ const simulateTransaction = (balance: number, cost: number) => {
         const today = new Date();
         const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ""); // e.g., 20260216
         const randomSequence = Math.floor(10000 + Math.random() * 90000); // 5 digit random
-        const fakeInvoiceNo = `DSA-${dateStr}${randomSequence}`;
+        const prefix = getTerminalAcronym(terminalName);
+        const fakeInvoiceNo = `${prefix}-${dateStr}${randomSequence}`;
 
         // 3. Construct Receipt Data
         const mockReceipt: ReceiptData = {
@@ -285,8 +301,9 @@ const simulateTransaction = (balance: number, cost: number) => {
             toast.success("Transaction Successful", `Invoice: ${newInvoice} created.`);
 
             if (newInvoice) {
-                  router.push(`/portal/themepark-support/receipt?invoiceNo=${newInvoice}`);
-                }
+                  const returnUrl = encodeURIComponent('/portal/themepark-support/transaction-master?tab=retail-manual-consume');
+                  router.push(`/portal/themepark-support/receipt?invoiceNo=${newInvoice}&returnTo=${returnUrl}`);
+            }
         } else {
             throw new Error(response.error || "Consumption failed.");
         }
@@ -529,7 +546,7 @@ const simulateTransaction = (balance: number, cost: number) => {
                     <Separator />
                     <div className="flex justify-between items-center pt-2">
                         <span className="text-lg font-bold">Total Amount:</span>
-                        <span className="text-2xl font-bold text-primary">RM {cartTotal.toFixed(2)}</span>
+                        <span className="text-2xl font-bold text-primary">{formatCurrency(cartTotal)}</span>
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-between bg-muted/10 p-6">
@@ -553,11 +570,13 @@ const simulateTransaction = (balance: number, cost: number) => {
   return (
     <>
     {/* Simulation Toggle */}
-    <div className="flex justify-end mb-4">
-         <SimulationToggle isSimulating={isSimulating} onToggle={(val) => { 
-             setIsSimulating(val); 
-             setSimResult(null); 
-         }} />
+    <div className="w-full flex justify-end mb-4 md:mb-0 md:h-0 relative z-20">
+         <div className="md:absolute right-0 md:-top-[60px]">
+             <SimulationToggle isSimulating={isSimulating} onToggle={(val) => { 
+                 setIsSimulating(val); 
+                 setSimResult(null); 
+             }} />
+          </div>
       </div>
 
       <SimulationWrapper isSimulating={isSimulating}>
@@ -603,7 +622,12 @@ const simulateTransaction = (balance: number, cost: number) => {
                         </div>
 
                         <div className="space-y-2 col-span-1">
-                            <TerminalSelector value={terminalId} onChange={setTerminalId} label="Terminal Search & Select *" className="h-11"/>
+                            <TerminalSelector 
+                                value={terminalId} 
+                                onChange={setTerminalId} 
+                                onTerminalSelect={(t) => setTerminalName(t.terminalName)}
+                                label="Terminal Search & Select *" 
+                                className="h-11"/>
                         </div>
                         
                         <div className="space-y-2">

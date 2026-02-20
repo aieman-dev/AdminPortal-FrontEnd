@@ -5,8 +5,7 @@ import { Card } from "@/components/ui/card"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion, useSpring, useTransform } from "framer-motion"
-import { useEffect } from "react"
-import { on } from "events"
+import { useEffect, useMemo, memo } from "react"
 
 interface StatCardProps {
   title: string
@@ -21,7 +20,8 @@ interface StatCardProps {
   onClick?: () => void
 }
 
-export function StatCard({ 
+// 2. Wrap component in memo()
+const StatCard = memo(({ 
   title, 
   value, 
   description, 
@@ -29,13 +29,21 @@ export function StatCard({
   trend,
   valueColor = "text-foreground",
   onClick
-}: StatCardProps) {
-    const isCurrency = value.includes("RM");
-    const isSplit = value.includes("/");
-    const splitParts = isSplit ? value.split("/") : [value];
-    const numericValue = parseInt(splitParts[0].replace(/[^0-9]/g, '')) || 0;
+}: StatCardProps) => {
+    // 3. Optimize Parsing Logic (Only run when 'value' changes)
+    const { numericValue, isCurrency, isSplit, splitParts } = useMemo(() => {
+        const isCurrency = value.includes("RM");
+        const isSplit = value.includes("/");
+        const splitParts = isSplit ? value.split("/") : [value];
+        // resilient parsing: remove non-digits but keep decimal points if needed
+        const numericValue = parseInt(splitParts[0].replace(/[^0-9]/g, '')) || 0;
+
+        return { numericValue, isCurrency, isSplit, splitParts };
+    }, [value]);
     
     const spring = useSpring(0, { bounce: 0, duration: 2000 });
+    
+    // Transform logic remains the same, but relies on memoized values
     const displayValue = useTransform(spring, (current) => {
         const rounded = Math.round(current);
         if (isCurrency) return `RM ${rounded.toLocaleString()}`;
@@ -106,4 +114,9 @@ export function StatCard({
         </Card>
     </div>
   )
-}
+});
+
+// 4. Add Display Name
+StatCard.displayName = "StatCard";
+
+export { StatCard };

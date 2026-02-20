@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 export default function ReceiptPage() {
     const searchParams = useSearchParams();
     const invoiceNo = searchParams.get('invoiceNo');
+    const returnTo = searchParams.get('returnTo');
     const router = useRouter();
 
     const [data, setData] = useState<ReceiptData | null>(null);
@@ -116,6 +117,14 @@ export default function ReceiptPage() {
         fetchReceipt(0);
     }
 
+    const handleGoBack = () => {
+        if (returnTo) {
+            router.replace(returnTo); 
+        } else {
+            router.back(); 
+        }
+    };
+
     if (loading) return (
         <LoaderState 
             message={attempt > 1 ? `Syncing Receipt... (Attempt ${attempt}/4)` : "Generating Receipt..."} 
@@ -131,7 +140,7 @@ export default function ReceiptPage() {
                     description={invoiceNo ? `The record for #${invoiceNo} is pending synchronization.` : "No invoice number provided."}
                  />
                  <div className="flex gap-4">
-                    <Button variant="outline" onClick={() => router.back()}>
+                    <Button variant="outline" onClick={handleGoBack}>
                         Go Back
                     </Button>
                     <Button onClick={handleManualRefresh} className="gap-2">
@@ -142,5 +151,5 @@ export default function ReceiptPage() {
         );
     }
 
-    return <ReceiptView data={data} onBack={() => router.back()} />;
+    return <ReceiptView data={data} onBack={handleGoBack} />;
 }

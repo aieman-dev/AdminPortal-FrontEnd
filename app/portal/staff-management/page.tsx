@@ -27,7 +27,7 @@ export default function UsersStaffManagementPage() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
   const pathname = usePathname()
-  const activeTab = searchParams.get("tab") || "staff"
+  const activeTab = searchParams.get("tab") || "directory"
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)

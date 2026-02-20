@@ -16,6 +16,7 @@ import { formatCurrency, formatDate } from "@/lib/formatter";
 import { useAppToast } from "@/hooks/use-app-toast"
 import { useAutoSearch } from "@/hooks/use-auto-search"
 import { usePagination } from "@/hooks/use-pagination"
+import { useDataTable } from "@/hooks/use-data-table"
 import { Button } from "@/components/ui/button";
 import { Pencil, SearchX, ShoppingBag, Calendar } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile"; 
@@ -48,24 +49,66 @@ export default function SearchHistoryRecordTab() {
 
   const [searchType, setSearchType] = useState<"email" | "mobile" | "invoice">("email")
   const [searchTerm, setSearchTerm] = useState("")
+
+  // Data Store
   const [rawHistoryData, setRawHistoryData] = useState<TransactionHistory[]>([])
   const [ticketData, setTicketData] = useState<TicketHistory[]>([])
   const [isSearching, setIsSearching] = useState(false)
-  
-  // Pagination
-  const trxPager = usePagination({ pageSize: 10 });
-  const ticketPager = usePagination({ pageSize: 10 });
 
-  // Sorting
-  const [sortConfig, setSortConfig] = useState<{ key: keyof GroupedInvoice, direction: 'asc' | 'desc' } | null>(null);
+
+  // --- DATA PROCESSING (Moved up to feed the hook) ---
+  const groupedTransactions = useMemo(() => {
+      const groups: Record<string, GroupedInvoice> = {};
+      (rawHistoryData || []).forEach(item => {
+          const key = item.invoiceNo || `TRX-${item.trxID}`;
+          if (!groups[key]) {
+              groups[key] = {
+                  id: key, 
+                  invoiceNo: item.invoiceNo || 'N/A',
+                  totalAmount: 0,
+                  trxType: item.trxType, 
+                  createdDate: item.createdDate,
+                  items: []
+              };
+          }
+          groups[key].totalAmount += parseAmount(item.amount);
+          groups[key].items.push(item);
+      });
+      return Object.values(groups);
+  }, [rawHistoryData]);
+
+  // --- 2. IMPLEMENT SHARED TABLE HOOK ---
+  
+  // Hook for Transactions Table
+  const { 
+    paginatedData: paginatedTransactions, 
+    sortConfig: trxSortConfig, 
+    onSort: handleTrxSort, 
+    paginationProps: trxPagination,
+    resetPagination: resetTrxPager
+  } = useDataTable({ 
+      data: groupedTransactions, 
+      pageSize: 10 
+  });
+
+  // Hook for Tickets Table
+  const { 
+    paginatedData: paginatedTickets,
+    paginationProps: ticketPagination,
+    resetPagination: resetTicketPager
+  } = useDataTable({ 
+      data: ticketData, 
+      pageSize: 10 
+  });
 
   // Core Search Logic
   const executeSearch = useCallback(async (type: string, term: string) => {
     if (!term) return;
     setIsSearching(true);
-    setSortConfig(null);
-    trxPager.reset();
-    ticketPager.reset();
+
+    resetTrxPager();
+    resetTicketPager();
+    
     setRawHistoryData([]);
     setTicketData([]);
 
@@ -90,7 +133,8 @@ export default function SearchHistoryRecordTab() {
     } finally {
         setIsSearching(false);
     }
-  }, [toast]);
+  }, [toast, resetTrxPager, resetTicketPager]);
+
 
   // 2. AUTO-DETECT & SEARCH EFFECT
   useAutoSearch((query) => {
@@ -114,64 +158,6 @@ export default function SearchHistoryRecordTab() {
   const handleManualSearch = () => {
       executeSearch(searchType, searchTerm);
   }
-
-  
-  // --- DATA PROCESSING ---
-  const groupedTransactions = useMemo(() => {
-      const groups: Record<string, GroupedInvoice> = {};
-      (rawHistoryData || []).forEach(item => {
-          const key = item.invoiceNo || `TRX-${item.trxID}`;
-          if (!groups[key]) {
-              groups[key] = {
-                  id: key, 
-                  invoiceNo: item.invoiceNo || 'N/A',
-                  totalAmount: 0,
-                  trxType: item.trxType, 
-                  createdDate: item.createdDate,
-                  items: []
-              };
-          }
-          groups[key].totalAmount += parseAmount(item.amount);
-          groups[key].items.push(item);
-      });
-      return Object.values(groups);
-  }, [rawHistoryData]);
-
-  // Sorting Logic
-  const sortedTransactions = useMemo(() => {
-      const sortableItems = [...groupedTransactions];
-      if (sortConfig !== null) {
-        sortableItems.sort((a, b) => {
-            const aValue = a[sortConfig.key] ?? "";
-            const bValue = b[sortConfig.key] ?? "";
-            
-            if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-            if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-            return 0;
-        });
-      }
-      return sortableItems;
-  }, [groupedTransactions, sortConfig]);
-
-  // Pagination Logic
-  const paginatedTransactions = useMemo(() => {
-      return trxPager.paginate(sortedTransactions);
-  }, [sortedTransactions, trxPager.paginate]);
-
-  const paginatedTickets = useMemo(() => {
-      return ticketPager.paginate(ticketData);
-  }, [ticketData, ticketPager.paginate]);
-
-  // Handler for DataTable sorting
-  const handleSort = (key: string) => {
-  const validKey = key as keyof GroupedInvoice;
-    let direction: 'asc' | 'desc' = 'asc';
-    
-    if (sortConfig && sortConfig.key === validKey && sortConfig.direction === 'asc') {
-        direction = 'desc';
-    }
-    setSortConfig({ key: validKey, direction });
-  };
 
   // Handler for Row Click (Mobile Only)
   const handleRowClick = (row: GroupedInvoice) => {
@@ -276,19 +262,15 @@ export default function SearchHistoryRecordTab() {
                     data={paginatedTransactions}
                     keyExtractor={(row) => row.id}
                     isLoading={isSearching}
+                    onSort={handleTrxSort}
+                    sortConfig={trxSortConfig}
+                    pagination={trxPagination}
+
                     emptyTitle="No Transactions Found"
                     emptyIcon={SearchX}
                     emptyMessage={searchTerm ? "No records found matching your search." : "Enter a search term to begin."}
                     renderSubComponent={isMobile ? undefined : renderDetailRow}
                     onRowClick={isMobile ? handleRowClick : undefined}
-                    onSort={handleSort}
-                    sortConfig={sortConfig}
-                    pagination={{
-                        currentPage: trxPager.currentPage,
-                        totalPages: Math.ceil(sortedTransactions.length / trxPager.pageSize),
-                        onPageChange: trxPager.setCurrentPage,
-                        pageSize: trxPager.pageSize
-                    }}
                 />
             </CardContent>
           </Card>
@@ -302,15 +284,11 @@ export default function SearchHistoryRecordTab() {
                 data={paginatedTickets}
                 keyExtractor={(row, index) => (row.ticketNo || `tk-${index}`).toString()}
                 isLoading={isSearching}
+                pagination={ticketPagination}
+                
                 emptyTitle="No Tickets Found"
                 emptyIcon={SearchX}
                 emptyMessage={searchTerm ? "No ticket records found." : "Enter a search term to begin."}
-                pagination={{
-                    currentPage: ticketPager.currentPage,
-                    totalPages: Math.ceil(ticketData.length / ticketPager.pageSize),
-                    onPageChange: ticketPager.setCurrentPage,
-                    pageSize: ticketPager.pageSize
-                }}
               />
             </CardContent>
           </Card>
@@ -351,7 +329,7 @@ export default function SearchHistoryRecordTab() {
                                     <div key={idx} className="p-3 rounded-lg border bg-card shadow-sm flex flex-col gap-2">
                                         <div className="flex justify-between items-start gap-2">
                                             <span className="text-sm font-medium leading-tight">{item.attractionName}</span>
-                                            <span className="text-sm font-bold whitespace-nowrap">RM {parseAmount(item.amount).toFixed(2)}</span>
+                                            <span className="text-sm font-bold whitespace-nowrap">{formatCurrency(parseAmount(item.amount))}</span>
                                         </div>
                                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                             <span className="bg-muted px-1.5 py-0.5 rounded font-mono text-[10px]">TRX: {item.trxID}</span>

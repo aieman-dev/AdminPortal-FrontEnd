@@ -2,22 +2,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BACKEND_API_BASE } from "@/lib/config";
 import { cookies } from "next/headers";
-import { BACKEND_ROLE_MAP } from "@/lib/constants";
 import { decodeUserRole } from "@/lib/server-auth";
+import { decodeJwt } from 'jose';
 
-// Helper to decode JWT payload without external libraries
-function parseJwt(token: string) {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
-    return JSON.parse(jsonPayload);
-  } catch (e) {
-    return null;
-  }
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,12 +37,12 @@ export async function POST(request: NextRequest) {
         data = JSON.parse(responseText);
     } catch (e) {
         return NextResponse.json(
-            { message: "Backend returned HTML instead of JSON. Check terminal logs." }, 
+            { message: "Service Unavailable: Backend is offline or busy. Please check server status." }, 
             { status: 502 }
         );
     }
 
-    // 2. Handle Backend Errors (Check statusCode or errorMessage)
+    //  Handle Backend Errors (Check statusCode or errorMessage)
     if (!apiResponse.ok || data.statusCode !== 200) {
       return NextResponse.json(
         { message: data.errorMessage || data.message || "Login failed" },
@@ -63,15 +50,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { token, refreshToken, refreshTokenExpiry } = data.content;
+    // Safely access content
+    const content = data.content || {};
+    const { token, refreshToken, refreshTokenExpiry } = content;
 
-    // CRITICAL FIX: Check if token exists before proceeding
+    // Check if token exists before proceeding
     if (!token) {
         console.error("Login 500 Error: Backend returned 200 OK but no token found in response.", data);
         return NextResponse.json(
             { message: "Account setup incomplete: No access token received." }, 
             { status: 500 }
-        );
+        );  
     }
 
     // 3. Set Secure Cookies (HttpOnly)
@@ -87,12 +76,13 @@ export async function POST(request: NextRequest) {
       maxAge: maxAge,
     });
 
+    // Session Expiry (Visible to Client)
     const expiryTime = rememberMe 
         ? Date.now() + (7 * 24 * 60 * 60 * 1000) 
         : Date.now() + (24 * 60 * 60 * 1000); 
 
     cookieStore.set("session_expiry", String(expiryTime), {
-        httpOnly: false, // <--- Allow JS to read this
+        httpOnly: false, 
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         path: "/",
@@ -111,9 +101,10 @@ export async function POST(request: NextRequest) {
         });
     }
 
+    // Construct User Object (SECURE DECODING FIX)
     let user = {
         id: "0",
-        email: body.email, // Fallback to requested email
+        email: body.email, 
         name: "User",
         role: "User",
         department: "Staff",
@@ -123,34 +114,25 @@ export async function POST(request: NextRequest) {
     try {
         const userRole = decodeUserRole(token);
         
-        // Manual Decode for Claims (Safe Version)
-        const base64Url = token.split('.')[1];
-        if (base64Url) {
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-            const claims = JSON.parse(jsonPayload);
+        // Manual atob/JSON.parse with secure library
+        const claims = decodeJwt(token);
 
-            user = {
-                id: claims?.userId || claims?.sub || "0",
-                email: claims?.sub || body.email,
-                name: claims?.name || "User",
-                role: claims?.role || "User", 
-                department: userRole,
-                roles: data.content?.roles || []
-            };
-        }
+        user = {
+            id: (claims.userId as string) || (claims.sub as string) || "0",
+            email: (claims.sub as string) || body.email,
+            name: (claims.name as string) || "User",
+            role: (claims.role as string) || "User", 
+            department: userRole,
+            roles: content.roles || []
+        };
     } catch (parseError) {
         console.error("Token Parsing Error:", parseError);
-        // We don't return 500 here; we let them in with default/fallback data 
-        // because the cookie was successfully set.
     }
 
     return NextResponse.json({ success: true, user }, { status: 200 });
 
   } catch (error) {
-    console.error("LOGIN PROXY FAILED:");
-    console.error(error);
-
+    console.error("LOGIN PROXY FAILED:", error);
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }

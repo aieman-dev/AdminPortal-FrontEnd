@@ -10,6 +10,7 @@ import { Copy, Clock, User, Database, CheckCircle2, FileJson, AlertCircle } from
 import { AuditLog } from "@/type/staff"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { cn } from "@/lib/utils"
+import { formatDateTime } from "@/lib/formatter"
 
 
 interface ActivityDrawerProps {
@@ -112,16 +113,34 @@ export function ActivityDrawer({ log, isOpen, onClose }: ActivityDrawerProps) {
       if (typeof data === 'object') {
           return (
               <div className="grid grid-cols-1 gap-y-2">
-                  {Object.entries(data).filter(([_, v]) => v !== null && v !== "").map(([key, value]) => (
-                      <div key={key} className="flex flex-col border-b border-border/30 pb-2 last:border-0 last:pb-0">
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                              {key.replace(/([A-Z])/g, ' $1').trim()} 
-                          </span>
-                          <span className="text-sm font-medium text-foreground break-all whitespace-pre-wrap">
-                              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                          </span>
-                      </div>
-                  ))}
+                  {Object.entries(data).filter(([_, v]) => v !== null && v !== "").map(([key, value]) => {
+                      
+                      // Format Date Strings safely
+                      let displayValue = String(value);
+                      if (typeof value === 'object') {
+                          displayValue = JSON.stringify(value);
+                      } else if (
+                          typeof value === 'string' && 
+                          (key.toLowerCase().includes('date') || value.includes('T')) &&
+                          value.length >= 10
+                      ) {
+                          const parsedTime = Date.parse(value);
+                          if (!isNaN(parsedTime) && !value.startsWith("0001")) {
+                              displayValue = formatDateTime(value);
+                          }
+                      }
+
+                      return (
+                          <div key={key} className="flex flex-col border-b border-border/30 pb-2 last:border-0 last:pb-0">
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
+                                  {key.replace(/([A-Z])/g, ' $1').trim()} 
+                              </span>
+                              <span className="text-sm font-medium text-foreground break-all whitespace-pre-wrap">
+                                  {displayValue}
+                              </span>
+                          </div>
+                      )
+                  })}
               </div>
           )
       }

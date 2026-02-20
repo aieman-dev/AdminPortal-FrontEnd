@@ -35,6 +35,9 @@ export default function AccessControlPage() {
                             <Ban className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> 
                             Blocked Listing
                         </TabsTrigger>
+                        
+                        {/* Whitelist tab is currently disabled as the feature is not fully implemented yet. Uncomment when ready.
+                        <div className="w-2" />
                         <TabsTrigger 
                             value="whitelist" 
                             className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-4 py-2.5 text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px -ml-px relative z-10"
@@ -42,6 +45,7 @@ export default function AccessControlPage() {
                             <ShieldCheck className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> 
                             Whitelist
                         </TabsTrigger>
+                        */}
                     </TabsList>
                 </div>
 

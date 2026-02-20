@@ -101,10 +101,5 @@ export const SIDEBAR_NAVIGATION = [
     name: "Settings",
     href: "/portal/setting",
     icon: Settings,
-  },
-  {
-    name: "Simulation Lab",
-    href: "/portal/simulation-lab",
-    icon: FlaskConical, 
-  },
+  }
 ]

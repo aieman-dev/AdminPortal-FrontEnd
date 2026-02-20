@@ -1,7 +1,6 @@
 // services/package-services.ts
 
 import { apiClient, ApiResponse, getContent, getDataObject } from "@/lib/api-client";
-import { getAuthToken } from "@/lib/auth";
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
 import { DashboardSummaryDTO } from "@/type/packages";
 import { 
@@ -96,10 +95,6 @@ export const packageService = {
     const response = await fetch("/api/proxy-upload", {
         method: "POST",
         body: formData,
-        headers: {
-            // Manually inject token since we aren't using apiClient
-            "Authorization": `Bearer ${getAuthToken()}`
-        }
     });
 
     const data = await response.json();

@@ -1,6 +1,7 @@
 // services/staff-services.ts
 
 import { apiClient, ApiResponse, getContent, getDataObject } from "@/lib/api-client";
+import { StaffMemberSchema, SearchedUserSchema } from "@/lib/schemas/staff";
 import { 
   StaffMember, 
   SearchedUser, 
@@ -28,28 +29,40 @@ const ENDPOINTS = {
 
 
 // MAPPERS: Normalize Data here
-const mapToStaff = (raw: BackendStaffDTO): StaffMember => ({
-  id: String(raw.accID), 
-  accId: raw.accID,
-  fullName: raw.fullName || "Unknown",
-  email: raw.email || "N/A",
-  roleName: raw.roleName || "No Role",
-  status: raw.recordStatus || "Active",
-  createdDate: raw.createdDate,
-  expiryDate: raw.expiryDate || "",
-  roleId: raw.roleID,
-  receiveNotifications : raw.receiveNotifications
-});
+const mapToStaff = (raw: any): StaffMember => {
+  const result = StaffMemberSchema.safeParse(raw);
+  if (!result.success) {
+    console.error("Staff Mapping Error:", result.error);
+    return {
+      id: "ERR",
+      accId: 0,
+      fullName: "Data Error",
+      email: "Error",
+      roleName: "Error",
+      status: "Error",
+      createdDate: "",
+      expiryDate: ""
+    };
+  }
+  return result.data;
+};
 
-const mapToSearchedUser = (raw: BackendSearchedUserDTO): SearchedUser => ({
-  id: String(raw.accID),
-  accId: raw.accID,
-  email: raw.email,
-  firstName: raw.firstName,
-  lastName: raw.lastName,
-  mobileNo: raw.mobileNo,
-  fullName: raw.fullName || `${raw.firstName} ${raw.lastName}`,
-});
+const mapToSearchedUser = (raw: any): SearchedUser => {
+  const result = SearchedUserSchema.safeParse(raw);
+  if (!result.success) {
+    console.error("User Search Mapping Error:", result.error);
+    return {
+      id: "0",
+      accId: 0,
+      email: "Error",
+      firstName: "",
+      lastName: "",
+      mobileNo: "",
+      fullName: "Invalid Data"
+    };
+  }
+  return result.data;
+};
 
 // SERVICE IMPLEMENTATION
 export const staffService = {

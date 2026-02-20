@@ -83,13 +83,14 @@ export interface AvailableTicket {
   consumeTerminal: number 
   ticketType: "Entry" | string 
   itemPoint: number 
-  packageStatus: "Expired" | "Active" | "Inactive" 
+  packageStatus:   "Active" | "Inactive" | "Unused" | string
   balanceQty: number
   packageID: number
   packageItemID: number
   trxItemID: number
   sourceType: string
   ticketItemID: number
+  ticketNo: string
 }
 
 export interface RetailItem {

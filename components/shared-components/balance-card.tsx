@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import type { LucideIcon } from "lucide-react"
 import { formatCurrency } from "@/lib/formatter";
+import { cn } from "@/lib/utils";
 
 interface BalanceCardProps {
   title: string
@@ -8,6 +9,7 @@ interface BalanceCardProps {
   description: string
   icon: LucideIcon
   valueColor?: string
+  className?: string
 }
 
 export function BalanceCard({
@@ -16,9 +18,10 @@ export function BalanceCard({
   description,
   icon: Icon,
   valueColor = "text-foreground",
+  className
 }: BalanceCardProps) {
   return (
-    <Card>
+    <Card className={cn("h-full flex flex-col justify-center", className)}>
       <CardContent className="space-y-2">
         <div className="flex items-center justify-between">
           <div className="text-sm font-medium">{title}</div>

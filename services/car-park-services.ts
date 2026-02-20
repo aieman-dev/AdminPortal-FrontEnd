@@ -496,11 +496,10 @@ export const carParkService = {
             }));
         },
 
-        getReportMetadata: async (reportName: string): Promise<ReportMetadata | null> => {
-        // Construct URL: CarPark/report/{reportName}/meta
+        getReportMetadata: async (reportName: string, options?: RequestInit): Promise<ReportMetadata | null> => {
         const url = `${ENDPOINTS.GET_REPORT_META}/${reportName}/meta`;
         
-        const response = await apiClient.get<any>(url);
+        const response = await apiClient.get<any>(url, options);
         
         if (!response.success || !response.data) return null;
 

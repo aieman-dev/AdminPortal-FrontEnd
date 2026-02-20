@@ -1,5 +1,4 @@
 // lib/api-client.ts
-import { getAuthToken } from "./auth"
 import { AppError, ErrorType, STATUS_MESSAGES } from "@/lib/errors"
 import { USER_DATA_KEY } from "@/lib/constants"
 
@@ -124,16 +123,16 @@ class ApiClient {
       }
   }
 
-  async get<T>(endpoint: string, headers?: Record<string, string>): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, { method: "GET", headers })
+  async get<T>(endpoint: string,options: RequestInit = {}): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, { method: "GET", ...options })
   }
   
-  async post<T>(endpoint: string, body?: any, headers?: Record<string, string>): Promise<ApiResponse<T>> {
+  async post<T>(endpoint: string, body?: any, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const isFormData = body instanceof FormData;
     return this.request<T>(endpoint, {
       method: "POST",
       body: isFormData ? body : JSON.stringify(body),
-      headers, 
+      ...options,
     })
   }
 

@@ -25,6 +25,7 @@ import { useDebounce } from "@/hooks/use-debounce"
 interface TerminalSelectorProps {
   value: string
   onChange: (value: string) => void
+  onTerminalSelect?: (terminal: Terminal) => void
   label?: string
   placeholder?: string
   disabled?: boolean
@@ -34,8 +35,9 @@ interface TerminalSelectorProps {
 export function TerminalSelector({
   value,
   onChange,
+  onTerminalSelect,
   label = "Terminal Search & Select",
-  placeholder = "Search terminal name or ID...",
+  placeholder = "Search terminal name or ID",
   disabled = false,
   className
 }: TerminalSelectorProps) {
@@ -82,6 +84,7 @@ export function TerminalSelector({
   const handleSelect = (terminal: Terminal) => {
     setSelectedTerminal(terminal)
     onChange(terminal.id)
+    if (onTerminalSelect) onTerminalSelect(terminal)
     setOpen(false)
   }
 

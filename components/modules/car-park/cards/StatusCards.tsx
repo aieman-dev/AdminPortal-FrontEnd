@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ArrowRightLeft, Loader2, Wallet } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { formatCurrency } from "@/lib/formatter"
 
 interface StatusCardProps {
     title: string;
@@ -53,7 +54,7 @@ export function WalletCard({ balance }: { balance: number }) {
                 </div>
                 <div className="flex items-baseline gap-1">
                     <span className="text-2xl font-extrabold text-blue-700 dark:text-blue-400">
-                        RM {balance.toFixed(2)}
+                        {formatCurrency(balance)}
                     </span>
                     <span className="text-xs text-muted-foreground font-medium">Credits</span>
                 </div>

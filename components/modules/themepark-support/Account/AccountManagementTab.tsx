@@ -23,12 +23,7 @@ export default function AccountManagementTab() {
   const toast  = useAppToast()
 
   // 1. Initialize state by reading from localStorage on mount
-  const [searchEmail, setSearchEmail] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem(LOCAL_STORAGE_KEY) || "";
-    }
-    return "";
-  });
+  const [searchEmail, setSearchEmail] = useState("");
   
   const [accounts, setAccounts] = useState<Account[]>([])
   const [isSearching, setIsSearching] = useState(false)
@@ -64,6 +59,16 @@ export default function AccountManagementTab() {
     }
   }, [toast])
 
+
+  //  Restore from Storage & Fetch on Mount
+  useEffect(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEY) || "";
+    
+    if (saved) {
+        setSearchEmail(saved);
+        executeSearch(saved);
+    }
+  }, [executeSearch]);
   
   // 3. AUTO SEARCH HOOK (Replaces the complex useEffect)
   useAutoSearch(executeSearch);

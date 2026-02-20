@@ -177,12 +177,14 @@ export default function VoidTransactionTab() {
 
   return (
     <>
-    <div className="flex justify-end mb-4">
-         <SimulationToggle isSimulating={isSimulating} onToggle={(val) => { 
-             setIsSimulating(val); 
-             setSimResult(null);
-             if(!val && voidInvoiceNo) handleVoidSearch(voidInvoiceNo);
-         }} />
+    <div className="w-full flex justify-end mb-4 md:mb-0 md:h-0 relative z-20">
+         <div className="md:absolute right-0 md:-top-[60px]">
+             <SimulationToggle isSimulating={isSimulating} onToggle={(val) => { 
+                 setIsSimulating(val); 
+                 setSimResult(null);
+                 if(!val && voidInvoiceNo) handleVoidSearch(voidInvoiceNo);
+             }} />
+          </div>
       </div>
 
       <SimulationWrapper isSimulating={isSimulating}>

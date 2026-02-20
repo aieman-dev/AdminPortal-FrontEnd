@@ -261,12 +261,14 @@ export default function DeactivateTicketTab() {
 
   return (
     <>
-    {/* Header with Toggle */}
-      <div className="flex justify-end mb-4">
-         <SimulationToggle isSimulating={isSimulating} onToggle={(val) => { 
-             setIsSimulating(val);
-             if (!val && searchQuery) fetchData(searchQuery, true);
-         }} />
+    {/* SIMULATION TOGGLE */}
+      <div className="w-full flex justify-end mb-4 md:mb-0 md:h-0 relative z-20">
+         <div className="md:absolute right-0 md:-top-[60px]">
+             <SimulationToggle isSimulating={isSimulating} onToggle={(val) => { 
+                 setIsSimulating(val);
+                 if (!val && searchQuery) fetchData(searchQuery, true);
+             }} />
+          </div>
       </div>
 
       <SimulationWrapper isSimulating={isSimulating}>

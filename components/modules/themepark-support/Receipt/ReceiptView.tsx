@@ -20,6 +20,7 @@ export interface ReceiptItem {
 
 export interface ReceiptData {
     invoiceNo: string;
+    referenceLabel?: string;
     date: string;
     customerName?: string;
     customerEmail?: string;
@@ -117,7 +118,7 @@ export function ReceiptView({ data, onBack }: ReceiptViewProps) {
                             <div className="space-y-4 pt-2">
                                 <DetailRow 
                                     icon={FileText} 
-                                    label="Invoice Number" 
+                                    label={data.referenceLabel || "Invoice Number"}
                                     value={data.invoiceNo} 
                                     isMono 
                                 />
