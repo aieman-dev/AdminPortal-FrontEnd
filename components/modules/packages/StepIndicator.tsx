@@ -1,6 +1,7 @@
 // src/components/StepIndicator.tsx
 import React, { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type Props = {
   current: number;
@@ -11,14 +12,7 @@ type Props = {
 const steps = ["Package Type & Details", "Package Item", "Package Summary"];
 
 const StepIndicator: React.FC<Props> = ({ current, onClickStep, onBackClick }) => {
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  const isMobile = useIsMobile();
 
   // -------- MOBILE (Top Bar) Layout --------
   if (isMobile) {

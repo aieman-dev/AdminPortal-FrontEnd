@@ -6,11 +6,7 @@ import { PageHeader } from "@/components/portal/page-header"
 import { Button } from "@/components/ui/button"
 import { UserPlus, Users, Shield, ShieldAlert } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-// Modals & Drawers
-import { StaffAccountModal } from "@/components/modules/staff-management/StaffAccountModal" 
-import { StaffDrawer } from "@/components/modules/staff-management/StaffDrawer" 
-import { ActivityDrawer } from "@/components/modules/staff-management/ActivityDrawer" 
+import dynamic from "next/dynamic"
 
 // New Modular Tabs
 import StaffDirectoryTab from "@/components/modules/staff-management/tabs/StaffDirectoryTab"
@@ -21,6 +17,19 @@ import { type StaffMember, type AuditLog } from "@/type/staff"
 import { useAuth } from "@/hooks/use-auth" 
 import { ROLES } from "@/lib/constants"
 import { EmptyState } from "@/components/portal/empty-state"
+
+const StaffAccountModal = dynamic(
+    () => import("@/components/modules/staff-management/StaffAccountModal").then(mod => mod.StaffAccountModal), 
+    { ssr: false }
+)
+const StaffDrawer = dynamic(
+    () => import("@/components/modules/staff-management/StaffDrawer").then(mod => mod.StaffDrawer), 
+    { ssr: false }
+)
+const ActivityDrawer = dynamic(
+    () => import("@/components/modules/staff-management/ActivityDrawer").then(mod => mod.ActivityDrawer), 
+    { ssr: false }
+)
 
 export default function UsersStaffManagementPage() {
   const router = useRouter()

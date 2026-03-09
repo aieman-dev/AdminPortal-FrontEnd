@@ -1,7 +1,8 @@
 // services/car-park-service.ts
 
+import { logger } from "@/lib/logger";
 import { apiClient, ApiResponse } from "@/lib/api-client";
-import { SYSTEM_TERMINAL_ID } from "@/lib/constants";
+import { SYSTEM_TERMINAL_ID, RECORD_STATUS } from "@/lib/constants";
 import { getContent, getDataObject} from "@/lib/api-client"
 import { 
     Account,
@@ -143,7 +144,7 @@ export const carParkService = {
             }
             return 0;
         } catch (error) {
-            console.error("Balance Check Error:", error);
+            logger.error("Balance Check Error:", error);
             return 0;
         }
     },
@@ -243,13 +244,13 @@ export const carParkService = {
             tandemEmail: null 
         };
 
-        console.log("Submitting Payload:", payload); 
-        console.log("Payload Data:", JSON.stringify(payload, null, 2));
+        logger.debug("Submitting Payload:", payload); 
+        logger.debug("Payload Data:", JSON.stringify(payload, null, 2));
         
         const response = await apiClient.post<any>(ENDPOINTS.REGISTER, payload);
 
         if (!response.success) {
-            console.error("RAW RESPONSE:", JSON.stringify(response, null, 2));
+            logger.error("RAW RESPONSE:", JSON.stringify(response, null, 2));
 
             const content = response.data?.content;
 
@@ -277,7 +278,7 @@ export const carParkService = {
         const response = await apiClient.post<any>(ENDPOINTS.QR_LISTING, payload);
 
         if (!response.success) {
-            return { items: [], totalCount: 0, totalPages: 0 };
+            return { items: [], totalCount: 0, totalPages: 0, pageNumber, pageSize };
         }
         const data = response.data?.content || response.data;
         
@@ -285,7 +286,8 @@ export const carParkService = {
             items: data.items || [],
             totalCount: data.totalCount || 0,
             totalPages: data.totalPages || 0,
-            pageNumber: data.pageNumber || pageNumber
+            pageNumber: data.pageNumber || pageNumber,
+            pageSize: data.pageSize || pageSize
         } as ActivePassesResponse;
     },
 
@@ -293,10 +295,10 @@ export const carParkService = {
         const payload: Record<string, string> = {};
 
         if (params.qrId) {
-            payload.QrID = String(params.qrId);
+            payload.qrId = String(params.qrId);
         } 
         else if (params.accId) {
-            payload.AccID = String(params.accId);
+            payload.accId = String(params.accId);
         }
 
         try {
@@ -359,7 +361,7 @@ export const carParkService = {
 
             // 2. Map to ParkingDetailStatus (Status Bar)
             const status: ParkingDetailStatus = {
-                recordStatus: raw.recordStatus || "Active",
+                recordStatus: raw.recordStatus || RECORD_STATUS.ACTIVE,
                 seasonStatus: raw.seasonStatus || "N/A",
                 iPointStatus: raw.iPointStatus || "N/A",
                 lastExitSeason: cleanAccessDate(raw.seasonLastAccess),
@@ -373,7 +375,7 @@ export const carParkService = {
             return { data, status };
 
         } catch (error) {
-            console.error("getPassDetail Error:", error);
+            logger.error("getPassDetail Error:", error);
             return null;
         }
     },
@@ -567,7 +569,7 @@ export const carParkService = {
                 pageSize: data.pageSize || 10
             };
         } catch (error) {
-            console.error("Get Applications Error:", error);
+            logger.error("Get Applications Error:", error);
             return { items: [], totalCount: 0, totalPages: 0, pageNumber: 1, pageSize: 10 };
         }
     },

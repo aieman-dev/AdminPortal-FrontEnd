@@ -5,46 +5,53 @@ import { DivideCircle, Search, Copy } from "lucide-react"
 import { SearchField } from "@/components/shared-components/search-field"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
 import { formatCurrency } from "@/lib/formatter";
 import { StatusBadge } from "@/components/shared-components/status-badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { packageService } from "@/services/package-services" 
+import { SelectableUnsyncPackage } from "@/type/themepark-support"
+import { useDataTable } from "@/hooks/use-data-table"
+import { Pagination } from "@/components/ui/pagination"
 
-interface SelectableItPoswfPackage {
-    id: string;
-    packageId: string | number;
-    packageName: string;
-    packageType: string;
-    price: number;
-    status: string;
-    lastValidDate: string; 
-    syncStatus: "Pending" | "Synced" | "Error";
-}
 
 export default function BComparePackageTab() {
     const toast = useAppToast();
     const [searchQuery, setSearchQuery] = useState("");
     const [packageType, setPackageType] = useState("all"); 
-    const [results, setResults] = useState<SelectableItPoswfPackage[]>([]);
+    const [results, setResults] = useState<SelectableUnsyncPackage[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isSyncing, setIsSyncing] = useState(false);
 
+    // Filter results based on search input
     const packagesToDisplay = useMemo(() => {
         return results.filter(p =>
             p.packageName.toLowerCase().includes(searchQuery.toLowerCase())
         );
     }, [searchQuery, results]);
 
+    // Initialize the DataTable hook for Pagination & Sorting
+    const {
+        paginatedData,
+        sortConfig,
+        onSort,
+        paginationProps,
+        resetPagination
+    } = useDataTable({
+        data: packagesToDisplay,
+        pageSize: 20
+    });
+
     const fetchUnsyncedPackages = async () => {
         setIsSearching(true);
         setSelectedIds(new Set());
+        resetPagination();
         
         try {
             const typeFilter = packageType === "all" ? undefined : packageType;
-
             const response = await packageService.getUnsyncedPackages(
                 typeFilter as any,
                 searchQuery
@@ -129,13 +136,13 @@ export default function BComparePackageTab() {
         }
     };
 
-    const columns: TableColumn<SelectableItPoswfPackage>[] = useMemo (() => [
+    const columns: TableColumn<SelectableUnsyncPackage>[] = useMemo (() => [
         { 
             header: "Select", 
             accessor: "id", 
-            className: "pl-6",
+            className: "pl-6 w-[60px]", 
             cell: (value, row) => (
-                <div className="flex items-center justify-center">
+                <div className="flex items-center justify-start">
                     <Checkbox 
                         checked={selectedIds.has(value as string)}
                         onCheckedChange={(checked) => handleSelect(value as string, !!checked)}
@@ -144,13 +151,47 @@ export default function BComparePackageTab() {
                 </div>
             )
         },
-        { header: "Package ID", accessor: "packageId", cell: (value) => <span className="font-medium">{value}</span> },
-        { header: "Package Name", accessor: "packageName" },
-        { header: "Package Type", accessor: "packageType", cell: (value) => <StatusBadge status={value} /> },
-        { header: "Price", accessor: "price", cell: (value) => formatCurrency(value) },
-        { header: "Status", accessor: "status", cell: (value) => <StatusBadge status={value} /> },
-        { header: "Sync Status", accessor: "syncStatus", cell: (value) => <StatusBadge status={value} /> },
-    
+        { 
+            header: "Package ID", 
+            accessor: "packageId", 
+            sortable: true,
+            className: "w-[120px]", 
+            cell: (value) => <span className="font-medium">{value}</span> 
+        },
+        { 
+            header: "Package Name", 
+            accessor: "packageName", 
+            sortable: true,
+            className: "w-[30%] min-w-[200px] max-w-[300px]", 
+            cell: (value) => <div className="truncate font-medium" title={value as string}>{value}</div>
+        },
+        { 
+            header: "Package Type", 
+            accessor: "packageType", 
+            sortable: true,
+            className: "w-[120px] text-center", 
+            cell: (value) => <StatusBadge status={value as string} /> 
+        },
+        { 
+            header: "Unsynced Items", 
+            accessor: "unsyncedItemNames",
+            className: "w-[30%] min-w-[200px] max-w-[300px]",
+            cell: (value) => <div className="text-sm text-muted-foreground truncate" title={value as string}>{value || "N/A"}</div> 
+        },
+        { 
+            header: "Status", 
+            accessor: "status", 
+            sortable: true,
+            className: "w-[100px] text-center", 
+            cell: (value) => <StatusBadge status={value as string} /> 
+        },
+        { 
+            header: "Sync Status", 
+            accessor: "syncStatus", 
+            sortable: true,
+            className: "w-[120px] text-right pr-6", 
+            cell: (value) => <StatusBadge status={value as string} /> 
+        },
     ], [selectedIds]);
 
     return (
@@ -183,22 +224,27 @@ export default function BComparePackageTab() {
             </Card>
             
             <Card>
-                <CardContent className="space-y-4">
+                <div className="p-6 border-b">
                     <div className="flex items-center gap-2">
                         <DivideCircle className="h-5 w-5 text-muted-foreground" />
                         <div className="text-lg font-semibold">Packages Pending Sync</div>
                     </div>
+                </div>
                     
-                    <div className="overflow-y-auto max-h-[400px] border border-border rounded-lg">
-                        <DataTable
-                            columns={columns}
-                            data={packagesToDisplay}
-                            keyExtractor={(row, index) => `${row.id}-${index}`}
-                            emptyMessage={isSearching ? "Searching..." : "No packages found matching criteria."}
-                        />
-                    </div>
+                <CardContent className="p-0">
+                    <DataTable
+                        columns={columns}
+                        data={paginatedData}
+                        keyExtractor={(row, index) => `${row.id}-${index}`}
+                        emptyMessage={isSearching ? "Searching..." : "No packages found matching criteria."}
+                        isLoading={isSearching}
+                        pagination={paginationProps}
+                        onSort={onSort}
+                        sortConfig={sortConfig}
+                        skeletonRowCount={paginationProps.pageSize}
+                    />
                     
-                    <div className="flex justify-between items-center border-t pt-4">
+                    <div className="flex justify-between items-center border-t pt-4 px-6 pb-6 bg-muted/10">
                         <p className="text-sm text-muted-foreground">
                             {packagesToDisplay.length} total unsynced packages found.
                         </p>
@@ -213,14 +259,16 @@ export default function BComparePackageTab() {
                                 {isAllSelected ? "Deselect All" : "Select All"}
                              </Button>
                            )}
-                           <Button 
+                           <LoadingButton 
                                 onClick={handleSync} 
-                                disabled={isSyncing || packagesToSyncCount === 0} 
+                                isLoading={isSyncing}
+                                loadingText="Syncing..."
+                                disabled={packagesToSyncCount === 0} 
                                 className="h-11 px-6 text-primary-foreground"
+                                icon={Copy}
                             >
-                                <Copy className="mr-2 h-4 w-4" />
-                                {isSyncing ? "Syncing..." : `Sync Now (${packagesToSyncCount})`}
-                            </Button>
+                                Sync Now ({packagesToSyncCount})
+                            </LoadingButton>
                         </div>
                     </div>
                 </CardContent>

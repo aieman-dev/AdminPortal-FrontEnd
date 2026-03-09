@@ -26,6 +26,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { logger } from "@/lib/logger";
+import Image from "next/image";
 
 interface PackageDetailViewProps {
   id: string;
@@ -33,7 +35,7 @@ interface PackageDetailViewProps {
 }
 
 const DetailSkeleton = () => (
-  <div className="flex flex-col h-[calc(100vh-64px)] w-full max-w-[1600px] mx-auto overflow-hidden bg-background">
+  <div className="flex flex-col h-[calc(100dvh-64px)] w-full max-w-[1600px] mx-auto overflow-hidden bg-background">
     <div className="flex-shrink-0 border-b px-4 py-3 bg-background/95">
       <div className="flex items-center gap-4">
         <Skeleton className="h-8 w-8 rounded-full" />
@@ -105,27 +107,47 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
   }, []);
 
   useEffect(() => {
+    //  Create the controller
+    const controller = new AbortController();
+    
     const fetchPackage = async () => {
       if (!id) return;
       try {
         setLoading(true);
+        //  Pass the signal to your service
         const apiSource = source === "pending" ? "pending" : undefined;
-        const data = await packageService.getPackageById(Number(id), apiSource);
+        const data = await packageService.getPackageById(Number(id), apiSource, { 
+            signal: controller.signal 
+        });
         
-        if (data) {
-          setPackageData(data);
-          setRejectionNotes(data.remark2 || "");
-        } else {
-          toast.error("Error", "Failed to load package details.");
+        //  Only update state if the request wasn't aborted
+        if (!controller.signal.aborted) {
+            if (data) {
+            setPackageData(data);
+            setRejectionNotes(data.remark2 || "");
+            } else {
+            toast.error("Error", "Failed to load package details.");
+            }
         }
-      } catch (error) {
+      } catch (error:any) {
+        if (error.name === 'AbortError') {
+            console.log(`Fetch aborted for package ${id}`);
+            return; 
+        }
         console.error("Error:", error);
         toast.error("Error", "An unexpected error occurred.");
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+            setLoading(false);
+        }
       }
     };
     fetchPackage();
+
+    // Abort the request when the component unmounts
+    return () => {
+        controller.abort();
+    };
   }, [id, source]); 
 
   const handleAttemptApproval = () => {
@@ -178,9 +200,11 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
         setLoading(true); 
         await packageService.updateStatus(packageData.id, "Approved");
         toast.success("Package Approved!", `Package ID ${packageData.id} is now Active.`);
+        logger.info("Package Approved by User", { packageId: packageData.id })
         setTimeout(() => router.push("/portal/packages"), 1500);
-    } catch (error) {
+    } catch (error: any) {
         toast.error("Approval Failed", "Failed to approve package.");
+        logger.error("Package Approval Failed", { packageId: packageData.id, error });
     } finally {
         setLoading(false);
     }

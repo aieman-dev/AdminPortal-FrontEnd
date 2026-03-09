@@ -12,10 +12,11 @@ import { PaginationControls } from "@/components/ui/pagination-controls"
 import { Shield, Search, Play, RotateCcw, Activity, Filter } from "lucide-react"
 import { usePagination } from "@/hooks/use-pagination"
 import { staffService } from "@/services/staff-services"
-import { type AuditLog } from "@/type/staff"
+import { type AuditLog, AuditLogListPayload } from "@/type/staff"
 import { formatDate } from "@/lib/formatter"
 import { Badge } from "@/components/ui/badge"
 import { useDebounce } from "@/hooks/use-debounce"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { 
     Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetDescription 
 } from "@/components/ui/sheet"
@@ -72,6 +73,49 @@ const getActionStyle = (actionType: string) => {
     return "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"; 
 };
 
+// --- MODULE FORMATTING & CELL COMPONENT ---
+
+const formatModuleName = (mod: string) => {
+    // For the Dropdown: Clearly label the Themepark group
+    if (["Transaction", "Ticket", "Attraction", "Account", "Support"].includes(mod)) {
+        return `Themepark Support: ${mod}`;
+    }
+    // For others: Split CamelCase (e.g., HrManagement -> Hr Management)
+    return mod.replace(/([A-Z])/g, ' $1').trim();
+};
+
+const ModuleCell = ({ moduleName }: { moduleName: string }) => {
+    const mod = moduleName || "SYSTEM";
+    const isThemepark = ["Transaction", "Ticket", "Attraction", "Account", "Support"].includes(mod);
+
+    if (isThemepark) {
+        return (
+            <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        {/* Cursor-help indicates it is hoverable. We added a tiny dot inside the pill! */}
+                        <span className="cursor-help inline-flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-muted-foreground bg-muted px-2 py-1 rounded border border-transparent hover:border-indigo-200 dark:hover:border-indigo-800 transition-all">
+                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                            {mod}
+                        </span>
+                    </TooltipTrigger>
+                    {/* The sleek tooltip that appears on hover */}
+                    <TooltipContent side="top" className="bg-indigo-600 text-white font-medium text-xs px-2.5 py-1">
+                        Themepark Support 
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        );
+    }
+
+    // Standard Layout (For Package Management, HR Management, etc.)
+    return (
+        <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground bg-muted px-2 py-1 rounded">
+            {formatModuleName(mod)}
+        </span>
+    );
+};
+
 // --- COMPONENT ---
 
 export default function ActivityAuditTab({ onRowClick }: { onRowClick: (log: AuditLog) => void }) {
@@ -81,7 +125,9 @@ export default function ActivityAuditTab({ onRowClick }: { onRowClick: (log: Aud
 
     const [searchQuery, setSearchQuery] = useState("")
     const debouncedSearch = useDebounce(searchQuery, 500)
+
     const [moduleFilter, setModuleFilter] = useState("all")
+    const [availableModules, setAvailableModules] = useState<string[]>([])
 
     const [startDate, setStartDate] = useState<Date | undefined>(undefined)
     const [endDate, setEndDate] = useState<Date | undefined>(undefined)
@@ -93,31 +139,31 @@ export default function ActivityAuditTab({ onRowClick }: { onRowClick: (log: Aud
         if (pageNum !== pager.currentPage) pager.setCurrentPage(pageNum);
 
         try {
-            const payload = {
+            const payload: AuditLogListPayload= {
                 searchQuery: searchQuery.trim(),
                 pageNumber: pageNum,
                 pageSize: pager.pageSize
             };
 
+            if (moduleFilter !== "all") {
+                payload.module = moduleFilter;
+            }
+
+            if (startDate) {
+                const startStr = new Date(startDate);
+                startStr.setHours(0, 0, 0, 0);
+                payload.startDate = startStr.toISOString(); 
+            }
+            
+            if (endDate) {
+                const endStr = new Date(endDate);
+                endStr.setHours(23, 59, 59, 999);
+                payload.endDate = endStr.toISOString();
+            }
+
             const data = await staffService.getAllAuditLogs(payload);
             if (data) {
-                let filtered = data.logs;
-                if (moduleFilter !== "all") {
-                    filtered = filtered.filter(l => l.module?.toLowerCase() === moduleFilter.toLowerCase())
-                }
-                if (startDate) {
-                    const startLimit = new Date(startDate)
-                    startLimit.setHours(0, 0, 0, 0)
-
-                    const endLimit = new Date(endDate || startDate)
-                    endLimit.setHours(23, 59, 59, 999)
-
-                    filtered = filtered.filter(l => {
-                        const logDate = new Date(l.timestamp)
-                        return logDate >= startLimit && logDate <= endLimit
-                    })
-                }
-                setLogs(filtered);
+                setLogs(data.logs);
                 pager.setMetaData(data.totalPages, data.totalRecords);
             }
         } catch (e) { 
@@ -127,6 +173,15 @@ export default function ActivityAuditTab({ onRowClick }: { onRowClick: (log: Aud
         }
     }, [debouncedSearch, moduleFilter, startDate, endDate, pager.pageSize])
 
+
+    // Load available modules for filter dropdown
+    useEffect(() => {
+        const loadModules = async () => {
+            const modules = await staffService.getAuditModules();
+            setAvailableModules(modules);
+        };
+        loadModules();
+    }, []);
 
     // Auto-search effect
     useEffect(() => {
@@ -184,7 +239,7 @@ export default function ActivityAuditTab({ onRowClick }: { onRowClick: (log: Aud
         },
         { 
             header: "Module", accessor: "module", className: "text-center",
-            cell: (val) => <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground bg-muted px-2 py-1 rounded">{val || "SYSTEM"}</span>
+            cell: (val) => <ModuleCell moduleName={val as string} />
         },
         { 
             header: "Timestamp", accessor: "timestamp", className: "text-right pr-6",
@@ -240,12 +295,11 @@ export default function ActivityAuditTab({ onRowClick }: { onRowClick: (log: Aud
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="all">All Modules</SelectItem>
-                                                <SelectItem value="Staff">Staff</SelectItem>
-                                                <SelectItem value="CarPark">Car Park</SelectItem>
-                                                <SelectItem value="Transaction">Transaction</SelectItem>
-                                                <SelectItem value="Account">Account</SelectItem>
-                                                <SelectItem value="User">User</SelectItem>
-                                                <SelectItem value="Package">Package</SelectItem>
+                                                    {availableModules.map((mod) => (
+                                                        <SelectItem key={mod} value={mod}>
+                                                            {formatModuleName(mod)}
+                                                        </SelectItem>
+                                                    ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -284,12 +338,11 @@ export default function ActivityAuditTab({ onRowClick }: { onRowClick: (log: Aud
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Modules</SelectItem>
-                                        <SelectItem value="Staff">Staff</SelectItem>
-                                        <SelectItem value="CarPark">Car Park</SelectItem>
-                                        <SelectItem value="Transaction">Transaction</SelectItem>
-                                        <SelectItem value="Account">Account</SelectItem>
-                                        <SelectItem value="User">User</SelectItem>
-                                        <SelectItem value="Package">Package</SelectItem>
+                                            {availableModules.map((mod) => (
+                                                <SelectItem key={mod} value={mod}>
+                                                    {formatModuleName(mod)}
+                                                </SelectItem>
+                                            ))}
                                     </SelectContent>
                                 </Select>
                             </div>

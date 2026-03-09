@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BACKEND_API_BASE } from "@/lib/config";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,6 +27,8 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json(await apiResponse.json());
   } catch (error) {
-    return NextResponse.json({ error: "Upload Proxy Error" }, { status: 500 });
+    logger.error("Upload Proxy Error", { error });  
+    return NextResponse.json(
+      { error: "Upload Proxy Error" }, { status: 500 });
   }
 }

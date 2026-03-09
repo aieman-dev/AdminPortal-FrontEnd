@@ -113,8 +113,32 @@ export function CarParkConfigForm({ mode, data, packages, isReadOnly, onDataChan
             <div>
               <Label className={labelClass}>Registered Vehicles</Label>
               <div className="space-y-3">
-                <Input value={data.plate1} className={cn(inputStateClass, "uppercase")} onChange={(e) => {const normalized = normalizePlate(e.target.value); onDataChange({ plate1: normalized });}} disabled={isReadOnly} placeholder="Plate 1" />
-                <Input value={data.plate2} className={cn(inputStateClass, "uppercase")} onChange={(e) => {const normalized = normalizePlate(e.target.value); onDataChange({ plate2: normalized });}} disabled={isReadOnly} placeholder="Plate 2" />
+                <Input 
+                    value={data.plate1} 
+                    className={cn(inputStateClass, "uppercase")} 
+                    onChange={(e) => onDataChange({ plate1: e.target.value })} 
+                    onBlur={(e) => {
+                        const normalized = normalizePlate(e.target.value); 
+                        if (normalized !== data.plate1) {
+                            onDataChange({ plate1: normalized });
+                        }
+                    }}
+                    disabled={isReadOnly} 
+                    placeholder="Plate 1" 
+                />
+                <Input 
+                    value={data.plate2} 
+                    className={cn(inputStateClass, "uppercase")} 
+                    onChange={(e) => onDataChange({ plate2: e.target.value })} 
+                    onBlur={(e) => {
+                        const normalized = normalizePlate(e.target.value); 
+                        if (normalized !== data.plate2) {
+                            onDataChange({ plate2: normalized });
+                        }
+                    }}
+                    disabled={isReadOnly} 
+                    placeholder="Plate 2" 
+                />
               </div>
             </div>
           </>

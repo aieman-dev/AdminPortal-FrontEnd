@@ -5,9 +5,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { DatePicker } from "@/components/ui/date-picker";
 import { Pencil, PackageX } from "lucide-react" 
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { StatusBadge } from "@/components/shared-components/status-badge"
 import { type TableColumn, DataTable } from "@/components/shared-components/data-table"
 import { ItPoswfPackage } from "@/type/themepark-support"
@@ -17,9 +19,11 @@ import { useAppToast } from "@/hooks/use-app-toast"
 import { useAutoSearch } from "@/hooks/use-auto-search"
 import { usePagination } from "@/hooks/use-pagination"
 import { SearchField } from "@/components/shared-components/search-field"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 export default function PackageListingTab() {
   const toast = useAppToast()
+  const isMobile = useIsMobile()
 
   const [packageSearchTerm, setPackageSearchTerm] = useState("")
   const [packages, setPackages] = useState<ItPoswfPackage[]>([])
@@ -104,7 +108,7 @@ export default function PackageListingTab() {
     }
   }
 
-  // FIXED: Explicitly typed 'value' and 'row'
+
   const packageColumns: TableColumn<ItPoswfPackage>[] = useMemo (() =>[
     { header: "Package ID", accessor: "packageId", className: "pl-6", cell: (value) => <span className="font-medium">{value}</span> },
     { header: "Package Name", accessor: "packageName" },
@@ -123,6 +127,37 @@ export default function PackageListingTab() {
       ),
     },
   ], []);
+
+
+  // Shared form content for both Dialog and Sheet
+  const editFormContent = editingPackage && (
+    <div className="space-y-4 py-4 px-6 flex-1 overflow-y-auto scrollbar-hide">
+      <div className="space-y-2">
+        <Label htmlFor="edit-last-valid-date">Last Valid Date</Label>
+        <DatePicker
+            date={editingPackage.lastValidDate !== "N/A" ? new Date(editingPackage.lastValidDate) : undefined}
+            setDate={(date) => {
+                if (date) {
+                     const offset = date.getTimezoneOffset();
+                     const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+                     setEditingPackage({ ...editingPackage, lastValidDate: localDate.toISOString().split('T')[0] })
+                }
+            }}
+            className="h-11 w-full"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="edit-remark">Remark</Label>
+        <Textarea
+          id="edit-remark"
+          placeholder="Enter remarks"
+          value={packageRemark}
+          onChange={(e) => setPackageRemark(e.target.value)}
+          className="resize-none h-32 text-base md:text-sm" 
+        />
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -150,6 +185,7 @@ export default function PackageListingTab() {
             isLoading={isPackageSearching}
             emptyTitle="No Packages Found"
             emptyIcon={PackageX}
+            skeletonRowCount={pagination.pageSize}
             emptyMessage={
                 isPackageSearching 
                 ? "Searching..." 
@@ -165,45 +201,57 @@ export default function PackageListingTab() {
         </CardContent>
       </Card>
       
-      <Dialog open={isPackageDialogOpen} onOpenChange={setIsPackageDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Edit Package</DialogTitle>
-            <DialogDescription>Update the package information.</DialogDescription>
-          </DialogHeader>
-          {editingPackage && (
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-last-valid-date">Last Valid Date</Label>
-                <DatePicker
-                    date={editingPackage.lastValidDate !== "N/A" ? new Date(editingPackage.lastValidDate) : undefined}
-                    setDate={(date) => {
-                        if (date) {
-                             const offset = date.getTimezoneOffset();
-                             const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-                             setEditingPackage({ ...editingPackage, lastValidDate: localDate.toISOString().split('T')[0] })
-                        }
-                    }}
-                    className="h-11 w-full"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-remark">Remark</Label>
-                <Textarea
-                  id="edit-remark"
-                  placeholder="Enter remarks"
-                  value={packageRemark}
-                  onChange={(e) => setPackageRemark(e.target.value)}
-                />
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsPackageDialogOpen(false)} disabled={isPackageUpdating}>Cancel</Button>
-            <Button onClick={handlePackageUpdate} disabled={isPackageUpdating}>{isPackageUpdating ? "Updating..." : "Update Package"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {isMobile ? (
+        <Sheet open={isPackageDialogOpen} onOpenChange={setIsPackageDialogOpen} >
+          <SheetContent side="bottom" className="h-[85dvh] p-0 flex flex-col rounded-t-2xl bg-background" onOpenAutoFocus={(e) => e.preventDefault()}>
+            <SheetHeader className="p-6 border-b text-left bg-muted/5 shrink-0">
+              <SheetTitle className="text-xl">Edit Package</SheetTitle>
+              <SheetDescription>Update the package information.</SheetDescription>
+            </SheetHeader>
+            
+            {editFormContent}
+
+            <SheetFooter className="p-4 border-t flex-col gap-3 shrink-0 bg-muted/5">
+              <LoadingButton 
+                  onClick={handlePackageUpdate} 
+                  isLoading={isPackageUpdating}
+                  loadingText="Updating..."
+                  className="w-full h-11 text-base shadow-md"
+              >
+                  Update Package
+              </LoadingButton>
+              <Button variant="outline" className="w-full h-11" onClick={() => setIsPackageDialogOpen(false)} disabled={isPackageUpdating}>
+                  Cancel
+              </Button>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <Dialog open={isPackageDialogOpen} onOpenChange={setIsPackageDialogOpen}>
+          <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden flex flex-col gap-0 rounded-xl">
+            <DialogHeader className="p-6 border-b bg-muted/5 shrink-0">
+              <DialogTitle className="text-xl">Edit Package</DialogTitle>
+              <DialogDescription>Update the package information.</DialogDescription>
+            </DialogHeader>
+            
+            {editFormContent}
+
+            <DialogFooter className="p-6 border-t bg-muted/5 shrink-0">
+              <Button variant="outline" onClick={() => setIsPackageDialogOpen(false)} disabled={isPackageUpdating} className="h-11">
+                  Cancel
+              </Button>
+              <LoadingButton 
+                  onClick={handlePackageUpdate} 
+                  isLoading={isPackageUpdating}
+                  loadingText="Updating..."
+                  className="min-w-[150px] h-11"
+              >
+                  Update Package
+              </LoadingButton>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   )
 }

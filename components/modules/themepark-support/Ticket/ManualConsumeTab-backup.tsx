@@ -19,7 +19,9 @@ import { StatusBadge } from "@/components/shared-components/status-badge"
 import { TerminalSelector } from "@/components/shared-components/terminal-selector"
 import {
   type ManualConsumeData,
+  type ManualConsumeSearchPayload,
   type ConsumeTicketItem,
+  type TicketConsumeExecutePayload,
   type AvailableTicket
 } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
@@ -37,9 +39,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 type Step = 'selection' | 'confirmation';
 
-// ============================================================================
-// 1. HELPERS & PURE FUNCTIONS (Outside component to prevent recreation)
-// ============================================================================
 
 const simulateTicketCheck = (selectedTickets: AvailableTicket[], quantities: Record<string, number>) => {
     const totalQty = selectedTickets.reduce((sum, t) => sum + (quantities[t.id] || 0), 0);
@@ -61,49 +60,43 @@ const simulateTicketCheck = (selectedTickets: AvailableTicket[], quantities: Rec
     };
 };
 
+
 export default function ManualConsumeTab() {
   const toast = useAppToast()
   const router = useRouter();
-
-  // ============================================================================
-  // 2. STATE MANAGEMENT
-  // ============================================================================
-  
   const [currentStep, setCurrentStep] = useState<Step>('selection');
 
-  // Form State
+  // -- Form State --
   const [consumeType, setConsumeType] = useState<string>("superapp")
   const [email, setEmail] = useState("")
   const [mobileNo, setMobileNo] = useState("")
   const [invoiceNo, setInvoiceNo] = useState("")
   const [ticketType, setTicketType] = useState<string>("")
   const [ticketStatus, setTicketStatus] = useState<string>("")
+  
+  // -- Terminal Search State --
   const [terminalId, setTerminalId] = useState<string>("")
   
-  // Data & Cart State
+  // -- Data & Cart State --
   const [consumeSearchResult, setConsumeSearchResult] = useState<ManualConsumeData | null>(null)
   const [quantities, setQuantities] = useState<Record<string, number>>({}) 
   
-  // Loading States
+  // -- Loading States --
   const [isConsumeSearching, setIsConsumeSearching] = useState(false)
   const [isExecuting, setIsExecuting] = useState(false)
 
-  // Simulation State
+  // -- Simulation State --
   const [isSimulating, setIsSimulating] = useState(false);
   const [simResult, setSimResult] = useState<any>(null);
   const [simulatedReceipt, setSimulatedReceipt] = useState<ReceiptData | null>(null);
 
-  // Pagination State
+  // -- Pagination State --
   const pager = usePagination({ pageSize: 5, mode: "client" });
 
-  // Derived State Flags
   const isSuperApp = consumeType === "superapp";
   const isReceipt = consumeType === "receipt";
 
-  // ============================================================================
-  // 3. CORE LOGIC & API HANDLERS
-  // ============================================================================
-
+  // --- 1. Main Search Logic ---
   const handleConsumeSearch = useCallback(async (query?: string) => {
     let typeToUse = consumeType;
     let emailToUse = email;
@@ -188,6 +181,7 @@ export default function ManualConsumeTab() {
 
   useAutoSearch(handleConsumeSearch);
 
+  // --- Quantity Handlers ---
   const updateQuantity = (itemId: string, val: number, maxQty: number) => {
       setQuantities(prev => {
           const updated = Math.min(Math.max(0, val), maxQty); 
@@ -197,6 +191,7 @@ export default function ManualConsumeTab() {
       });
   };
 
+  // --- 4. Navigation ---
   const handleNextStep = () => {
       const totalSelected = Object.values(quantities).reduce((a, b) => a + b, 0);
       if (totalSelected === 0) {
@@ -207,14 +202,11 @@ export default function ManualConsumeTab() {
   };
 
   const handleBackStep = () => {
-      setSimResult(null);
+    setSimResult(null);
       setCurrentStep('selection');
   };
 
-  const closeSimulation = () => {
-      setSimulatedReceipt(null);
-  };
-
+  // --- 5. Execute Logic ---
   const handleConsumeExecute = async () => {
         if (!consumeSearchResult) return;
         
@@ -273,6 +265,7 @@ export default function ManualConsumeTab() {
             consumeQty: quantities[item.id], 
         }));
 
+
         const numericTerminalId = Number(terminalId.split('-').pop() || terminalId) || 0; 
         
         const executePayload: any = {
@@ -293,6 +286,7 @@ export default function ManualConsumeTab() {
             const response = await itPoswfService.executeManualConsume(executePayload);
             
             if (response.success) {
+                // 2. Prepare Receipt Data
                 const receiptData: ReceiptData = {
                     invoiceNo: referenceTicketNo,
                     referenceLabel: "Ticket Number",
@@ -308,6 +302,7 @@ export default function ManualConsumeTab() {
                     }))
                 };
 
+                // 3. Save to Session Storage (The Receipt Page will look for this!)
                 if (typeof window !== 'undefined') {
                     sessionStorage.setItem(`receipt_cache_${referenceTicketNo}`, JSON.stringify(receiptData));
                 }
@@ -321,7 +316,9 @@ export default function ManualConsumeTab() {
                 const totalItems = Object.values(quantities).reduce((a, b) => a + b, 0);
                 const target = email || invoiceNo || "User Account";
                 
-                toast.success("Consumption Successful", `Successfully consumed ${totalItems} ticket(s) for ${target}.`);
+                toast.success(
+                    "Consumption Successful", 
+                    `Successfully consumed ${totalItems} ticket(s) for ${target}.`);
 
                 const returnUrl = encodeURIComponent('/portal/themepark-support/ticket-master?tab=manual-consume');
                 router.push(`/portal/themepark-support/receipt?invoiceNo=${referenceTicketNo}&returnTo=${returnUrl}`);
@@ -329,7 +326,7 @@ export default function ManualConsumeTab() {
                 throw new Error(response.error || "Consumption failed.");
             }
         } catch (error : any) {
-            logger.error("Manual Consume Execute Error", { error: error.message, payload : executePayload });
+            logger.error("Manual Consume Execute Error", { error: error.message,payload : executePayload });
         
             let errorMsg = error instanceof Error ? error.message : "An unexpected error occurred.";
             const lowerMsg = errorMsg.toLowerCase();
@@ -345,19 +342,16 @@ export default function ManualConsumeTab() {
         }
     }
 
-
-  // ============================================================================
-  // 4. UI CONFIGURATION (Columns & Derived State)
-  // ============================================================================
-
   const activeTicketsCount = consumeSearchResult?.tickets.filter(t => ['active', 'unused'].includes(t.packageStatus.toLowerCase())).length ?? 0;
   
+  // --- Pagination Logic ---
   const paginatedTickets = useMemo(() => {
-      return pager.paginate(consumeSearchResult?.tickets || []);
-  }, [consumeSearchResult, pager.paginate]);
+    return pager.paginate(consumeSearchResult?.tickets || []);
+}, [consumeSearchResult, pager.paginate]);
 
   const totalPages = consumeSearchResult ? Math.ceil(consumeSearchResult.tickets.length / pager.pageSize) : 0;
 
+  // --- DATA TABLE COLUMNS ---
   const ticketColumns: TableColumn<AvailableTicket>[] = useMemo(() => [
     { 
         header: "Item Details", 
@@ -438,94 +432,101 @@ export default function ManualConsumeTab() {
   ], [quantities]);
   
 
-  // ============================================================================
-  // 5. SUB-RENDERERS (Keeps the main return clean)
-  // ============================================================================
+  // --- HELPER: Close Simulation ---
+  const closeSimulation = () => {
+      setSimulatedReceipt(null);
+  };
 
-  const renderSelectionView = () => (
-      <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 mt-6">
-          <div className="grid gap-4 md:grid-cols-2">
-              <BalanceCard
-                  title="Credit Balance"
-                  amount={consumeSearchResult?.creditBalance || 0}
-                  description="Available balance"
-                  icon={Wallet}
-                  valueColor="text-green-600"
-              />
-              <Card className="h-full flex flex-col justify-center">
-                  <CardContent className="space-y-2 p-6">
-                      <div className="flex items-center justify-between">
-                          <div className="text-sm font-medium">Ticket Summary</div>
-                          <AlertTriangle className="h-4 w-4 text-orange-500" />
-                      </div>
-                      <div className="text-2xl font-bold">
-                          {activeTicketsCount} Active <span className="text-muted-foreground text-lg font-normal">/ {consumeSearchResult?.tickets.length || 0} Total</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">Inactive/Expired tickets cannot be selected.</p>
-                  </CardContent>
-              </Card>
-          </div>
 
-          <Card className={cn(isSimulating && "border-amber-200 shadow-none bg-transparent")}>
-              <CardContent className="p-0 overflow-hidden">
-                  <div className="bg-muted/40 px-6 py-3 border-b flex justify-between items-center">
-                      <h3 className="font-semibold flex items-center gap-2">
-                          <Ticket className="w-4 h-4" /> Available Tickets
-                      </h3>
-                      <span className="text-xs text-muted-foreground">
-                          {consumeSearchResult?.tickets.length} results found
-                      </span>
-                  </div>
+  // --- VIEW: SELECTION TABLE ---
+  const renderSelectionView = () => {
+    return (
+        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 mt-6">
+        <div className="grid gap-4 md:grid-cols-2">
+            <BalanceCard
+                title="Credit Balance"
+                amount={consumeSearchResult?.creditBalance || 0}
+                description="Available balance"
+                icon={Wallet}
+                valueColor="text-green-600"
+            />
+            <Card className="h-full flex flex-col justify-center">
+                <CardContent className="space-y-2 p-6">
+                    <div className="flex items-center justify-between">
+                        <div className="text-sm font-medium">Ticket Summary</div>
+                        <AlertTriangle className="h-4 w-4 text-orange-500" />
+                    </div>
+                    <div className="text-2xl font-bold">
+                        {activeTicketsCount} Active <span className="text-muted-foreground text-lg font-normal">/ {consumeSearchResult?.tickets.length || 0} Total</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Inactive/Expired tickets cannot be selected.</p>
+                </CardContent>
+            </Card>
+        </div>
 
-                  <div className="p-0">
-                      <DataTable
-                          columns={ticketColumns}
-                          data={paginatedTickets}
-                          keyExtractor={(row) => row.id}
-                          emptyIcon={SearchX}
-                          emptyTitle="No Tickets Found"
-                          emptyMessage="We couldn't find any tickets matching your search criteria."
-                      />
-                  </div>
-                  
-                  {totalPages > 1 && (
-                      <div className="px-6 pb-4">
-                          <PaginationControls 
-                              currentPage={pager.currentPage}
-                              totalPages={totalPages}
-                              totalRecords={consumeSearchResult?.tickets.length}
-                              pageSize={pager.pageSize}
-                              onPageChange={pager.setCurrentPage}
-                          />
-                      </div>
-                  )}
-              
-                  {/* STICKY FOOTER */}
-                  <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t p-6 sticky bottom-0 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-                      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                          <div className="text-sm text-muted-foreground">
-                              Total tickets selected: {Object.values(quantities).reduce((a, b) => a + b, 0)}
-                          </div>
-                          
-                          <div className="flex items-center gap-6 w-full md:w-auto">
-                              <Button 
-                                  onClick={handleNextStep} 
-                                  disabled={Object.keys(quantities).length === 0 || isExecuting} 
-                                  size="lg"
-                                  className={cn("min-w-[150px]", isSimulating && "bg-amber-500 hover:bg-amber-600")}
-                              >
-                                  Next
-                              </Button>
-                          </div>
-                      </div>
-                  </div>
-              </CardContent>
-          </Card>
-      </div>
-  );
+        <Card className={cn(isSimulating && "border-amber-200 shadow-none bg-transparent")}>
+            <CardContent className="p-0 overflow-hidden">
+                <div className="bg-muted/40 px-6 py-3 border-b flex justify-between items-center">
+                    <h3 className="font-semibold flex items-center gap-2">
+                        <Ticket className="w-4 h-4" /> Available Tickets
+                    </h3>
+                    <span className="text-xs text-muted-foreground">
+                        {consumeSearchResult?.tickets.length} results found
+                    </span>
+                </div>
 
+                <div className="p-0">
+                    <DataTable
+                        columns={ticketColumns}
+                        data={paginatedTickets}
+                        keyExtractor={(row) => row.id}
+                        emptyIcon={SearchX}
+                        emptyTitle="No Tickets Found"
+                        emptyMessage="We couldn't find any tickets matching your search criteria."
+                    />
+                </div>
+                
+                {totalPages > 1 && (
+                    <div className="px-6 pb-4">
+                        <PaginationControls 
+                            currentPage={pager.currentPage}
+                            totalPages={totalPages}
+                            totalRecords={consumeSearchResult?.tickets.length}
+                            pageSize={pager.pageSize}
+                            onPageChange={pager.setCurrentPage}
+                        />
+                    </div>
+                )}
+            
+                {/* STICKY FOOTER */}
+                <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t p-6 sticky bottom-0 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div className="text-sm text-muted-foreground">
+                            Total tickets selected: {Object.values(quantities).reduce((a, b) => a + b, 0)}
+                        </div>
+                        
+                        <div className="flex items-center gap-6 w-full md:w-auto">
+                            <Button 
+                                onClick={handleNextStep} 
+                                disabled={Object.keys(quantities).length === 0 || isExecuting} 
+                                size="lg"
+                                className={cn("min-w-[150px]", isSimulating && "bg-amber-500 hover:bg-amber-600")}
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+        </div>
+    );
+  };
+
+  // --- VIEW: CONFIRMATION SUMMARY ---
   const renderConfirmationView = () => {
       const selectedTickets = consumeSearchResult?.tickets.filter(t => (quantities[t.id] || 0) > 0) || [];
+      const creditBalance = consumeSearchResult?.creditBalance || 0;
       const totalConsumeQty = Object.values(quantities).reduce((a, b) => a + b, 0);
 
       return (
@@ -593,42 +594,44 @@ export default function ManualConsumeTab() {
       );
   };
 
-  const renderSimulationReceiptView = () => (
-      <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="bg-amber-100 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-2">
-                  <FlaskConical className="h-5 w-5" />
-                  <div className="flex flex-col">
-                      <span className="font-bold text-sm uppercase tracking-wide">Simulation Mode</span>
-                      <span className="text-xs opacity-90">This receipt is a generated preview. No data was saved.</span>
-                  </div>
-              </div>
-              <Button size="sm" onClick={closeSimulation} className="bg-amber-600 hover:bg-amber-700 text-white border-none shadow-none">
-                  <ArrowLeft className="mr-2 h-4 w-4" /> Edit / Back
-              </Button>
-          </div>
-
-          <div className="relative select-none">
-               <div className="absolute inset-0 z-50 flex items-center justify-center opacity-[0.08] pointer-events-none overflow-hidden">
-                    <div className="transform -rotate-45 text-9xl font-black text-slate-900 whitespace-nowrap">
-                        SIMULATION
-                    </div>
-               </div>
-               {simulatedReceipt && <ReceiptView data={simulatedReceipt} onBack={closeSimulation} />}
-          </div>
-      </div>
-  );
-
-  // ============================================================================
-  // 6. MAIN RENDER 
-  // ============================================================================
-
+  // --- RENDER VIEW: SIMULATION RECEIPT ---
   if (simulatedReceipt) {
-      return renderSimulationReceiptView();
+      return (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              {/* Simulation Banner */}
+              <div className="bg-amber-100 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg flex items-center justify-between shadow-sm">
+                  <div className="flex items-center gap-2">
+                      <FlaskConical className="h-5 w-5" />
+                      <div className="flex flex-col">
+                          <span className="font-bold text-sm uppercase tracking-wide">Simulation Mode</span>
+                          <span className="text-xs opacity-90">This receipt is a generated preview. No data was saved.</span>
+                      </div>
+                  </div>
+                  <Button size="sm" onClick={closeSimulation} className="bg-amber-600 hover:bg-amber-700 text-white border-none shadow-none">
+                      <ArrowLeft className="mr-2 h-4 w-4" /> Edit / Back
+                  </Button>
+              </div>
+
+              {/* Receipt with Watermark */}
+              <div className="relative select-none">
+                   <div className="absolute inset-0 z-50 flex items-center justify-center opacity-[0.08] pointer-events-none overflow-hidden">
+                        <div className="transform -rotate-45 text-9xl font-black text-slate-900 whitespace-nowrap">
+                            SIMULATION
+                        </div>
+                   </div>
+                   
+                   <ReceiptView 
+                        data={simulatedReceipt} 
+                        onBack={closeSimulation}
+                   />
+              </div>
+          </div>
+      )
   }
 
   return (
     <>
+    {/* SIMULATION TOGGLE */}
       <div className="w-full relative z-20 mb-4 md:mb-0 md:h-0">
          <div className="w-full md:w-auto md:absolute right-0 md:-top-[60px]">
              <SimulationToggle isSimulating={isSimulating} onToggle={(val) => { 
@@ -639,14 +642,16 @@ export default function ManualConsumeTab() {
       </div>
 
       <SimulationWrapper isSimulating={isSimulating}>
-        {/* Search Form */}
         {currentStep === 'selection' && (
             <Card className={cn(isSimulating && "border-amber-200 shadow-none bg-transparent")}>
                 <CardContent>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-end">
+                    
+                    {/* ROW 1: Consume Type | Email | Mobile */}
                     <div className="space-y-2">
                         <Label htmlFor="consumeType">Consume Type</Label>
                         <Select value={consumeType} onValueChange={setConsumeType}>
+                            {/* Standardized h-11 */}
                             <SelectTrigger id="consumeType" className="h-11"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 {CONSUME_TYPES.map((type) => (
@@ -675,6 +680,7 @@ export default function ManualConsumeTab() {
                         />
                     </div>
 
+                    {/* ROW 2: Invoice No | Terminal Combobox | Ticket Type */}
                     <div className="space-y-2">
                         <Label htmlFor="invoiceNo">Invoice No {isReceipt && "*"}</Label>
                         <Input 
@@ -685,6 +691,7 @@ export default function ManualConsumeTab() {
                         />
                     </div>
                     
+                    {/* Standardized Terminal Selector */}
                     <TerminalSelector 
                         value={terminalId}
                         onChange={setTerminalId}
@@ -704,6 +711,7 @@ export default function ManualConsumeTab() {
                         </Select>
                     </div>
 
+                    {/* ROW 3: Ticket Status | [Empty] | Search Button */}
                     <div className="space-y-2">
                         <Label htmlFor="ticketStatus">Ticket Status</Label>
                         <Select value={ticketStatus} onValueChange={setTicketStatus}>
@@ -716,6 +724,7 @@ export default function ManualConsumeTab() {
                         </Select>
                     </div>
 
+                    {/* Empty Spacer Column */}
                     <div></div>
 
                     <div className="flex justify-end pt-2"> 
@@ -728,12 +737,13 @@ export default function ManualConsumeTab() {
                             {isConsumeSearching ? "Searching..." : "Search"}
                         </Button>
                     </div>
+                    
                 </div>
                 </CardContent>
             </Card>
         )}
 
-        {/* Loading Skeletons */}
+        {/*  Show Skeleton while searching */}
         {isConsumeSearching && (
             <div className="mt-6 space-y-6 animate-in fade-in duration-300">
                 <div className="grid gap-4 md:grid-cols-2">
@@ -744,39 +754,39 @@ export default function ManualConsumeTab() {
             </div>
         )}
 
-        {/* Step Rendering */}
+        {/* 2. Show Results when done searching */}
         {!isConsumeSearching && consumeSearchResult && (
             currentStep === 'selection' ? renderSelectionView() : renderConfirmationView()
         )}
     </SimulationWrapper>
 
-    {/* Pre-Flight Check Card (Simulation Only) */}
-    {isSimulating && simResult && !simulatedReceipt && (
-        <div className="mt-6 animate-in slide-in-from-bottom-4 fade-in max-w-xl mx-auto">
-             <Card className="border-amber-200 bg-amber-50 dark:bg-amber-900/10">
-                <CardContent className="p-4 flex items-center justify-between">
-                     <div className="flex items-center gap-2">
-                         <Ticket className="h-4 w-4 text-amber-700" />
-                         <span className="text-sm font-semibold text-amber-800">Pre-Flight Check</span>
-                     </div>
-                     <div className="flex items-center gap-3">
-                         {simResult.isAllowed && (
-                             <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
-                                 {simResult.totalConsumed} Items Selected
-                             </Badge>
-                         )}
-                         <span className={cn("text-sm font-bold flex items-center gap-1", simResult.isAllowed ? "text-green-600" : "text-red-600")}>
-                             {simResult.isAllowed ? (
-                                 <><CheckCircle2 className="h-4 w-4" /> VALID</>
-                             ) : (
-                                 <><AlertTriangle className="h-4 w-4" /> INVALID SELECTION</>
-                             )}
-                         </span>
-                     </div>
-                </CardContent>
-             </Card>
-        </div>
-    )}
+    {/* Small Sim Result - Pre-Flight Check */}
+      {isSimulating && simResult && !simulatedReceipt && (
+          <div className="mt-6 animate-in slide-in-from-bottom-4 fade-in max-w-xl mx-auto">
+               <Card className="border-amber-200 bg-amber-50 dark:bg-amber-900/10">
+                  <CardContent className="p-4 flex items-center justify-between">
+                       <div className="flex items-center gap-2">
+                           <Ticket className="h-4 w-4 text-amber-700" />
+                           <span className="text-sm font-semibold text-amber-800">Pre-Flight Check</span>
+                       </div>
+                       <div className="flex items-center gap-3">
+                           {simResult.isAllowed && (
+                               <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
+                                   {simResult.totalConsumed} Items Selected
+                               </Badge>
+                           )}
+                           <span className={cn("text-sm font-bold flex items-center gap-1", simResult.isAllowed ? "text-green-600" : "text-red-600")}>
+                               {simResult.isAllowed ? (
+                                   <><CheckCircle2 className="h-4 w-4" /> VALID</>
+                               ) : (
+                                   <><AlertTriangle className="h-4 w-4" /> INVALID SELECTION</>
+                               )}
+                           </span>
+                       </div>
+                  </CardContent>
+               </Card>
+          </div>
+      )}
     </>
   )
 }

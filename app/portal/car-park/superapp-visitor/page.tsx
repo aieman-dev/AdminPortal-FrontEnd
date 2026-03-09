@@ -26,8 +26,7 @@ const LOCAL_STORAGE_KEY = 'superAppVisitorSearch';
 export default function SuperAppVisitor() {
   const toast = useAppToast()
   const router = useRouter()
-  const pagination = usePagination({ pageSize: 20 });
-
+  
   // --- State ---
   const [data, setData] = useState<Account[]>([])
   const [isSearching, setIsSearching] = useState(false)

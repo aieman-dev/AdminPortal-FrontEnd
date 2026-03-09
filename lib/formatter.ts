@@ -147,3 +147,11 @@ export const formatMobile = (val: string) => {
     if (digits.startsWith("0")) digits = "6" + digits;
     return digits.slice(0, 13);
 };
+
+
+// --- ZOD ERROR FORMATTER ---
+export const formatZodError = (type: string, error: any) => {
+    const issue = error.issues?.[0]; // Grab the first specific error
+    const path = issue?.path?.join('.') || "Unknown field";
+    return `Data Mismatch (${type}): '${path}' - ${issue?.message || "is invalid"}`;
+};

@@ -10,9 +10,10 @@ import {
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 import { useAppToast } from "@/hooks/use-app-toast"
-import { cn } from "@/lib/utils"
+import throttle from "lodash/throttle"
 import { formatTime } from "@/lib/formatter"
 import { Progress } from "@/components/ui/progress"
+import { logger } from "@/lib/logger"
 
 // --- CONFIGURATION ---
 const TIMEOUT_MS = 15 * 60 * 1000; // 15 Minutes Total
@@ -30,6 +31,11 @@ export function SessionTimer() {
   
   const lastActivity = useRef<number>(Date.now())
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const isWarningRef = useRef(isWarning);
+
+  useEffect(() => {
+      isWarningRef.current = isWarning;
+  }, [isWarning]);
 
   // --- LOGIC (Same as before) ---
   const handleTimeout = useCallback(() => {
@@ -38,11 +44,16 @@ export function SessionTimer() {
     router.push("/login?error=session_expired")
   }, [logout, router])
 
-  const updateActivity = useCallback(() => {
-    if (!isWarning) {
-      lastActivity.current = Date.now()
-    }
-  }, [isWarning])
+
+  const updateActivity = useCallback(
+    throttle(() => {
+      if (!isWarningRef.current) {
+        lastActivity.current = Date.now()
+      }
+    }, 1000), 
+    []
+  )
+
 
   useEffect(() => {
     timerRef.current = setInterval(() => {
@@ -50,7 +61,7 @@ export function SessionTimer() {
       const timeSinceLastActivity = now - lastActivity.current
       const timeRemaining = TIMEOUT_MS - timeSinceLastActivity
 
-      console.log(`[Timer Debug] Idle for: ${(timeSinceLastActivity/1000).toFixed(0)}s | Time Left: ${(timeRemaining/1000).toFixed(0)}s | Warning at: ${(WARNING_MS/1000)}s`);
+      logger.debug("Session Timer Tick", { idle: timeSinceLastActivity, timeLeft: timeRemaining  })
 
       if (timeRemaining <= 0) {
         handleTimeout()
@@ -67,10 +78,14 @@ export function SessionTimer() {
 
   useEffect(() => {
     const events = ["mousedown", "mousemove", "keydown", "scroll", "touchstart"]
-    events.forEach(event => window.addEventListener(event, updateActivity))
-    return () => events.forEach(event => window.removeEventListener(event, updateActivity))
+    events.forEach(event => window.addEventListener(event, updateActivity, { passive: true }))
+    
+    return () => {
+        events.forEach(event => window.removeEventListener(event, updateActivity))
+    }
   }, [updateActivity])
 
+  
   const handleExtend = async () => {
     setIsExtending(true)
     try {
@@ -84,7 +99,7 @@ export function SessionTimer() {
       setIsWarning(false)
       toast.success("Session Extended", "You can continue working.")
     } catch (err) {
-      console.error("Session extend failed:", err);
+      logger.error("Session extend failed:", err);
       // Optional: Force logout if refresh fails? 
       // handleTimeout(); 
     } finally {

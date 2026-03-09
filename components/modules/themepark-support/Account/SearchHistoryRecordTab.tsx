@@ -265,6 +265,7 @@ export default function SearchHistoryRecordTab() {
                     onSort={handleTrxSort}
                     sortConfig={trxSortConfig}
                     pagination={trxPagination}
+                    skeletonRowCount={trxPagination.pageSize}
 
                     emptyTitle="No Transactions Found"
                     emptyIcon={SearchX}
@@ -285,6 +286,7 @@ export default function SearchHistoryRecordTab() {
                 keyExtractor={(row, index) => (row.ticketNo || `tk-${index}`).toString()}
                 isLoading={isSearching}
                 pagination={ticketPagination}
+                skeletonRowCount={ticketPagination.pageSize}
                 
                 emptyTitle="No Tickets Found"
                 emptyIcon={SearchX}

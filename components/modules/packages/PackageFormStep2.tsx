@@ -138,7 +138,7 @@ const PackageFormStep2: React.FC<Props> = ({ form, onNext, onBack }) => {
   const getValueField = () => isPointMode ? "point" : "price";
 
   return (
-    <div className="flex flex-col h-[calc(100vh-200px)] min-h-[500px]">
+    <div className="flex flex-col h-[calc(100dvh-200px)] min-h-[500px]">
       
       {/* HEADER SECTION */}
       <div className="flex-shrink-0">

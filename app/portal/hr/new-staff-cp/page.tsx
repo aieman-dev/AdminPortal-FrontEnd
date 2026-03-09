@@ -189,33 +189,61 @@ export default function HRRegistrationPage() {
                     <p className="text-sm text-muted-foreground mt-1">Register new staff members and assign parking</p>
                 </div>
 
-                {/* SEARCH BAR */}
-                <div className="flex items-center gap-3 bg-white dark:bg-zinc-900 p-1.5 rounded-xl border shadow-sm w-full md:w-auto">
-                    <div className="flex bg-gray-100 dark:bg-zinc-800 rounded-lg p-1">
-                        <button type="button" onClick={() => setValue("searchType", "email")} className={cn("px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-2", searchType === 'email' ? "bg-white dark:bg-zinc-700 text-foreground shadow-sm" : "text-muted-foreground")}>
+                {/* SEARCH TOGGLE & BAR (Responsive: Stacked on Mobile, Single Pill on Desktop) */}
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-3 w-full md:w-auto md:bg-white md:dark:bg-zinc-900 md:p-1.5 md:rounded-xl md:border md:shadow-sm transition-all">
+                                    
+                    {/* 1. Toggle Buttons */}
+                    <div className="flex w-full md:w-auto shrink-0 bg-gray-100 dark:bg-zinc-800 rounded-lg p-1 transition-all">
+                        <button
+                            type="button"
+                            onClick={() => setValue("searchType", "email")}
+                            className={cn(
+                                "flex-1 md:flex-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-2",
+                                searchType === 'email' ? "bg-white dark:bg-zinc-700 text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
                             <Mail size={14} /> Email
                         </button>
-                        <button type="button" onClick={() => setValue("searchType", "qr")} className={cn("px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-2", searchType === 'qr' ? "bg-white dark:bg-zinc-700 text-foreground shadow-sm" : "text-muted-foreground")}>
+                        <button
+                            type="button"
+                            onClick={() => setValue("searchType", "qr")}
+                            className={cn(
+                                "flex-1 md:flex-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-2",
+                                 searchType === 'qr' ? "bg-white dark:bg-zinc-700 text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
                             <QrCode size={14} /> QR
                         </button>
                     </div>
-                    <div className="w-px h-6 bg-border" />
-                    <EmailAutocomplete 
-                        placeholder={searchType === "email" ? "staff@icity.com" : "QR Code"} 
-                        {...register("searchTerm")}
-                        value={watch("searchTerm")}
-                        className="h-9 border-0 bg-transparent focus-visible:ring-0 w-full md:w-[250px] text-sm shadow-none pl-0"
-                        onKeyDown={(e) => {
-                             if (e.key === "Enter" && !e.defaultPrevented) {
-                                 handleVerify()
-                             }
-                        }}
-                    />
-                    <Button type="button" onClick={handleVerify} disabled={isVerifying} size="sm" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90">
-                        {isVerifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Verify"}
-                    </Button>
+                                    
+                    {/* Separator (Desktop Only) */}
+                    <div className="hidden md:block w-px h-6 bg-border" />
+                                    
+                        {/* 2. Input & Verify Pill */}
+                        <div className="flex items-center gap-2 flex-1 bg-card md:bg-transparent p-1.5 md:p-0 rounded-xl md:rounded-none border md:border-0 shadow-sm md:shadow-none transition-all">
+                            <div className="relative flex-1 min-w-0 md:w-[280px] pl-2 md:pl-0">
+                                <EmailAutocomplete 
+                                    placeholder={searchType === "email" ? "user@example.com" : "QR Code"} 
+                                    {...register("searchTerm")}
+                                    value={watch("searchTerm")}
+                                    className="h-9 border-0 bg-transparent focus-visible:ring-0 w-full text-base md:text-sm shadow-none px-0"
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" && !e.defaultPrevented) {
+                                            handleVerify()
+                                        }
+                                    }}
+                                />
+                            </div>
+                
+                            <Button 
+                                type="button" onClick={handleVerify} disabled={isVerifying} size="sm" 
+                                className="h-9 px-5 bg-primary text-primary-foreground hover:bg-primary/90 font-medium rounded-lg shadow-sm shrink-0"
+                            >
+                                {isVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify"}
+                                </Button>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
             {/* FORM AREA */}
             <div className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-hide">

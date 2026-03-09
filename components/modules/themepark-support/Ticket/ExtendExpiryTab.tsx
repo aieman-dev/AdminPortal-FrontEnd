@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { Calendar, SearchX, Clock, Save } from "lucide-react"
 import { type ExtendTicketData } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
@@ -16,7 +17,7 @@ import { DataTable, type TableColumn } from "@/components/shared-components/data
 import { useIsMobile } from "@/hooks/use-mobile"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet"
 import { Label } from "@/components/ui/label"
-import { formatDateTime } from "@/lib/formatter"
+import { formatDate, formatDateTime } from "@/lib/formatter"
 
 export default function ExtendExpiryTab() {
   const toast = useAppToast()
@@ -100,7 +101,7 @@ export default function ExtendExpiryTab() {
 
     try {
         const payload = {
-            TrxNo: extendSearchQuery.trim(), 
+            trxNo: extendSearchQuery.trim(), 
             ticketsToUpdate: [{
                 ticketNo: originalTicket.ticketNo,
                 ticketName: originalTicket.ticketName,
@@ -136,7 +137,7 @@ export default function ExtendExpiryTab() {
   const columns: TableColumn<ExtendTicketData>[] = useMemo(() => [
       { header: "Ticket No", accessor: "ticketNo", className: "font-medium pl-6" },
       { header: "Ticket Name", accessor: "ticketName" },
-      { header: "Effective Date", accessor: "effectiveDate", cell: (val) => (val as string).split('T')[0], className: isMobile ? "hidden" : "" },
+      { header: "Effective Date", accessor: "effectiveDate", cell: (val) => formatDate(val as string), className: isMobile ? "hidden" : "" },
       { 
         header: "Current Expiry", 
         accessor: "expiryDate", 
@@ -161,7 +162,7 @@ export default function ExtendExpiryTab() {
               )
           }
       },
-      { header: "Last Valid Date", accessor: "lastValidDate", cell: (val) => (val as string).split('T')[0], className: isMobile ? "hidden" : "" },
+      { header: "Last Valid Date", accessor: "lastValidDate", cell: (val) => formatDate(val as string), className: isMobile ? "hidden" : "" },
       { header: "Status", accessor: "recordStatus", cell: (value) => <StatusBadge status={value} /> },
       {
           header: "Action",
@@ -178,9 +179,14 @@ export default function ExtendExpiryTab() {
               }
 
               return (
-                  <Button size="sm" onClick={() => handleUpdate(ticketNo as string)} disabled={isTicketUpdating}>
-                    {isTicketUpdating ? "Updating..." : "Update"}
-                  </Button>
+                  <LoadingButton 
+                        size="sm" 
+                        onClick={() => handleUpdate(ticketNo as string)} 
+                        isLoading={isTicketUpdating}
+                        loadingText="Updating..."
+                    >
+                        Update
+                    </LoadingButton>
               )
           }
       }
@@ -258,13 +264,14 @@ export default function ExtendExpiryTab() {
                     </div>
 
                     <SheetFooter className="pt-4">
-                        <Button 
+                        <LoadingButton 
                             className="w-full h-12 text-base" 
                             onClick={() => handleUpdate(selectedTicket.ticketNo)}
-                            disabled={isUpdatingTicketNo === selectedTicket.ticketNo}
+                            isLoading={isUpdatingTicketNo === selectedTicket.ticketNo}
+                            loadingText="Updating..."
                         >
-                            {isUpdatingTicketNo === selectedTicket.ticketNo ? "Updating..." : "Confirm Update"}
-                        </Button>
+                            Confirm Update
+                        </LoadingButton>
                     </SheetFooter>
                 </div>
             )}

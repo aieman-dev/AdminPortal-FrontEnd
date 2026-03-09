@@ -1,6 +1,7 @@
 // lib/auth.ts
 import { ROLES } from "./constants";
 import { DashboardRole } from "@/config/dashboard";
+import { logger } from "@/lib/logger";
 
 export type Department = typeof ROLES[keyof typeof ROLES];
 
@@ -47,7 +48,7 @@ export async function login(email: string, password: string, rememberMe: boolean
     return { success: true, user };
 
   } catch (error) {
-    console.error("Login Error:", error);
+    logger.error("Client login request failed", { error })
     return { success: false, error: "Network error or server unreachable" };
   }
 }
@@ -60,7 +61,7 @@ export async function logout(): Promise<void> {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } catch (e) {
-      console.error("Logout cleanup failed", e);
+      logger.error("Logout cleanup failed", { error: e });
     }
     
     window.location.href = "/login";

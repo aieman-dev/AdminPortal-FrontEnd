@@ -98,6 +98,7 @@ export interface CarParkPass {
     accId: number;
     name: string;
     email: string;
+    cardNo?: string;
     staffNo: string;
     plateNo: string;
     unitNo: string;

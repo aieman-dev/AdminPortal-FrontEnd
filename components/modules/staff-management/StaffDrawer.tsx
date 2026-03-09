@@ -14,6 +14,7 @@ import {
     Shield, Mail, Calendar as CalendarIcon, User, RefreshCw, Clock, Loader2, Key
 } from "lucide-react"
 import { useAppToast } from "@/hooks/use-app-toast"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { STAFF_ROLES } from "@/lib/constants"
 import { StaffMember } from "@/type/staff"
 import { staffService } from "@/services/staff-services"
@@ -31,6 +32,7 @@ interface StaffDrawerProps {
 
 export function StaffDrawer({ staff, isOpen, onClose, onUpdate }: StaffDrawerProps) {
     const toast = useAppToast();
+    const isMobile = useIsMobile();
 
     const [selectedRole, setSelectedRole] = useState("");
     const [selectedStatus, setSelectedStatus] = useState("");
@@ -83,10 +85,10 @@ export function StaffDrawer({ staff, isOpen, onClose, onUpdate }: StaffDrawerPro
 
         try {
             const payload = {
-                RoleID: staff.roleId, 
-                RoleName: selectedRole,
-                ExpiryDate: customExpiryDate ? customExpiryDate.toISOString() : null, 
-                RecordStatus: selectedStatus
+                roleId: staff.roleId, 
+                roleName: selectedRole,
+                expiryDate: customExpiryDate ? customExpiryDate.toISOString() : null, 
+                recordStatus: selectedStatus
             };
 
             console.log("Sending Update Payload:", payload);
@@ -135,8 +137,9 @@ export function StaffDrawer({ staff, isOpen, onClose, onUpdate }: StaffDrawerPro
     return (
         <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()} modal={false}>
             <SheetContent 
-                side="right" 
-                className="w-full sm:max-w-[450px] p-0 border-l shadow-2xl bg-background flex flex-col h-full focus:outline-none"
+                side={isMobile ? "bottom" : "right"} 
+                className={`w-full p-0 shadow-2xl bg-background flex flex-col focus:outline-none 
+                    ${isMobile ? "h-[85vh] rounded-t-2xl border-t mt-24" : "h-full sm:max-w-[450px] border-l"}`}
             >
                 {/* HEADER */}
                 <div className="p-6 border-b flex-shrink-0">

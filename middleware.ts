@@ -1,19 +1,45 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { BACKEND_API_BASE } from "@/lib/config";
+import { decodeJwt, jwtVerify } from "jose";
+import { BACKEND_ROLE_MAP, ROLES } from "@/lib/constants";
 
 // Note: In serverless (Vercel), this resets on cold starts, but still effective for bursts.
 const rateLimitMap = new Map();
 
-function isTokenExpired(token: string) {
+// ---  Verify and decode the token securely ---
+async function getVerifiedPayload(token: string) {
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    if (!payload.exp) return false;
-    // Check if expiry time is in the past (with 10s buffer)
-    return (Math.floor(Date.now() / 1000) >= payload.exp - 10);
+     const secret = new TextEncoder().encode(process.env.JWT_SECRET || "");
+     const { payload } = await jwtVerify(token, secret);
+     return payload;
+     
+    // Fallback: Securely decode without verifying signature (Better than atob)
+    //return decodeJwt(token);
   } catch (e) {
-    return true; // Treat invalid tokens as expired
+    return null; // Treat invalid tokens as expired/failed
   }
+}
+
+async function isTokenExpired(token: string) {
+  const payload = await getVerifiedPayload(token);
+  if (!payload || !payload.exp) return true;
+  
+  // Check if expiry time is in the past (with 10s buffer)
+  return (Math.floor(Date.now() / 1000) >= payload.exp - 10);
+}
+
+// --- Extract Role for Edge RBAC ---
+async function getUserRole(token: string) {
+  const payload = await getVerifiedPayload(token);
+  if (!payload) return null;
+
+  // Extract Role using your backend's specific claim keys
+  const rawRole = (payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] as string) 
+                  || (payload.role as string) 
+                  || "User";
+
+  return BACKEND_ROLE_MAP[rawRole] || "Staff";
 }
 
 export async function middleware(request: NextRequest) {
@@ -53,8 +79,10 @@ export async function middleware(request: NextRequest) {
   const isLoginPage = pathname.startsWith("/login");
   const isPortalPage = pathname.startsWith("/portal");
 
+  let response = NextResponse.next();
+
   // CHECK EXPIRY: If token exists but is expired, treat it as missing
-  if (accessToken && isTokenExpired(accessToken)) {
+  if (accessToken && await isTokenExpired(accessToken)) {
     console.log("Middleware: Token expired. Clearing variable to trigger refresh.");
     accessToken = undefined; // Force refresh logic below
   }
@@ -103,7 +131,7 @@ export async function middleware(request: NextRequest) {
         });
 
         console.log("Middleware: Token refreshed successfully.");
-        return response;
+        accessToken = newAccessToken;
       }
     } catch (error) {
       console.error("Middleware: Refresh failed", error);
@@ -111,8 +139,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 3. Standard Checks (Identical to before)
-  
+  // --------------- ROUTE PROTECTION CHECKS ---------------------------
   // If still no access token (and refresh failed or didn't exist), kick to login
   if (isPortalPage && !accessToken) {
     return NextResponse.redirect(new URL("/login", request.url));
@@ -123,7 +150,39 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/portal", request.url));
   }
 
-  return NextResponse.next();
+// --------------- EDGE RBAC (ROLE-BASED ACCESS CONTROL) ---------------------------
+  
+  if (accessToken && isPortalPage) {
+    const role = await getUserRole(accessToken);
+
+    // 1. Protect Staff Management (Only MIS Superadmin)
+    if (pathname.startsWith("/portal/staff-management") && role !== ROLES.MIS_SUPER) {
+      console.warn(`Security: Role ${role} attempted to access Restricted Path ${pathname}`);
+      const redirectResponse = NextResponse.redirect(new URL("/portal", request.url));
+      
+      // Copy cookies over from the current response to the redirect response
+      const newAccessCookie = response.cookies.get("accessToken");
+      if (newAccessCookie) {
+         redirectResponse.cookies.set(newAccessCookie);
+         redirectResponse.cookies.set(response.cookies.get("refreshToken") as any);
+      }
+      return redirectResponse;
+    }
+
+    // 2. You can add more Edge rules here based on your lib/auth.ts logic
+    // Example: Protect Package Management from IT_ADMIN
+    if (pathname.startsWith("/portal/packages") && role === ROLES.IT_ADMIN) {
+      const redirectResponse = NextResponse.redirect(new URL("/portal", request.url));
+      const newAccessCookie = response.cookies.get("accessToken");
+      if (newAccessCookie) {
+         redirectResponse.cookies.set(newAccessCookie);
+         redirectResponse.cookies.set(response.cookies.get("refreshToken") as any);
+      }
+      return redirectResponse;
+    }
+  }
+
+  return response;
 }
 
 // Configure which routes to run middleware on

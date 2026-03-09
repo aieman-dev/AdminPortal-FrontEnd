@@ -1,10 +1,11 @@
 "use client"
 
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { PageHeader } from "@/components/portal/page-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { XCircle, Wallet, CheckCircle2, ShoppingBag, Settings } from "lucide-react"
 import { LoaderState } from "@/components/ui/loader-state"
+import { ResponsiveTabsHeader, TabOption } from "@/components/portal/responsive-tabs-header"
 import dynamic from "next/dynamic"
 
 // --- LAZY LOADING COMPONENTS ---
@@ -30,8 +31,26 @@ const ConsumeTerminalTab = dynamic(
 )
 
 export default function TransactionMasterPage() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get('tab') || "void-transaction";
+
+  // 1. Define your tab structure once
+  const transactionTabs: TabOption[] = [
+    { id: "void-transaction", label: "Void Transaction", icon: XCircle },
+    { id: "retail-manual-consume", label: "Retail/F&B Consume", icon: Wallet },
+    { id: "resync-transaction", label: "Resync Transaction", icon: CheckCircle2 },
+    { id: "shopify-order", label: "Shopify Order", icon: ShoppingBag },
+    { id: "consume-terminal", label: "Purchase/Consume History", icon: Settings },
+  ]
+
+  // 2. Handle tab switching (updates URL for back-button support)
+  const handleTabChange = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("tab", value)
+    router.replace(`${pathname}?${params.toString()}`)
+  }
 
   const tabTransitionClass = "mt-0 space-y-6 outline-none animate-in fade-in slide-in-from-bottom-5 duration-500 fill-mode-forward";
   
@@ -42,26 +61,14 @@ export default function TransactionMasterPage() {
         description="Unified management for transaction reversal, consumption, resync, and Shopify order validation."
       />
 
-      <Tabs defaultValue={activeTab} className="space-y-6">
-        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-          <TabsList className="inline-flex h-auto p-0 bg-transparent border-b w-full md:w-auto min-w-full md:min-w-0 justify-start rounded-none">
-            <TabsTrigger value="void-transaction" className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px relative data-[state=active]:z-10">
-              <XCircle className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> Void Transaction
-            </TabsTrigger>
-            <TabsTrigger value="retail-manual-consume" className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px -ml-px relative data-[state=active]:z-10">
-              <Wallet className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> Retail/F&B Consume
-            </TabsTrigger>
-            <TabsTrigger value="resync-transaction" className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px -ml-px relative data-[state=active]:z-10">
-              <CheckCircle2 className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> Resync Transaction
-            </TabsTrigger>
-            <TabsTrigger value="shopify-order" className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px -ml-px relative data-[state=active]:z-10">
-              <ShoppingBag className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> Shopify Order
-            </TabsTrigger>
-            <TabsTrigger value="consume-terminal" className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px -ml-px relative data-[state=active]:z-10">
-              <Settings className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> Purchase/Consume History Listing
-            </TabsTrigger>
-          </TabsList>
-        </div>
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+
+        {/* SHARED HEADER COMPONENT */}
+        <ResponsiveTabsHeader 
+            tabs={transactionTabs} 
+            activeTab={activeTab} 
+            onValueChange={handleTabChange} 
+        />
 
         <TabsContent value="void-transaction" className={tabTransitionClass}>
             <VoidTransactionTab />

@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
+import Fuse from "fuse.js"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
     Search, PlusCircle, ArrowRight, Briefcase, History,
@@ -217,13 +218,23 @@ export function CommandMenu() {
 };
 
 
-  const lowerQ = query.toLowerCase();
-  const filteredSystemActions = systemActions.filter(item => 
-      item.label.toLowerCase().includes(lowerQ) || 
-      item.keywords?.some(k => k.includes(lowerQ))
-  );
+    // FUZZY SEARCH HERE 
+    
+    // Get the smart regex results
+    const dynamicItems = getDynamicActions(); 
 
-  const displayedItems = [...getDynamicActions(), ...filteredSystemActions];
+    // Initialize Fuse.js for the static menu items
+    const fuse = new Fuse(systemActions, {
+        keys: ['label', 'keywords'],
+        threshold: 0.4, 
+    });
+
+    // If user is typing, use fuzzy search. Otherwise, show all static actions.
+    const fuzzyStaticItems = query 
+        ? fuse.search(query).map(result => result.item)
+        : systemActions;
+
+    const displayedItems = [...dynamicItems, ...fuzzyStaticItems];
 
   return (
     <AnimatePresence>

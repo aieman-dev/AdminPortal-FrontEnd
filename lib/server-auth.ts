@@ -1,22 +1,17 @@
 import { cookies } from "next/headers";
 import { BACKEND_ROLE_MAP } from "@/lib/constants";
+import { decodeJwt } from "jose";
 
 // Helper: Decode JWT string (Pure function, safe for anywhere)
 export function decodeUserRole(token: string | undefined): string {
   if (!token) return "User";
   
   try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
+    const payload = decodeJwt(token);
     
-    const payload = JSON.parse(jsonPayload);
-
     // Extract Role (Backend Specific Key)
-    const rawRole = payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] 
-                    || payload.role 
+    const rawRole = (payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] as string)
+                    || (payload.role as string) 
                     || "User";
 
     // Map to Frontend Role (e.g., ITTP_Support -> IT_ADMIN)

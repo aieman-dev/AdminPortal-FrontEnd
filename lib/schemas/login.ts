@@ -3,8 +3,8 @@ import { z } from "zod";
 
 // --- NEW: LOGIN SCHEMA  ---
 export const loginSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().trim().email({ message: "Please enter a valid email address" }),
+  password: z.string().trim().min(1, "Password is required"),
   rememberMe: z.boolean(),
 })
 

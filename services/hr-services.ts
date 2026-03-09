@@ -1,5 +1,6 @@
 // services/hr-services.ts
 
+import { logger } from "@/lib/logger";
 import { apiClient, ApiResponse } from "@/lib/api-client";
 import { SYSTEM_TERMINAL_ID } from "@/lib/constants";
 import { getContent, getDataObject} from "@/lib/api-client"
@@ -59,6 +60,16 @@ const ENDPOINTS = {
     EXECUTE_REPORT: "CarPark/report",
 };
 
+// --- NEW: GENERIC BACKEND RESPONSE WRAPPER ---
+export interface BackendResponse<T> {
+    content?: T;
+    data?: T;
+    message?: string;
+    error?: string;
+    errors?: Record<string, string[]>;
+    [key: string]: any; 
+}
+
 // --- MAPPERS ---
 const mapToAccount = (raw: any): Account => ({
     id: String(raw.accID),
@@ -83,7 +94,7 @@ export const hrService = {
     // SHARED UTILITIES & ACCOUNT LOOKUP
     searchSuperAppAccounts: async (query: string): Promise<Account[]> => {
         const payload = { email: query }; 
-        const response = await apiClient.post<any>(ENDPOINTS.SEARCH_ACCOUNTS, payload);
+        const response = await apiClient.post<BackendResponse<any[] | any>>(ENDPOINTS.SEARCH_ACCOUNTS, payload);
 
         if (!response.success) return [];
 
@@ -98,7 +109,7 @@ export const hrService = {
 
     getSuperAppAccount: async (accId: string | number) : Promise<Account | null> => {
         const payload = { accID: Number(accId) };
-        const response = await apiClient.post<any>(ENDPOINTS.GET_ACCOUNT_DETAILS, payload);
+        const response = await apiClient.post<BackendResponse<any>>(ENDPOINTS.GET_ACCOUNT_DETAILS, payload);
         if (!response.success || !response.data) return null;
         const data = response.data?.content || response.data?.data || response.data;
         return mapToAccount(data);
@@ -108,7 +119,7 @@ export const hrService = {
     //  NEW STAFF TAGGING (NON-CP)
     verifyUser: async (type: "qr" | "email", term: string) => {
         const payload = { searchValue: term, isEmail: type === "email" };
-        const response = await apiClient.post<any>(ENDPOINTS.VERIFY_USER, payload);
+        const response = await apiClient.post<BackendResponse<any>>(ENDPOINTS.VERIFY_USER, payload);
         
         if (!response.success) throw new Error(response.error || "User verification failed");
         
@@ -127,9 +138,9 @@ export const hrService = {
     },
 
     getDepartments: async (): Promise<CarParkDepartment[]> => {
-        const response = await apiClient.get<any>(ENDPOINTS.GET_DEPARTMENTS);
+        const response = await apiClient.get<BackendResponse<CarParkDepartment[]>>(ENDPOINTS.GET_DEPARTMENTS);
         if (!response.success) return [];
-        return response.data?.content || response.data || [];
+        return response.data?.content || response.data as any || [];
     },
 
     submitStaffTag: async (data: { email: string, fullName: string, hp?: string, staffNo: string, department: string }) => {
@@ -140,7 +151,7 @@ export const hrService = {
             departmentCode: data.department,
         };
 
-        const response = await apiClient.post<any>(ENDPOINTS.SUBMIT_TAG, payload);
+        const response = await apiClient.post<BackendResponse<{message: string}>>(ENDPOINTS.SUBMIT_TAG, payload);
 
         if (!response.success) {
              const content = response.data?.content;
@@ -363,7 +374,7 @@ export const hrService = {
             return { data, status };
 
         } catch (error) {
-            console.error("getPassDetail Error:", error);
+            logger.error("getPassDetail Error:", error);
             return null;
         }
     },

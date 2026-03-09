@@ -182,7 +182,7 @@ export default function BlacklistTab() {
         },
         { 
             header: "Name", 
-            accessor: "name", // Use 'name' from CarParkPass
+            accessor: "name", 
             className: "font-medium" 
         },
         { header: "Email", accessor: "email" },
@@ -224,7 +224,7 @@ export default function BlacklistTab() {
                             <div className="flex-1 w-full">
                                 <SearchField 
                                     label={viewMode === 'search' ? "Searching Active Cards" : "Search to Block User"}
-                                    placeholder="Enter Name, Email, Plate No or Card ID..."
+                                    placeholder="Enter Name, Email, Plate No or Card ID"
                                     value={searchTerm}
                                     onChange={setSearchTerm}
                                     onSearch={handleCardSearch}
@@ -345,7 +345,7 @@ export default function BlacklistTab() {
                         <Textarea 
                             value={blockReason}
                             onChange={(e) => setBlockReason(e.target.value)}
-                            placeholder="e.g. Payment default, Violation of terms..."
+                            placeholder="e.g. Payment default, Violation of terms"
                             className="resize-none"
                         />
                     </div>

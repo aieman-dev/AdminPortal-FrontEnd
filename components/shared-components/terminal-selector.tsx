@@ -54,6 +54,7 @@ export function TerminalSelector({
 
   // 1. Debounced Search Effect
   useEffect(() => {
+    let isActive = true;
     const fetchTerminals = async () => {
       if (!debouncedQuery.trim()) {
         if (terminals.length === 0) setTerminals([])
@@ -63,20 +64,25 @@ export function TerminalSelector({
       setLoading(true)
       try {
         const response = await itPoswfService.searchTerminals(debouncedQuery)
-        if (response.success && response.data) {
-          setTerminals(response.data.slice(0, 30))
-        } else {
-          setTerminals([])
+        if (isActive) {
+            if (response.success && response.data) {
+              setTerminals(response.data.slice(0, 30))
+            } else {
+              setTerminals([])
+            }
         }
       } catch (error) {
         console.error("Terminal search error:", error)
         setTerminals([])
       } finally {
-        setLoading(false)
+        if (isActive) setLoading(false)
       }
     }
 
     fetchTerminals()
+    return () => { 
+        isActive = false; 
+      }
     }, [debouncedQuery])
 
 

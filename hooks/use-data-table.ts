@@ -26,7 +26,7 @@ export function useDataTable<T>({
     setCurrentPage, 
     reset: resetPagination, 
     paginate 
-  } = usePagination({ pageSize });
+  } = usePagination({ pageSize, mode: "client" });
 
   // 3. Handle Sort Click
   const handleSort = useCallback((key: string) => {

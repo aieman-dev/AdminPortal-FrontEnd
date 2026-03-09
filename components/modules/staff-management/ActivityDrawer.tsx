@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Copy, Clock, User, Database, CheckCircle2, FileJson, AlertCircle } from "lucide-react"
 import { AuditLog } from "@/type/staff"
 import { useAppToast } from "@/hooks/use-app-toast"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { formatDateTime } from "@/lib/formatter"
 
@@ -48,6 +49,7 @@ const parseAffectedTables = (raw: string | string[] | null | undefined): string[
 
 export function ActivityDrawer({ log, isOpen, onClose }: ActivityDrawerProps) {
   const  toast = useAppToast()
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState("new");
 
   // Reset tab to "new" (or "old" if new is empty) when drawer opens
@@ -73,12 +75,10 @@ export function ActivityDrawer({ log, isOpen, onClose }: ActivityDrawerProps) {
   const newData = parseJsonField(log.newValue);
   const oldData = parseJsonField(log.oldValue);
   const hasChanges = newData || oldData;
-
   const affectedTables = parseAffectedTables(log.tableAffected);
 
   const handleCopy = (text: string) => {
     if (!text) return;
-
     let contentToCopy = text;
     try {
         const parsed = JSON.parse(text);
@@ -151,9 +151,12 @@ export function ActivityDrawer({ log, isOpen, onClose }: ActivityDrawerProps) {
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()} modal={false}>
       <SheetContent 
-        side="right" 
-        className="w-full sm:max-w-[600px] p-0 border-l shadow-2xl bg-background flex flex-col h-full focus:outline-none"
-      >
+        side={isMobile ? "bottom" : "right"} 
+                className={cn(
+                "w-full p-0 shadow-2xl bg-background flex flex-col focus:outline-none overflow-hidden", // Added overflow-hidden
+                isMobile ? "h-[85dvh] rounded-t-2xl border-t mt-24" : "h-screen sm:max-w-[450px] border-l"
+            )}
+        >
         {/* HEADER */}
         <div className="p-6 border-b bg-muted/10 shrink-0">
             <div className="flex items-center gap-2 mb-3">
@@ -165,7 +168,7 @@ export function ActivityDrawer({ log, isOpen, onClose }: ActivityDrawerProps) {
                     {log.module || "SYSTEM"}
                 </Badge>
                 <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-3 w-3" /> {new Date(log.timestamp).toLocaleString()}
+                    <Clock className="h-3 w-3" /> {formatDateTime(log.timestamp)}
                 </span>
             </div>
             
@@ -201,8 +204,7 @@ export function ActivityDrawer({ log, isOpen, onClose }: ActivityDrawerProps) {
         </div>
 
         {/* CONTENT */}
-        <ScrollArea className="flex-1">
-            <div className="p-6">
+            <div className="flex-1 overflow-y-auto min-h-0 p-6">
                 {hasChanges ? (
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                         <TabsList className="grid w-full grid-cols-2 mb-4">
@@ -211,13 +213,13 @@ export function ActivityDrawer({ log, isOpen, onClose }: ActivityDrawerProps) {
                         </TabsList>
                         
                         <TabsContent value="new" className="mt-0">
-                            <div className="rounded-xl border bg-card p-5 shadow-sm max-h-[50vh] overflow-y-auto scrollbar-hide border-indigo-100/50 mx-2">
+                            <div className="relative rounded-xl border bg-card p-5 shadow-sm border-indigo-100/50 mx-2">
                                 {renderDataView(newData)}
                             </div>
                         </TabsContent>
                         
                         <TabsContent value="old" className="mt-0">
-                            <div className="rounded-xl border bg-muted/30 p-5 shadow-inner max-h-[45vh] overflow-y-auto scrollbar-hide mx-2">
+                            <div className="relative rounded-xl border bg-muted/30 p-5 shadow-inner mx-2">
                                 {renderDataView(oldData)}
                             </div>
                         </TabsContent>
@@ -229,20 +231,20 @@ export function ActivityDrawer({ log, isOpen, onClose }: ActivityDrawerProps) {
                     </div>
                 )}
             </div>
-        </ScrollArea>
 
         {/* FOOTER */}
-        <div className="p-4 border-t bg-muted/5 flex gap-2 shrink-0">
+        <div className="p-4 border-t bg-muted/5 flex gap-2 shrink-0 justify-end">
             <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={() => handleCopy(activeTab === "new" ? (log.newValue || "") : (log.oldValue || ""))}
                 disabled={activeTab === "new" ? !log.newValue : !log.oldValue}
-                className="flex-1 gap-2">
-                <FileJson className="h-3.5 w-3.5" /> 
+                className="flex-1 gap-2 h-10"
+            >
+                <FileJson className="h-4 w-4" /> 
                 Copy {activeTab === "new" ? "New" : "Previous"} JSON
             </Button>
-            <Button variant="secondary" size="sm" onClick={onClose}>
+            <Button variant="secondary" size="sm" className="h-10 px-6" onClick={onClose}>
                 Close
             </Button>
         </div>

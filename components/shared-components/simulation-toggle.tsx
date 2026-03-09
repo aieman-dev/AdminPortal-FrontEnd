@@ -38,9 +38,9 @@ export function SimulationToggle({ isSimulating, onToggle }: Props) {
     return (
         <>
             <div className={cn(
-                "flex items-center gap-3 px-4 py-2 rounded-lg border transition-all duration-300",
+                "flex items-center justify-between gap-3 px-4 py-2 rounded-lg border transition-all duration-300 w-full md:w-auto",
                 isSimulating 
-                    ? "bg-amber-50 border-amber-200 shadow-inner" 
+                    ? "bg-amber-50 border-amber-200 shadow-inner dark:bg-amber-950/30 dark:border-amber-800" 
                     : "bg-background border-border"
             )}>
                 <div className="flex items-center gap-2">

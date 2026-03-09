@@ -8,7 +8,7 @@ import { canDraftPackage } from "@/lib/auth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input"; 
-import { STATUS_COLORS } from "@/lib/constants";
+import { STATUS_COLORS, PACKAGE_STATUS } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
@@ -47,17 +47,17 @@ export default function PackageFilters({
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   const filters = [
-    { label: "Pending", value: "Pending", color: STATUS_COLORS["Pending"] },
-    { label: "Active", value: "Active", color: STATUS_COLORS["Active"] },
-    { label: "Expiring Soon", value: "ExpiringSoon", color: STATUS_COLORS["ExpiringSoon"] },
-    { label: "Expired", value: "Expired", color: STATUS_COLORS["Expired"] },
-    { label: "Rejected", value: "Rejected", color: STATUS_COLORS["Rejected"] },
-    { label: "Draft", value: "Draft", color: STATUS_COLORS["Draft"] },
-    { label: "Show All", value: "Show All", color: STATUS_COLORS["Show All"] },
+    { label: "Pending", value: PACKAGE_STATUS.PENDING, color: STATUS_COLORS[PACKAGE_STATUS.PENDING] },
+    { label: "Active", value: PACKAGE_STATUS.ACTIVE, color: STATUS_COLORS[PACKAGE_STATUS.ACTIVE] },
+    { label: "Expiring Soon", value: PACKAGE_STATUS.EXPIRING_SOON, color: STATUS_COLORS[PACKAGE_STATUS.EXPIRING_SOON] },
+    { label: "Expired", value: PACKAGE_STATUS.EXPIRED, color: STATUS_COLORS[PACKAGE_STATUS.EXPIRED] },
+    { label: "Rejected", value: PACKAGE_STATUS.REJECTED, color: STATUS_COLORS[PACKAGE_STATUS.REJECTED] },
+    { label: "Draft", value: PACKAGE_STATUS.DRAFT, color: STATUS_COLORS[PACKAGE_STATUS.DRAFT] },
+    { label: "Show All", value: PACKAGE_STATUS.ALL, color: STATUS_COLORS[PACKAGE_STATUS.ALL] },
   ];
 
   const visibleFilters = filters.filter(f => {
-    if (f.value === "Draft") return canDraftPackage(userDepartment);
+    if (f.value === PACKAGE_STATUS.DRAFT) return canDraftPackage(userDepartment);
     return true;
   });
 

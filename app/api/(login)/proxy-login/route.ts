@@ -4,6 +4,7 @@ import { BACKEND_API_BASE } from "@/lib/config";
 import { cookies } from "next/headers";
 import { decodeUserRole } from "@/lib/server-auth";
 import { decodeJwt } from 'jose';
+import { logger } from "@/lib/logger";
 
 
 export async function POST(request: NextRequest) {
@@ -14,11 +15,11 @@ export async function POST(request: NextRequest) {
     // 1. Target the NEW backend endpoint
     const BACKEND_URL = `${BACKEND_API_BASE}/api/auth/login`;
 
-    console.log("------------------------------------------------");
-    console.log("Attempting Login Proxy:");
-    console.log("Target URL:", BACKEND_URL); 
-    console.log("Environment Var:", process.env.NEXT_PUBLIC_BACKEND_API_URL);
-    console.log("Config Var:", BACKEND_API_BASE);
+    logger.debug("------------------------------------------------");
+    logger.debug("Attempting Login Proxy:");
+    logger.debug("Target URL:", BACKEND_URL); 
+    logger.debug("Environment Var:", process.env.NEXT_PUBLIC_BACKEND_API_URL);
+    logger.debug("Config Var:", BACKEND_API_BASE);
 
     const apiResponse = await fetch(BACKEND_URL, {
       method: "POST",
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
     });
 
     const responseText = await apiResponse.text();
-    console.log("Raw Backend Response:", responseText.slice(0, 500)); 
+    logger.debug("Raw Backend Response:", responseText.slice(0, 500)); 
 
     let data;
     try {
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     // Check if token exists before proceeding
     if (!token) {
-        console.error("Login 500 Error: Backend returned 200 OK but no token found in response.", data);
+        logger.error("Login 500 Error: Backend returned 200 OK but no token found in response.", data);
         return NextResponse.json(
             { message: "Account setup incomplete: No access token received." }, 
             { status: 500 }
@@ -126,13 +127,13 @@ export async function POST(request: NextRequest) {
             roles: content.roles || []
         };
     } catch (parseError) {
-        console.error("Token Parsing Error:", parseError);
+        logger.error("Token Parsing Error:", parseError);
     }
 
     return NextResponse.json({ success: true, user }, { status: 200 });
 
   } catch (error) {
-    console.error("LOGIN PROXY FAILED:", error);
+    logger.error("LOGIN PROXY FAILED:", error);
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }

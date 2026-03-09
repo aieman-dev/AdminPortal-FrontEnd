@@ -1,6 +1,7 @@
 // lib/server-api.ts
 import { cookies, headers } from "next/headers";
 import { BACKEND_API_BASE } from "@/lib/config";
+import { logger } from "@/lib/logger";
 
 // This function can ONLY be used in Server Components
 export async function serverFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
@@ -31,14 +32,14 @@ export async function serverFetch<T>(endpoint: string, options: RequestInit = {}
     });
 
     if (!res.ok) {
-      console.error(`ServerFetch Error [${endpoint}]: ${res.status} ${res.statusText}`);
+      logger.error("ServerFetch API Error", { endpoint, status: res.status })
       return null;
     }
 
     const json = await res.json();
     return json as T; 
   } catch (error) {
-    console.error("ServerFetch Fatal:", error);
+    logger.error("ServerFetch Fatal:", error);
     return null;
   }
 }

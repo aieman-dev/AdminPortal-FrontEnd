@@ -262,8 +262,8 @@ export default function DeactivateTicketTab() {
   return (
     <>
     {/* SIMULATION TOGGLE */}
-      <div className="w-full flex justify-end mb-4 md:mb-0 md:h-0 relative z-20">
-         <div className="md:absolute right-0 md:-top-[60px]">
+      <div className="w-full relative z-20 mb-4 md:mb-0 md:h-0">
+         <div className="w-full md:w-auto md:absolute right-0 md:-top-[60px]">
              <SimulationToggle isSimulating={isSimulating} onToggle={(val) => { 
                  setIsSimulating(val);
                  if (!val && searchQuery) fetchData(searchQuery, true);
@@ -403,13 +403,17 @@ export default function DeactivateTicketTab() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={updatingRowIds.has(deactivatingRow.id)}>Cancel</AlertDialogCancel>
-              <AlertDialogAction 
-                  onClick={handleDeactivateConfirm} 
-                  disabled={updatingRowIds.has(deactivatingRow.id)} 
-                  className={cn(isSimulating ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
-              >
-                  {isSimulating ? "Run Simulation" : "Deactivate"}
-              </AlertDialogAction>
+              <LoadingButton 
+                    onClick={(e) => {
+                        e.preventDefault(); 
+                        handleDeactivateConfirm();
+                    }} 
+                    isLoading={updatingRowIds.has(deactivatingRow.id)} 
+                    loadingText={isSimulating ? "Simulating..." : "Deactivating..."}
+                    className={cn(isSimulating ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
+                >
+                    {isSimulating ? "Run Simulation" : "Deactivate"}
+                </LoadingButton>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

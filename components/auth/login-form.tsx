@@ -5,9 +5,9 @@ import { useState, Dispatch, SetStateAction } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/navigation"
-import { Loader2, Eye, EyeOff, Info } from "lucide-react"
+import { Eye, EyeOff, Info } from "lucide-react"
 import { EmailAutocomplete } from "@/components/ui/email-autocomplete"
-import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -21,7 +21,10 @@ import {
 
 import { login } from "@/lib/auth"
 import { loginSchema, LoginValues } from "@/lib/schemas/login"
+import { logger } from "@/lib/logger"
+import { RateLimiter } from "@/lib/security"
 
+const loginRateLimiter = new RateLimiter(5, 15 * 60 * 1000) // 5 attempts per 15 minutes
 
 interface LoginFormProps {
   onSubmitting?: Dispatch<SetStateAction<boolean>>;
@@ -47,31 +50,40 @@ export function LoginForm({ onSubmitting }: LoginFormProps) {
 
   // 2. Handle Submission
   const onSubmit = async (values: LoginValues) => {
-    const cleanEmail = values.email.trim();
-    const cleanPassword = values.password.trim();
-
     setGeneralError("")
     setForgotMsg(false)
 
-    if (!cleanEmail || !cleanPassword) {
-        setGeneralError("Email and Password cannot be empty or just spaces.");
-        return; 
+    //  Check Rate Limit BEFORE doing anything
+    if (!loginRateLimiter.isAllowed(values.email)) {
+      setGeneralError("Too many failed login attempts. Please try again in 15 minutes.");
+      logger.warn("Rate limit triggered for email", { email: values.email });
+      return;
     }
 
     if (onSubmitting) onSubmitting(true);
 
     try {
-      const response = await login(cleanEmail, cleanPassword, values.rememberMe)
+      const response = await login(values.email, values.password, values.rememberMe)
 
       if (response.success) {
+        loginRateLimiter.reset(values.email);
         router.push("/portal")
+        logger.info("User logged in successfully", { email: values.email })
       } else {
         setGeneralError(response.error || "Login failed")
         if (onSubmitting) onSubmitting(false);
+        logger.warn("User login failed", { 
+            email: values.email, 
+            reason: response.error || "Unknown" 
+        })
       }
-    } catch (err) {
+    } catch (err: any) {
       setGeneralError("An unexpected error occurred")
       if (onSubmitting) onSubmitting(false);
+      logger.error("Client login request crashed", { 
+          email: values.email, 
+          error: err.message || err 
+      })
     }
   }
 
@@ -177,20 +189,14 @@ export function LoginForm({ onSubmitting }: LoginFormProps) {
         )}
 
         {/* Submit Button */}
-        <Button 
+        <LoadingButton 
           type="submit" 
           className="w-full h-11 font-semibold shadow-sm" 
-          disabled={isSubmitting}
+          isLoading={isSubmitting}
+          loadingText="Signing in..."
         >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Signing in...
-            </>
-          ) : (
-            "Sign in"
-          )}
-        </Button>
+          Sign in
+        </LoadingButton>
       </form>
     </Form>
   )

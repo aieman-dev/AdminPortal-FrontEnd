@@ -1,5 +1,7 @@
 // services/themepark-support.ts
 
+import { logger } from "@/lib/logger";
+import { formatZodError } from "@/lib/formatter";
 import { apiClient, ApiResponse, getContent, getDataObject } from "@/lib/api-client";
 import { parseAmount } from "@/lib/transformers/wallet";
 import { 
@@ -48,6 +50,8 @@ import {
     TicketUpdatePayload,
     ConsumeTicketItem
 } from "../type/themepark-support"; 
+import { safeMap } from "@/lib/utils";
+import { get } from "lodash";
 
 const ENDPOINTS = {
     // Transaction Master
@@ -62,6 +66,7 @@ const ENDPOINTS = {
     // Attraction Master
     TERMINAL_SEARCH: "support/consume/terminals", 
     TERMINAL_UPDATE: "support/consume/terminals/update-uuid",
+    TERMINAL_TYPE: "support/terminal-types",
 
     // Ticket Master
     DEACTIVATE_TICKET_SEARCH: "support/tickets/search",
@@ -92,81 +97,40 @@ const ENDPOINTS = {
 const mapToTransactionHistory = (raw: any): TransactionHistory => {
     const result = TransactionHistorySchema.safeParse(raw);
     if (!result.success) {
-        console.error("Transaction Mapping Error:", result.error);
-        return {
-            trxID: 0,
-            transactionId: "ERR",
-            invoiceNo: "Data Error",
-            email: "N/A",
-            mobile: "N/A",
-            attractionName: "Invalid Data Row",
-            amount: 0,
-            trxType: "Purchase",
-            createdDate: new Date().toISOString()
-        };
+        logger.warn("Zod Mapping Mismatch", { type: "TransactionHistory", error: result.error, raw });
+        throw new Error(formatZodError("TransactionHistory", result.error));
     }
     return result.data;
 };
+
 
 // Map PascalCase Backend to camelCase Frontend
 const mapToAvailableTicket = (raw: any): AvailableTicket => {
     const result = AvailableTicketSchema.safeParse(raw);
     
     if (!result.success) {
-        console.error("Ticket Mapping Error:", result.error);
-        return {
-            id: "ERR",
-            packageName: "Data Error",
-            itemName: "Invalid Data",
-            consumeTerminal: 0,
-            ticketType: "N/A",
-            itemPoint: 0,
-            packageStatus: "Inactive",
-            balanceQty: 0,
-            packageID: 0,
-            packageItemID: 0,
-            trxItemID: 0,
-            sourceType: "N/A",
-            ticketItemID: 0
-        };
-    }
-    return result.data;
-};
-const mapToDeactivatableTicket = (raw: any): DeactivatableTicket => {
-    const result = DeactivatableTicketSchema.safeParse(raw);
-    if (!result.success) {
-        console.error("DeactivatableTicket Mapping Error:", result.error);
-        return {
-            id: "ERR",
-            ticketID: 0,
-            ticketNo: "DATA ERROR",
-            ticketName: "Invalid Data",
-            quantity: 0,
-            purchaseDate: "",
-            status: "Error",
-            invoiceNo: "N/A"
-        };
+        logger.warn("Zod Mapping Mismatch", { type: "AvailableTicket", error: result.error, raw });
+        throw new Error(formatZodError("AvailableTicket", result.error));
     }
     return result.data;
 };
 
+
+const mapToDeactivatableTicket = (raw: any): DeactivatableTicket => {
+    const result = DeactivatableTicketSchema.safeParse(raw);
+    if (!result.success) {
+        logger.warn("Zod Mapping Mismatch", { type: "DeactivatableTicket", error: result.error, raw })
+        throw new Error(formatZodError("DeactivatableTicket", result.error));
+    }
+    return result.data;
+};
+
+
 const mapToConsumptionHistory = (raw: any): ConsumptionHistory => {
     const result = ConsumptionHistorySchema.safeParse(raw);
     if (!result.success) {
-        console.error("ConsumptionHistory Mapping Error:", result.error);
-        return {
-            id: "ERR",
-            consumptionNo: "ERR",
-            trxNo: "N/A",
-            ticketNo: "N/A",
-            ticketItemNo: "N/A",
-            ticketName: "Invalid Data",
-            terminalID: 0,
-            ticketQty: 0,
-            consumeQty: 0,
-            modifiedDate: "",
-            status: "Error"
-        };
+        logger.warn("Zod Mapping Mismatch", { type: "ConsumptionHistory", error: result.error, raw });
+        throw new Error(formatZodError("ConsumptionHistory", result.error));
     }
     return result.data;
 };
@@ -174,17 +138,8 @@ const mapToConsumptionHistory = (raw: any): ConsumptionHistory => {
 const mapToAccount = (raw: any): Account => {
     const result = AccountSchema.safeParse(raw);
     if (!result.success) {
-        console.error("Account Mapping Error:", result.error);
-        return {
-            id: "0",
-            accId: "0",
-            email: "Data Error",
-            firstName: "Invalid",
-            mobile: "N/A",
-            createdDate: "",
-            accountStatus: "Inactive",
-            transactions: []
-        };
+        logger.warn("Zod Mapping Mismatch", { type: "Account", error: result.error, raw });
+        throw new Error(formatZodError("Account", result.error));
     }
     return result.data;
 };
@@ -192,15 +147,8 @@ const mapToAccount = (raw: any): Account => {
 const mapToTerminal = (raw: any): Terminal => {
     const result = TerminalSchema.safeParse(raw);
     if (!result.success) {
-        console.error("Terminal Mapping Error:", result.error);
-        return {
-            id: "0",
-            terminalName: "Invalid Terminal",
-            uuid: "N/A",
-            terminalType: "POS",
-            status: "Inactive",
-            modifiedDate: ""
-        };
+        logger.warn("Zod Mapping Mismatch", { type: "Terminal", error: result.error,raw });
+        throw new Error(formatZodError("Terminal", result.error));
     }
     return result.data;
 };
@@ -229,13 +177,17 @@ export const itPoswfService = {
         const rawTrx = data.transactionHistory || [];
         const rawTickets = data.ticketHistory || [];
 
-        return { 
-            success: true, 
-            data: {
-                transactionHistory: rawTrx.map(mapToTransactionHistory),
-                ticketHistory: rawTickets 
-            } 
-        };
+        try {
+            return { 
+                success: true, 
+                data: {
+                    transactionHistory: safeMap(rawTrx, mapToTransactionHistory, "Transaction History"),
+                    ticketHistory: rawTickets 
+                } 
+            };
+        } catch (error: any) {
+            return { success: false, error: error.message };
+        }
     },
 
     searchShopifyOrder: async (orderName: string): Promise<ApiResponse<ShopifyOrder>> => {
@@ -364,34 +316,25 @@ export const itPoswfService = {
         }
 
         const data = getDataObject<any>(response.data);
-        const finalData: ManualConsumeData = {
-            creditBalance: data.creditBalance || 0,
-            tickets: (data.tickets || []).map(mapToAvailableTicket),
-            accID: data.accID, 
-            rQRID: data.rrQrId, 
-            myQr: data.myQr, 
-            totalAmount: 0, 
-            totalRewardCredit: 0,
-        };
-        return { success: true, data: finalData };
+        try {
+            const finalData: ManualConsumeData = {
+                creditBalance: data.creditBalance || 0,
+                tickets: safeMap(data.tickets || [], mapToAvailableTicket, "Available Tickets"),
+                accID: data.accID, 
+                rQRID: data.rrQrId, 
+                myQr: data.myQr, 
+                totalAmount: 0, 
+                totalRewardCredit: 0,
+            };
+            return { success: true, data: finalData };
+        } catch (error: any) {
+            return { success: false, error: error.message };
+        }
     },
 
     //Map Frontend camelCase payload BACK to PascalCase for backend
     executeManualConsume: async (payload: TicketConsumeExecutePayload): Promise<ApiResponse<{ message: string }>> => {
-        const backendPayload = {
-            ...payload,
-            consumeList: payload.consumeList.map(item => ({
-                PackageName: item.packageName,
-                ItemName: item.itemName,
-                TicketType: item.ticketType,
-                PackageID: item.packageID,
-                PackageItemID: item.packageItemID,
-                TicketItemID: item.ticketItemID,
-                ConsumeQty: item.consumeQty
-            }))
-        };
-
-        const response = await apiClient.post<{ message: string }>(ENDPOINTS.MANUAL_CONSUME_TICKET_EXECUTE, backendPayload);
+        const response = await apiClient.post<{ message: string }>(ENDPOINTS.MANUAL_CONSUME_TICKET_EXECUTE, payload);
 
         if (!response.success) {
             const isConflict = response.error && (response.error.includes("already consumed") || response.error.includes("invalid status"));
@@ -425,9 +368,14 @@ export const itPoswfService = {
         const response = await apiClient.post<any>(ENDPOINTS.TERMINAL_SEARCH, payload);
         if (!response.success) return { success: false, error: response.error || "Failed to search terminals." };
 
-        const rawData = getContent<BackendTerminalDTO>(response.data);
-        const terminals: Terminal[] = rawData.map(mapToTerminal);
-        return { success: true, data: terminals };
+        try {
+            const rawData = getContent<BackendTerminalDTO>(response.data);
+            const terminals = safeMap(rawData, mapToTerminal, "Terminals");
+            return { success: true, data: terminals };
+        } catch (error:any) {
+            logger.error("Terminal Search Mapping Error", { error, rawResponse: response.data });
+            return { success: false, error: error.message || "Data validation failed." };
+        }
     },
 
     fetchAllTerminals: async (): Promise<ApiResponse<Terminal[]>> => {
@@ -435,12 +383,29 @@ export const itPoswfService = {
         const response = await apiClient.post<any>(ENDPOINTS.TERMINAL_SEARCH, payload);
         if (!response.success) return { success: false, error: "Failed to fetch terminal list." };
 
-        const terminals: Terminal[] = (Array.isArray(response.data) ? response.data : []).map(mapToTerminal);
-        return { success: true, data: terminals };
+        try {
+            const rawArray = Array.isArray(response.data) ? response.data : [];
+            const terminals = safeMap(rawArray, mapToTerminal, "Terminals");
+            return { success: true, data: terminals };
+        } catch (error: any) {
+            return { success: false, error: error.message };
+        }
     },
 
+    getTerminalTypes: async (): Promise<string[]> => {
+    try {
+      const response = await apiClient.get<any>(ENDPOINTS.TERMINAL_TYPE);
+      if (!response.success || !response.data) return [];
+    
+      return getContent<string>(response.data);
+    } catch (error) {
+      console.error("Failed to fetch terminal types", error);
+      return []; 
+    }
+  },
+
     updateTerminalUUID: async (terminalId: string, newUUID: string, terminalType: string): Promise<ApiResponse<{ message: string }>> => {
-        const payload = { TerminalID: Number(terminalId), NewUUID: newUUID.trim(), TerminalType: terminalType }; //terminal type is not ready yet
+        const payload = { TerminalID: Number(terminalId), NewUUID: newUUID.trim(), TerminalType: terminalType.trim() }; //terminal type is not ready yet
         const response = await apiClient.post<{ message: string }>(ENDPOINTS.TERMINAL_UPDATE, payload);
         if (!response.success) return { success: false, error: response.error || "Failed to update terminal UUID." };
         return { success: true, data: getDataObject(response.data) };
@@ -468,23 +433,30 @@ export const itPoswfService = {
     searchAccounts: async (email: string): Promise<ApiResponse<Account[]>> => {
         const payload = { email: email };
         const response = await apiClient.post<any>(ENDPOINTS.SEARCH_ACCOUNTS, payload);
-        if (!response.success) return { success: false, error: response.error || "Failed to search accounts." };
+        if (!response.success) return { success: false, error: response.error};
 
         const content = getDataObject<any>(response.data);
-        let rawResult = [];
-        if (Array.isArray(content)) rawResult = content;
-        else if (content && content.accID) rawResult = [content];
+        let rawResult = Array.isArray(content) ? content : (content?.accID ? [content] : []);
 
-        return { success: true, data: rawResult.map(mapToAccount) };
+        try {
+        const safeData = safeMap(rawResult, mapToAccount, "Accounts");
+        return { success: true, data: safeData };
+        } catch (error: any) {
+            return { success: false, error: error.message }; 
+        }
     },
 
     getAccountDetails: async (accId: string): Promise<ApiResponse<Account>> => {
         const payload = { accID: Number(accId) };
         const response = await apiClient.post<BackendAccountDTO>(ENDPOINTS.GET_ACCOUNT_DETAILS, payload);
         if (!response.success || !response.data) return { success: false, error: response.error || "Failed to retrieve account details." };
-        
         const data = getDataObject<BackendAccountDTO>(response.data);
-        return { success: true, data: mapToAccount(data) };
+
+        try {
+            return { success: true, data: mapToAccount(data) };
+        } catch (error: any) {
+            return { success: false, error: error.message };
+        }
     },
 
     resetAccountPassword: async (accId: string): Promise<ApiResponse<{ message: string }>> => {
@@ -545,7 +517,12 @@ export const itPoswfService = {
         const response = await apiClient.post<any[]>(ENDPOINTS.DEACTIVATE_TICKET_SEARCH, payload);
         if (!response.success || !response.data) return { success: false, error: response.error || "Failed to search tickets." };
         const rawList = getContent<any>(response.data);
-        return { success: true, data: rawList.map(mapToDeactivatableTicket) };
+
+        try {
+            return { success: true, data: safeMap(rawList, mapToDeactivatableTicket, "Deactivatable Tickets") };
+        } catch (error: any) {
+            return { success: false, error: error.message };
+        }
     },
 
     searchConsumptionHistory: async (invoiceNo: string, ticketNo: string = ""): Promise<ApiResponse<ConsumptionHistory[]>> => {
@@ -556,7 +533,12 @@ export const itPoswfService = {
         const response = await apiClient.post<any[]>(ENDPOINTS.DEACTIVATE_CONSUMPTION_SEARCH, payload);
         if (!response.success || !response.data) return { success: false, error: response.error || "Failed to search consumption history." };
         const rawList = getContent<any>(response.data);
-        return { success: true, data: rawList.map(mapToConsumptionHistory) };
+
+        try {
+            return { success: true, data: safeMap(rawList, mapToConsumptionHistory, "Consumption History") };
+        } catch (error: any) {
+            return { success: false, error: error.message };
+        }
     },
 
     deactivateTicket: async (ticketId: number | string): Promise<ApiResponse<void>> => {

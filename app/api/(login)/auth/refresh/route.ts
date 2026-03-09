@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BACKEND_API_BASE } from "@/lib/config";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies();
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
 
   } catch (error) {
-    console.error("Refresh Route Error:", error);
+    logger.error("Token refresh failed", { error })
     return NextResponse.json({ message: "Server error" }, { status: 500 });
   }
 }

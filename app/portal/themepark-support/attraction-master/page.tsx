@@ -1,9 +1,11 @@
 "use client"
 
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { PageHeader } from "@/components/portal/page-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { PackageIcon, Settings, History, DivideCircle } from "lucide-react"
 import { LoaderState } from "@/components/ui/loader-state"
+import { ResponsiveTabsHeader, TabOption } from "@/components/portal/responsive-tabs-header"
 import dynamic from "next/dynamic"
 
 // --- LAZY LOADING COMPONENTS ---
@@ -27,6 +29,24 @@ const BComparePackageTab = dynamic(
 
 
 export default function AttractionMasterPage() {
+   const router = useRouter()
+   const pathname = usePathname()
+   const searchParams = useSearchParams()
+   const activeTab = searchParams.get('tab') || "package-listing"
+
+   const attractionTabs: TabOption[] = [
+    { id: "package-listing", label: "Package Listing", icon: PackageIcon },
+    { id: "update-terminal", label: "Update Terminal", icon: Settings },
+    { id: "consume-history-by-terminal", label: "Terminal History", icon: History },
+    { id: "bcompare-package", label: "BCompare Package", icon: DivideCircle },
+   ]
+
+   const handleTabChange = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("tab", value)
+    router.replace(`${pathname}?${params.toString()}`)
+   }
+
    const tabTransitionClass = "mt-0 space-y-6 outline-none animate-in fade-in slide-in-from-bottom-5 duration-500 fill-mode-forward";
    
   return (
@@ -36,32 +56,12 @@ export default function AttractionMasterPage() {
         description="Manage packages, terminal access, and retrieve consumption history by terminal."
       />
 
-      {/* FIX: Added 'w-full' to Tabs to ensure full width.
-         Note: The default value determines which tab loads first. 
-         Only 'package-listing' code will download initially.
-      */}
-      <Tabs defaultValue="package-listing" className="space-y-6 w-full">
-        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-          <TabsList className="inline-flex h-auto p-0 bg-transparent border-b w-full md:w-auto min-w-full md:min-w-0 justify-start rounded-none">
-            
-            <TabsTrigger value="package-listing" className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px relative data-[state=active]:z-10">
-              <PackageIcon className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> Package Listing
-            </TabsTrigger>
-            
-            <TabsTrigger value="update-terminal" className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px -ml-px relative data-[state=active]:z-10">
-              <Settings className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> Update Terminal
-            </TabsTrigger>
-            
-            <TabsTrigger value="consume-history-by-terminal" className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px -ml-px relative data-[state=active]:z-10">
-              <History className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> Consume Terminal History Listing
-            </TabsTrigger>
-            
-            <TabsTrigger value="bcompare-package" className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px -ml-px relative data-[state=active]:z-10">
-              <DivideCircle className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> BCompare Package
-            </TabsTrigger>
-
-          </TabsList>
-        </div>
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6 w-full">
+        <ResponsiveTabsHeader 
+            tabs={attractionTabs} 
+            activeTab={activeTab} 
+            onValueChange={handleTabChange} 
+        />
 
         <TabsContent value="package-listing"className={tabTransitionClass}>
             <PackageListingTab />

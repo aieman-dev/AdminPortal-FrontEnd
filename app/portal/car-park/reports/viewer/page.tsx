@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import { usePagination } from "@/hooks/use-pagination"
 import { cn } from "@/lib/utils"
+import { formatDateTime } from "@/lib/formatter"
 
 export default function ReportViewerPage() {
     const searchParams = useSearchParams();
@@ -120,7 +121,7 @@ const validateFilters = () => {
             ),
             cell: (val: any) => {
                  if (typeof val === 'string' && val.includes('T') && val.length > 10 && !isNaN(Date.parse(val))) {
-                     return <span className="whitespace-nowrap">{new Date(val).toLocaleString()}</span>;
+                     return <span className="whitespace-nowrap">{formatDateTime(val)}</span>;
                  }
                  return val;
             }

@@ -1,5 +1,6 @@
 // services/staff-services.ts
 
+import { logger } from "@/lib/logger";
 import { apiClient, ApiResponse, getContent, getDataObject } from "@/lib/api-client";
 import { StaffMemberSchema, SearchedUserSchema } from "@/lib/schemas/staff";
 import { 
@@ -13,6 +14,7 @@ import {
   AuditLogResponse,
   AuditLogListPayload
 } from "@/type/staff";
+import { get } from "lodash";
 
 // ENDPOINTS: Pointing to actual Backend Routes
 const ENDPOINTS = {
@@ -25,6 +27,7 @@ const ENDPOINTS = {
 
   AUDIT_LOG_LIST: "AuditLog/list",
   AUDIT_LOG_USER: "AuditLog/user",
+  AUDIT_MODULES: "AuditLog/modules"
 };
 
 
@@ -32,7 +35,7 @@ const ENDPOINTS = {
 const mapToStaff = (raw: any): StaffMember => {
   const result = StaffMemberSchema.safeParse(raw);
   if (!result.success) {
-    console.error("Staff Mapping Error:", result.error);
+    logger.warn("Zod Mapping Mismatch", { type: "StaffMember", error: result.error });
     return {
       id: "ERR",
       accId: 0,
@@ -50,7 +53,7 @@ const mapToStaff = (raw: any): StaffMember => {
 const mapToSearchedUser = (raw: any): SearchedUser => {
   const result = SearchedUserSchema.safeParse(raw);
   if (!result.success) {
-    console.error("User Search Mapping Error:", result.error);
+    logger.warn("Zod Mapping Mismatch", { type: "SearchedUser", error: result.error });
     return {
       id: "0",
       accId: 0,
@@ -111,7 +114,7 @@ export const staffService = {
     return response.data!;
   },
 
-  updateStaffRole: async (payload: { RoleID: number | string, RoleName: string, ExpiryDate: string | null, RecordStatus: string }) => {
+  updateStaffRole: async (payload: { roleId: number | string, roleName: string, expiryDate: string | null, recordStatus: string }) => {
       const response = await apiClient.post<{ message: string }>(ENDPOINTS.UPDATE_ROLE, payload);
       
       if (!response.success) {
@@ -121,7 +124,7 @@ export const staffService = {
   },
 
   resetStaffPassword: async (accId: number | string, newPassword: string) => {
-      const payload = { AccID: accId, NewPassword: newPassword };
+      const payload = { accID: accId, newPassword: newPassword };
       const response = await apiClient.post<{ message: string }>(ENDPOINTS.RESET_PASSWORD, payload);
       
       if (!response.success) {
@@ -135,7 +138,7 @@ export const staffService = {
     const response = await apiClient.post<any>(ENDPOINTS.STAFF_LIST, payload);
     
     if (!response.success || !response.data) {
-      console.warn("Staff list fetch failed or empty:", response.error);
+      logger.warn("Staff list fetch returned empty/failed", { error: response.error })
       return [];
     }
     
@@ -165,5 +168,17 @@ export const staffService = {
     const response = await apiClient.get<any>(`${ENDPOINTS.AUDIT_LOG_USER}/${userId}?page=${page}&size=${size}`);
     if (!response.success || !response.data) return null;
     return getDataObject<AuditLogResponse>(response.data);
+  },
+
+  getAuditModules: async (): Promise<string[]> => {
+    try {
+      const response = await apiClient.get<any>(ENDPOINTS.AUDIT_MODULES);
+      if (!response.success || !response.data) return [];
+      return getContent<string>(response.data);
+
+    } catch (error) {
+      logger.error("Failed to fetch audit modules", { error });
+      return [];
+    }
   }
 };

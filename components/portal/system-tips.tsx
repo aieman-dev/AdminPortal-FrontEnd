@@ -1,22 +1,34 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { usePathname } from "next/navigation"
 import { Lightbulb, X, ChevronRight, ChevronLeft, HelpCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { AnimatePresence, motion } from "framer-motion"
-import { SYSTEM_TIPS } from "@/config/system-tips-data"
+import { MODULE_GUIDES } from "@/config/system-tips-data"
 import { useIsMobile } from "@/hooks/use-mobile"
 
 export function SystemTips() {
+    const pathname = usePathname();
     const [isVisible, setIsVisible] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
     const isMobile = useIsMobile();
+    const safePath = pathname || "";
 
-    const currentTip = SYSTEM_TIPS[currentIndex];
+    // Find the guide for the current page, fallback to "default"
+    const activeGuideKey = Object.keys(MODULE_GUIDES).find(key => key !== 'default' && safePath.startsWith(key)) || "default";
+    const activeGuide = MODULE_GUIDES[activeGuideKey] || MODULE_GUIDES["default"];
+    const tips = activeGuide?.tips || [];
+    const currentTip = tips[currentIndex];
 
-    const nextTip = () => setCurrentIndex((prev) => (prev + 1) % SYSTEM_TIPS.length);
-    const prevTip = () => setCurrentIndex((prev) => (prev - 1 + SYSTEM_TIPS.length) % SYSTEM_TIPS.length);
+    // Reset index if user navigates to a new page
+    useEffect(() => {
+        setCurrentIndex(0);
+    }, [pathname]);
+    
+    const nextTip = () => setCurrentIndex((prev) => (prev + 1) % tips.length);
+    const prevTip = () => setCurrentIndex((prev) => (prev - 1 + tips.length) % tips.length);
 
     if (!currentTip) return null;
 
@@ -73,7 +85,7 @@ export function SystemTips() {
                             <Lightbulb className={isMobile ? "h-6 w-6" : "h-5 w-5 group-hover:scale-110 transition-transform"} />
                             {!isMobile && (
                                 <span className="[writing-mode:vertical-lr] text-[10px] font-bold uppercase tracking-widest py-1">
-                                    Guide
+                                    {activeGuide.triggerLabel}
                                 </span>
                             )}
                         </motion.button>
@@ -97,7 +109,9 @@ export function SystemTips() {
                             <div className="bg-indigo-600 p-3 flex items-center justify-between text-white shrink-0">
                                 <div className="flex items-center gap-2">
                                     <HelpCircle className="h-4 w-4" />
-                                    <span className="text-xs font-bold uppercase tracking-tighter">System Guide</span>
+                                    <span className="text-xs font-bold uppercase tracking-tighter">
+                                        {activeGuide.triggerLabel}
+                                    </span>
                                 </div>
                                 <Button 
                                     variant="ghost" 
@@ -126,7 +140,7 @@ export function SystemTips() {
                                 {/* Pagination Controls */}
                                 <div className="flex items-center justify-between pt-3 border-t">
                                     <span className="text-[10px] font-mono text-muted-foreground">
-                                        {currentIndex + 1} / {SYSTEM_TIPS.length}
+                                        {currentIndex + 1} / {tips.length}
                                     </span>
                                     <div className="flex gap-2">
                                         <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" onClick={prevTip}>

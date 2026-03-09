@@ -1,5 +1,6 @@
 // services/package-services.ts
 
+import { logger } from "@/lib/logger";
 import { apiClient, ApiResponse, getContent, getDataObject } from "@/lib/api-client";
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
 import { DashboardSummaryDTO } from "@/type/packages";
@@ -18,7 +19,7 @@ import {
 import { 
     ItPoswfPackage, 
     UnsyncedPackageDTO, 
-    SelectableItPoswfPackage 
+    SelectableUnsyncPackage 
 } from "@/type/themepark-support";
 import { transformToFrontend, AgeCategoryMapData } from "@/lib/transformers/package-transformer";
 
@@ -66,7 +67,7 @@ const getAgeCategoryMap = async (): Promise<Record<string, AgeCategoryMapData>> 
       ageCategoryCache = map;
       return map;
     }
-  } catch (e) { console.error("Age Cat Cache Error", e); }
+  } catch (e) { logger.error("Age Cat Cache Error", e); }
   return {};
 };
 
@@ -125,7 +126,7 @@ export const packageService = {
     const response = await apiClient.get<any>(ENDPOINTS.CREATION_DATA);
     
     if (!response.success || !response.data) {
-      console.error("Failed to load creation data:", response.error);
+      logger.error("Failed to load creation data:", response.error);
       return { attractions: [], ageCategories: [] };
     }
     
@@ -224,20 +225,20 @@ export const packageService = {
     const ageMap = await getAgeCategoryMap();
     const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
-    const payload: PackageFilterPayload = {
-        Status: status,
-        SearchQuery: searchQuery || null,
-        PageNumber: page,
-        PageSize: PAGE_SIZE,
-        StartDate: startDate || null,
-        EndDate: endDate || null,
-        PackageType: packageType === "All" ? null : (packageType || null),
+    const payload = {
+        status: status,
+        searchQuery: searchQuery || null,
+        pageNumber: page,
+        pageSize: PAGE_SIZE,
+        startDate: startDate || null,
+        endDate: endDate || null,
+        packageType: packageType === "All" ? null : (packageType || null),
     };
 
     const response = await apiClient.post<any>(ENDPOINTS.GET_LIST, payload);
 
     if (!response.success) {
-      console.error("Fetch packages failed:", response.error);
+      logger.error("Fetch packages failed:", response.error);
       return { packages: [], totalPages: 0, totalRecords: 0 };
     }
 
@@ -254,11 +255,11 @@ export const packageService = {
   },
 
   // 5. GET DETAIL
-  getPackageById: async (id: number, source?: string): Promise<Package | null> => {
+  getPackageById: async (id: number, source?: string, options?: RequestInit): Promise<Package | null> => {
     const ageMap = await getAgeCategoryMap();
     const payload = { Id: id, Source: source || null };
     
-    const response = await apiClient.post<any>(ENDPOINTS.GET_ONE, payload);
+    const response = await apiClient.post<any>(ENDPOINTS.GET_ONE, payload, options);
     
     if (!response.success || !response.data) return null;
     const data = getDataObject<BackendPackageDTO>(response.data);
@@ -267,14 +268,14 @@ export const packageService = {
 
   // 6. ACTIONS (Status, Duplicate, Delete)
   updateStatus: async (id: number, status: string, remark?: string) => {
-    const payload: UpdateStatusPayload = { Id: id, Status: status, Remark2: remark };
+    const payload = { id: id, status: status, remark2: remark };
     const response = await apiClient.put(ENDPOINTS.UPDATE_STATUS, payload);
     if (!response.success) throw new Error(response.error || `Failed to update status to ${status}`);
     return response.data;
   },
 
   duplicatePackage: async (id: number): Promise<PackageDuplicateResponse> => {
-    const response = await apiClient.post<PackageDuplicateResponse>(ENDPOINTS.DUPLICATE, { Id: id });
+    const response = await apiClient.post<PackageDuplicateResponse>(ENDPOINTS.DUPLICATE, { id: id });
     if (!response.success || !response.data) throw new Error(response.error || "Duplicate failed");
     return response.data;
   },
@@ -288,11 +289,11 @@ export const packageService = {
   // 7. IT-POSWF Specifics (Legacy Support / Migration)
   getPackagesListing: async (searchQuery: string = "", page: number = 1) => {
     const payload = {
-        Status: "Active",
-        SearchQuery: searchQuery || null,
-        PageNumber: page, 
-        PageSize: 30, 
-        StartDate: null, EndDate: null
+        status: "Active",
+        searchQuery: searchQuery || null,
+        pageNumber: page, 
+        pageSize: 30, 
+        startDate: null, endDate: null
     };
     
     const response = await apiClient.post<any>(ENDPOINTS.PACKAGE_LISTING, payload);
@@ -341,7 +342,7 @@ export const packageService = {
       if (!response.success || !response.data) return { success: false, error: response.error };
 
       const rawList = getContent<UnsyncedPackageDTO>(response.data);
-      let mapped: SelectableItPoswfPackage[] = rawList.map(p => ({
+      let mapped: SelectableUnsyncPackage[] = rawList.map(p => ({
           id: String(p.packageID),
           packageId: p.packageID,
           packageName: p.packageName,
@@ -349,7 +350,8 @@ export const packageService = {
           price: 0,
           status: p.status,
           lastValidDate: "N/A",
-          syncStatus: "Pending"
+          syncStatus: "Pending",
+          unsyncedItemNames: p.unsyncedItemNames || ""
       }));
 
       if (searchQuery) {

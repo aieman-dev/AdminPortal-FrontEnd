@@ -13,6 +13,7 @@ import {
   Terminal 
 } from "lucide-react"
 import "./globals.css"
+import { logger } from "@/lib/logger"
 
 // Configure font
 const inter = Inter({ subsets: ["latin"] })
@@ -40,7 +41,7 @@ export default function GlobalError({
     setErrorId(newId)
 
     // 2. Log to Console
-    console.error(`[${newId}] Global Error Caught:`, error)
+    logger.error(`[${newId}] Global Error Caught:`, error)
 
     // 3. Safety Cleanup
     try {

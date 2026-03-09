@@ -42,3 +42,18 @@ export function isUserInside(status: string | undefined): boolean {
            !s.includes("AWAY") && 
            !s.includes("UNUSED");
 }
+
+// ---safely maps your data and catches errors automatically--
+export function safeMap<T>(
+    rawData: any[], 
+    mapperFunction: (item: any) => T, 
+    entityName: string
+): T[] {
+    try {
+        return rawData.map(mapperFunction);
+    } catch (error: any) {
+        // We catch the error thrown by the mapper and re-throw it 
+        // with a clear message so the UI can catch it.
+        throw new Error(`Failed to parse ${entityName} data: ${error.message}`);
+    }
+}

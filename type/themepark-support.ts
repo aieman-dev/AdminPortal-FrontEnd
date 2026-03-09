@@ -201,12 +201,12 @@ export interface ExtendTicketData {
 }
 
 export interface Terminal {
-  id: string
-  terminalName: string
-  uuid: string
-  terminalType: "POS" | "Kiosk" | "Mobile" | "Web"
-  status: "Active" | "Inactive" | "Maintenance"
-  modifiedDate: string
+  id: string;
+  terminalName: string;
+  uuid: string;
+  terminalType: string;
+  status: string;
+  modifiedDate: string;
 }
 
 export interface TerminalSearchPayload {
@@ -215,9 +215,9 @@ export interface TerminalSearchPayload {
 
 export interface VoidTransaction {
   id?: string;
-  terminalID: string
-  trxID: string
-  invoiceNo: string
+  terminalID: string;
+  trxID: string;
+  invoiceNo: string;
   trxType: "Purchase" | "Refund" | "Exchange" | string
   itemType: "Ticket" | "Credit" | "Reward" | string
   balanceQty: number
@@ -228,12 +228,12 @@ export interface VoidTransaction {
 }
 
 export interface Account {
-  id: string
-  accId: string
-  email: string
-  firstName: string
-  mobile: string
-  createdDate: string
+  id: string;
+  accId: string;
+  email: string;
+  firstName: string;
+  mobile: string;
+  createdDate: string;
   accountStatus: "Active" | "Inactive" | "Suspended"
   transactions: Transaction[]
 }
@@ -305,18 +305,26 @@ export interface TerminalHistoryData {
     consumeHistory: TerminalConsumeHistory[];
 }
 
+// ---  Bcompare Package -----
 export interface UnsyncedPackageDTO {
     packageID: number;
     packageName: string;
     packageType: "Entry" | "Point" | "Reward" | string;
     packageItemID: number;
+    status: string;
+    unsyncedItems: UnsyncedItemDTO[];
+    unsyncedItemNames: string;
+}
+
+export interface UnsyncedItemDTO {
+    packageItemID: number;
     itemName: string;
     primaryTerminalID: number;
     secondaryTerminalID: number;
-    status: string;
+    secondaryTabletID?: number;
 }
 
-export interface SelectableItPoswfPackage {
+export interface SelectableUnsyncPackage {
     id: string; 
     packageId: string | number;
     packageName: string;
@@ -325,6 +333,7 @@ export interface SelectableItPoswfPackage {
     status: string;
     lastValidDate: string;
     syncStatus: "Pending" | "Synced" | "Error";
+    unsyncedItemNames?: string;
 }
 
 // --- BACKEND DTOs (Data Transfer Objects) ---
@@ -344,8 +353,8 @@ export interface BackendTerminalDTO {
     terminalID: number;
     terminal: string;
     uuid: string;
-    terminalType: "POS" | "Kiosk" | "Mobile" | "Web";
-    status: "Active" | "Inactive" | "Maintenance";
+    terminalType: string;
+    status: string;
     modifiedDate: string;
 }
 
@@ -355,12 +364,12 @@ export interface HistorySearchData {
 }
 
 export interface VoidRequestPayload {
-    TrxID: number;
-    InvoiceNo: string;
-    BalanceQty: number;
+    trxID: number;
+    invoiceNo: string;
+    balanceQty: number;
     trxType: "Purchase" | "Refund" | "Exchange" | string;
     itemType: "Ticket" | "Credit" | "Reward" | string;
-    Action: "Void";
+    action: "Void";
 }
 
 export interface TicketUpdateItem {
@@ -372,6 +381,6 @@ export interface TicketUpdateItem {
 }
 
 export interface TicketUpdatePayload {
-    TrxNo: string; 
+    trxNo: string; 
     ticketsToUpdate: TicketUpdateItem[];
 }

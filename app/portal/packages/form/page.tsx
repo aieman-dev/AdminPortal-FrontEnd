@@ -15,6 +15,7 @@ import PackageFormStep2 from "@/components/modules/packages/PackageFormStep2";
 import PackageFormStep3 from "@/components/modules/packages/PackageFormStep3";
 import { ConfirmationModal, DraftModal, SuccessModal, WarningModal } from '@/components/modules/packages/PackageModals';
 import { PackageFormData } from "@/type/packages";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { packageService } from "@/services/package-services"; 
 import { useAppToast } from "@/hooks/use-app-toast";
 
@@ -22,6 +23,7 @@ const PackageFormPage = () => {
   const router = useRouter();
   const toast = useAppToast();
   const [step, setStep] = useState(1);
+  const isMobile = useIsMobile();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
 
@@ -54,26 +56,20 @@ const PackageFormPage = () => {
     mode: "onChange"
   });
 
-  // ---  CONDITIONAL SCROLL LOCK ---
-  // Only lock scroll on Desktop (md breakpoint ~768px). 
-  // On mobile, we want native body scrolling.
+ // --- CONDITIONAL SCROLL LOCK ---
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 768) {
-        document.body.style.overflow = "hidden";
-      } else {
-        document.body.style.overflow = "auto";
-      }
-    };
+    // We rely on the hook's state instead of manual event listeners
+    if (!isMobile) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
 
-    handleResize();
-
-    window.addEventListener("resize", handleResize);
     return () => {
-      window.removeEventListener("resize", handleResize);
       document.body.style.overflow = "auto"; 
     };
-  }, []);
+  }, [isMobile]);
+  
 
   useEffect(() => {
     const fetchPackageData = async () => {
@@ -243,13 +239,13 @@ const PackageFormPage = () => {
 
   return (
     <>
-      <div className="h-auto md:h-[calc(100vh-120px)] flex flex-col md:flex-row items-center justify-center px-0 md:px-8 pb-4 md:pb-8 pt-0 md:pt-4 w-full">
+      <div className="h-auto md:h-[calc(100dvh-120px)] flex flex-col md:flex-row items-center justify-center px-0 md:px-8 pb-4 md:pb-8 pt-0 md:pt-4 w-full">
         <div 
           className="w-full max-w-[1300px] flex flex-col md:flex-row 
                      bg-white dark:bg-slate-900/50 dark:backdrop-blur-md 
                      text-card-foreground rounded-2xl shadow-2xl overflow-hidden 
                      border border-border dark:border-white/10 transition-colors duration-300
-                     h-auto md:h-[calc(100vh-130px)]"
+                     h-auto md:h-[calc(100dvh-130px)]"
         >
           {/* Sidebar Indicator */}
           <StepIndicator

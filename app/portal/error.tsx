@@ -3,6 +3,7 @@
 
 import { useEffect } from "react"
 import { SystemOffline } from "@/components/portal/system-offline" 
+import { logger } from "@/lib/logger"
 
 export default function PortalError({
   error,
@@ -12,7 +13,7 @@ export default function PortalError({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error("Portal Error Boundary caught:", error)
+   logger.error("Uncaught React Boundary Error", { error })
   }, [error])
 
   const errorData = (error as any).data || (error as any).originalError;

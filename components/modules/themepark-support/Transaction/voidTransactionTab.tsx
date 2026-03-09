@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardHeader,CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { XCircle, Clock, SearchX, FlaskConical, CheckCircle2 } from "lucide-react" 
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
@@ -18,6 +19,9 @@ import { useAutoSearch } from "@/hooks/use-auto-search"
 import { SimulationToggle } from "@/components/shared-components/simulation-toggle"
 import { SimulationWrapper } from "@/components/shared-components/simulation-wrapper"
 import { cn } from "@/lib/utils"
+import { logger } from "@/lib/logger"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 
 export default function VoidTransactionTab() {
@@ -28,7 +32,9 @@ export default function VoidTransactionTab() {
   const [isVoidSearching, setIsVoidSearching] = useState(false)
   const [isVoidConfirmOpen, setIsVoidConfirmOpen] = useState(false)
   const [voidingTransaction, setVoidingTransaction] = useState<VoidTransaction | null>(null)
+  
   const [isVoiding, setIsVoiding] = useState(false)
+  const [confirmText, setConfirmText] = useState("")
 
   // --- SIMULATION STATE ---
   const [isSimulating, setIsSimulating] = useState(false)
@@ -74,6 +80,7 @@ export default function VoidTransactionTab() {
 
   const handleVoidClick = (transaction: VoidTransaction) => {
     setVoidingTransaction(transaction)
+    setConfirmText("")
     setIsVoidConfirmOpen(true)
   }
 
@@ -108,12 +115,12 @@ export default function VoidTransactionTab() {
     // Real API 
     try {
       const payload = {
-        TrxID: Number(voidingTransaction.trxID), 
-        InvoiceNo: voidingTransaction.invoiceNo,
-        BalanceQty: -1, 
+        trxID: Number(voidingTransaction.trxID), 
+        invoiceNo: voidingTransaction.invoiceNo,
+        balanceQty: -1, 
         trxType: voidingTransaction.trxType, 
         itemType: voidingTransaction.itemType,
-        Action: "Void" as const,
+        action: "Void" as const,
       };
 
       const response = await itPoswfService.executeVoidTransaction(payload);
@@ -128,10 +135,15 @@ export default function VoidTransactionTab() {
       
       const responseMessage = response.data?.messaged || "Void request processed successfully.";
       toast.success("Success", `Transaction ${voidingTransaction.trxID} voided. ${responseMessage}` )
+      logger.info("Executing Void Transaction", { trxId: voidingTransaction.trxID, response: response.data })
 
     } catch (error) {
       console.error("Void Error:", error);
       toast.error( "Void Failed", error instanceof Error ? error.message : "An unexpected error occurred.");
+      logger.error("Void Transaction Failed", { 
+          trxId: voidingTransaction?.trxID, 
+          error: error instanceof Error ? error.message : error 
+      })
     } finally {
       setIsVoidConfirmOpen(false)
       setVoidingTransaction(null)
@@ -177,8 +189,8 @@ export default function VoidTransactionTab() {
 
   return (
     <>
-    <div className="w-full flex justify-end mb-4 md:mb-0 md:h-0 relative z-20">
-         <div className="md:absolute right-0 md:-top-[60px]">
+    <div className="w-full relative z-20 mb-4 md:mb-0 md:h-0">
+         <div className="w-full md:w-auto md:absolute right-0 md:-top-[60px]">
              <SimulationToggle isSimulating={isSimulating} onToggle={(val) => { 
                  setIsSimulating(val); 
                  setSimResult(null);
@@ -263,15 +275,36 @@ export default function VoidTransactionTab() {
                }
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {/* --- ADDED SECURITY INPUT (Moved outside of Header/Description!) --- */}
+          {!isSimulating && (
+              <div className="space-y-2 py-4 my-2 border-y border-red-100 dark:border-red-900/30">
+                  <Label className="text-red-800 dark:text-red-400 font-semibold">
+                      Type <span className="font-mono bg-red-100 dark:bg-red-900/50 px-1 py-0.5 rounded select-all">VOID</span> to confirm
+                  </Label>
+                  <Input 
+                      value={confirmText}
+                      onChange={(e) => setConfirmText(e.target.value)}
+                      placeholder="VOID"
+                      className="bg-red-50/50 dark:bg-red-950/20 uppercase focus-visible:ring-red-500"
+                      autoComplete="off"
+                  />
+              </div>
+          )}
+          
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isVoiding}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-                onClick={handleVoidConfirm} 
-                disabled={isVoiding} 
-                className={cn(isSimulating ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
-            >
-              {isVoiding ? "Processing..." : isSimulating ? "Run Simulation" : "Void Transaction"}
-            </AlertDialogAction>
+                <LoadingButton 
+                    onClick={(e) => {
+                        e.preventDefault(); 
+                        handleVoidConfirm();
+                    }} 
+                    isLoading={isVoiding}
+                    loadingText={isSimulating ? "Simulating..." : "Processing..."}
+                    className={cn(isSimulating ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
+                >
+                    {isSimulating ? "Run Simulation" : "Void Transaction"}
+                </LoadingButton>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

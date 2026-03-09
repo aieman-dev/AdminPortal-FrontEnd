@@ -89,6 +89,30 @@ export const getDeptColor = (dept: string) => {
     return "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900/30 dark:text-slate-400 dark:border-slate-800";
 }
 
+// --- SYSTEM ENUMS & MAGIC STRINGS ---
+
+export const PACKAGE_STATUS = {
+  PENDING: "Pending",
+  ACTIVE: "Active",
+  EXPIRING_SOON: "ExpiringSoon",
+  EXPIRED: "Expired",
+  REJECTED: "Rejected",
+  DRAFT: "Draft",
+  ALL: "Show All",
+} as const;
+
+export const TIME_FILTER = {
+  THIS_WEEK: "ThisWeek",
+  NEXT_WEEK: "NextWeek",
+} as const;
+
+export const RECORD_STATUS = {
+  ACTIVE: "Active",
+  INACTIVE: "Inactive",
+  SUSPENDED: "Suspended",
+  BLOCKED: "Blocked",
+} as const;
+
 // --- STATUS COLORS ( Package Filter) ---
 export const STATUS_COLORS: Record<string, string> = {
   Pending: "#eab308", // Yellow-500
@@ -159,3 +183,11 @@ export const TERMINAL_GROUPS = [
   { label: "2 (JV Partner)", value: "2" },
   { label: "3 (Photo Booth)", value: "3" }
 ] as const;
+
+export const TERMINAL_TYPES = [
+    { label: "POS", value: "POS" },
+    { label: "Kiosk", value: "Kiosk" },
+    { label: "Mobile", value: "Mobile" },
+    { label: "Web", value: "Web" },
+    { label: "Consume", value: "Consume" }
+];

@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BACKEND_API_BASE } from "@/lib/config";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/logger";
 
 async function handleRequest(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const resolvedParams = await params;
@@ -57,7 +58,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     });
 
   } catch (error) {
-    console.error(`Proxy Error [${request.method} ${path}]:`, error);
+    logger.error("Proxy routing error", { path, error })
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

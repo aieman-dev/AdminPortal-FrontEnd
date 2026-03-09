@@ -6,6 +6,7 @@ import { canDraftPackage } from "@/lib/auth";
 import { useAuth } from "@/hooks/use-auth";
 import { getProxiedImageUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/ui/loading-button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, isPointPackage } from "@/lib/formatter";
@@ -15,9 +16,10 @@ type Props = {
   onBack: () => void;
   onSubmit?: () => void;
   onSaveDraft?: () => void;
+  isSubmitting?: boolean;
 };
 
-const PackageFormStep3: React.FC<Props> = ({ form, onBack, onSubmit, onSaveDraft }) => {
+const PackageFormStep3: React.FC<Props> = ({ form, onBack, onSubmit, onSaveDraft, isSubmitting }) => {
   const { user } = useAuth();
   const canDraft = canDraftPackage(user?.department);
   
@@ -218,9 +220,15 @@ const PackageFormStep3: React.FC<Props> = ({ form, onBack, onSubmit, onSaveDraft
             <Button variant="secondary" onClick={onSaveDraft} className="w-full sm:w-auto">Save Draft</Button>
           )}
         </div>
-        <Button onClick={onSubmit} className="bg-indigo-600 hover:bg-indigo-700 w-full sm:w-auto px-8">
+
+        <LoadingButton 
+            onClick={onSubmit} 
+            isLoading={isSubmitting || false}
+            loadingText="Processing..."
+            className="bg-indigo-600 hover:bg-indigo-700 w-full sm:w-auto px-8"
+            >
             Confirm & Proceed
-        </Button>
+        </LoadingButton>
       </div>
     </div>
   );

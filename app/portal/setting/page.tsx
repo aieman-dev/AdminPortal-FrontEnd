@@ -2,6 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { PageHeader } from "@/components/portal/page-header"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -28,6 +32,17 @@ import { ROLES } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import ExpirySelector, { ExpiryData } from "@/components/portal/ExpirySelector"
 
+// 1. Zod Schema
+const broadcastSchema = z.object({
+    title: z.string().trim().min(1, "Title is required"),
+    type: z.enum(["info", "warning", "critical"], { message: "Severity type is required" }),
+    message: z.string().trim().min(1, "Message content is required"),
+    expiryDate: z.date({ message: "Expiry date is required" })
+        .refine(d => d > new Date(), { message: "Expiry must be in the future" })
+});
+
+type BroadcastValues = z.infer<typeof broadcastSchema>;
+
 export default function SettingsPage() {
   const  toast = useAppToast()
   const { user } = useAuth()
@@ -45,22 +60,25 @@ export default function SettingsPage() {
       packageUpdates: false, 
       systemAnnouncements: false, 
   })
-
-  // --- BROADCAST STATE ---
-  const [broadcastForm, setBroadcastForm] = useState<{
-      title: string;
-      message: string;
-      type: "info" | "warning" | "critical" | "";
-      expiryDate: Date | undefined;
-  }>({
-      title: "",
-      message: "",
-      type: "", 
-      expiryDate: undefined
-  });
-
   
   const [isPosting, setIsPosting] = useState(false);
+
+  // 2. Initialize React Hook Form (REPLACES the old useState)
+  const broadcastForm = useForm<BroadcastValues>({
+      resolver: zodResolver(broadcastSchema),
+      defaultValues: { 
+          title: "", 
+          type: undefined, 
+          message: "", 
+          expiryDate: undefined 
+      },
+      mode: "onChange"
+  });
+
+  // Watch values for the Live Preview Sidebar
+  const previewTitle = broadcastForm.watch("title");
+  const previewType = broadcastForm.watch("type");
+  const previewMessage = broadcastForm.watch("message");
 
   // --- FETCH DATA ---
   useEffect(() => {
@@ -94,8 +112,7 @@ export default function SettingsPage() {
       });
 
       try {
-              await settingService.toggleGlobalNotifications(checked);
-          
+          await settingService.toggleGlobalNotifications(checked);
           toast.info( "Saved", `Global notifications turned ${checked ? 'ON' : 'OFF'}.` );
       } catch (error) {
           setPreferences({
@@ -106,51 +123,21 @@ export default function SettingsPage() {
       }
   }
 
-  const handlePostBroadcast = async () => {
-      if (!broadcastForm.title.trim()) {
-          toast.error("Missing Title", "Please enter a title.");
-          return;
-      }
-      if (!broadcastForm.type) {
-          toast.error( "Missing Type", "Please select a severity type.");
-          return;
-      }
-      if (!broadcastForm.message.trim()) {
-          toast.error( "Missing Message",  "Please enter message content.");
-          return;
-      }
-      if (!broadcastForm.expiryDate) {
-          toast.error( "Missing Expiry", "Please select an expiry date.");
-          return;
-      }
-      if (broadcastForm.expiryDate < new Date()) {
-           toast.error("Invalid Date",  "Expiry date must be in the future.");
-           return;
-      }
-
+  // 3. Form Submit Handler (Receives validated data from Zod)
+  const handlePostBroadcast = async (data: BroadcastValues) => {
       setIsPosting(true);
 
       try {
-          const isoExpiry = broadcastForm.expiryDate.toISOString(); 
-
           const payload: BroadcastPayload = {
-              title: broadcastForm.title,
-              message: broadcastForm.message,
-              type: broadcastForm.type as "info" | "warning" | "critical",
-              expirydate: isoExpiry 
+              title: data.title,
+              message: data.message,
+              type: data.type,
+              expirydate: data.expiryDate.toISOString() 
           };
 
           await settingService.createBroadcast(payload);
-          
           toast.success("Broadcast Sent",  "System announcement created successfully.");
-          
-          setBroadcastForm({
-              title: "",
-              message: "",
-              type: "",
-              expiryDate: undefined
-          });
-
+          broadcastForm.reset();
       } catch (error) {
           toast.error( "Post Failed", error instanceof Error ? error.message : "Could not send broadcast.");
       } finally {
@@ -174,7 +161,7 @@ export default function SettingsPage() {
 
   const isSuperAdmin = user?.department === ROLES.MIS_SUPER;
 
-  const getPreviewStyles = (type: string) => {
+  const getPreviewStyles = (type?: string) => {
       switch(type) {
           case 'warning': return "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300";
           case 'critical': return "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300";
@@ -183,23 +170,11 @@ export default function SettingsPage() {
       }
   };
 
-  const getBroadcastIcon = (type: string) => {
-      const t = type.toLowerCase();
-      if (t === 'critical') return <XCircle className="h-4 w-4" />;
-      if (t === 'warning') return <AlertTriangle className="h-4 w-4" />;
+  const getBroadcastIcon = (type?: string) => {
+      if (type === 'critical') return <XCircle className="h-4 w-4" />;
+      if (type === 'warning') return <AlertTriangle className="h-4 w-4" />;
       return <Info className="h-4 w-4" />; 
   };
-
-  const handleExpiryUpdate = useCallback((data: ExpiryData) => {
-    const newDate = new Date(data.isoString);
-    
-    setBroadcastForm(prev => {
-        if (prev.expiryDate?.getTime() === newDate.getTime()) {
-            return prev;
-        }
-        return { ...prev, expiryDate: newDate };
-    });
-  }, []);
 
   const handleTabChange = (value: string) => {
       const params = new URLSearchParams(searchParams.toString())
@@ -296,107 +271,105 @@ export default function SettingsPage() {
             </TabsList>
             </div>
 
-        {/* === TAB 1: MY ACCOUNT === */}
         <TabsContent value="account" className="space-y-3 animate-in fade-in-50 duration-300">
             {ProfileContent}
         </TabsContent>
 
-       {/* === TAB 2: SYSTEM CONTROL  === */}
         <TabsContent value="system" className="space-y-4 animate-in fade-in-50 duration-300">
            <div className="grid gap-6 lg:grid-cols-12 items-start">
               <div className="lg:col-span-8 flex flex-col h-full">
                  <Card className="border-muted bg-card h-full flex flex-col shadow-sm">
                     <CardHeader className="pb-4 border-b">
                        <CardTitle className="flex items-center gap-2">
-                               <Megaphone className="h-5 w-5 text-indigo-600" /> Create Broadcast                                </CardTitle>
-                                <CardDescription>Post a new system-wide announcement.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="flex-1 space-y-6 pt-6">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="md:col-span-2 space-y-2">
-                                        <Label>Title <span className="text-red-500">*</span></Label>
-                                        <Input 
-                                            placeholder="e.g. System Maintenance" 
-                                            value={broadcastForm.title}
-                                            onChange={(e) => setBroadcastForm({ ...broadcastForm, title: e.target.value })}
-                                            className="h-11" 
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Severity Type <span className="text-red-500">*</span></Label>
-                                        <Select 
-                                            value={broadcastForm.type} 
-                                            onValueChange={(val: any) => setBroadcastForm({ ...broadcastForm, type: val })}
-                                        >
-                                            <SelectTrigger className="h-11">
-                                                <SelectValue placeholder="Select type" />
-                                            </SelectTrigger>
+                            <Megaphone className="h-5 w-5 text-indigo-600" /> Create Broadcast                                
+                        </CardTitle>
+                        <CardDescription>Post a new system-wide announcement.</CardDescription>
+                    </CardHeader>
+                    
+                    {/* 4. Implement <Form> Wrapper */}
+                    <Form {...broadcastForm}>
+                        <form onSubmit={broadcastForm.handleSubmit(handlePostBroadcast)} className="flex-1 flex flex-col pt-6 px-6 pb-6 space-y-6">
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <FormField control={broadcastForm.control} name="title" render={({ field }) => (
+                                    <FormItem className="md:col-span-2">
+                                        <FormLabel>Title <span className="text-red-500">*</span></FormLabel>
+                                        <FormControl><Input placeholder="e.g. System Maintenance" className="h-11" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                
+                                <FormField control={broadcastForm.control} name="type" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Severity Type <span className="text-red-500">*</span></FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
                                             <SelectContent>
                                                 <SelectItem value="info">Info</SelectItem>
                                                 <SelectItem value="warning">Warning</SelectItem>
                                                 <SelectItem value="critical">Critical</SelectItem>
                                             </SelectContent>
                                         </Select>
-                                    </div>
-                                </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
 
-                                <div className="space-y-2">
-                                    <Label>Message Content <span className="text-red-500">*</span></Label>
-                                    <Textarea 
-                                        placeholder="Enter the detailed announcement message..."
-                                        className="min-h-[60px] resize-none text-sm" // Reduced height
-                                        value={broadcastForm.message}
-                                        onChange={(e) => setBroadcastForm({ ...broadcastForm, message: e.target.value })}
-                                    />
-                                </div>
+                            <FormField control={broadcastForm.control} name="message" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Message Content <span className="text-red-500">*</span></FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="Enter the detailed announcement message..." className="min-h-[60px] resize-none text-sm" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
 
-                                <div className="space-y-2">
-                                    <ExpirySelector onExpiryChange={handleExpiryUpdate} />
-                                </div>
+                            <FormField control={broadcastForm.control} name="expiryDate" render={({ field }) => (
+                                <FormItem>
+                                    <ExpirySelector onExpiryChange={(data) => field.onChange(new Date(data.isoString))} />
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
 
-                                <div className="pt-4 flex justify-end mt-auto border-t">
-                                    <Button 
-                                        onClick={handlePostBroadcast} 
-                                        disabled={isPosting} 
-                                        className="w-full md:w-auto h-10 px-8"
-                                    >
-                                        {isPosting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />} 
-                                        {isPosting ? "Broadcasting..." : "Send Broadcast"}
-                                    </Button>
-                                </div>
+                            <div className="pt-4 flex justify-end mt-auto border-t">
+                                <Button type="submit" disabled={isPosting} className="w-full md:w-auto h-10 px-8">
+                                    {isPosting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />} 
+                                    {isPosting ? "Broadcasting..." : "Send Broadcast"}
+                                </Button>
+                            </div>
+                        </form>
+                    </Form>
 
-                            </CardContent>
-                        </Card>
-                    </div>
+                 </Card>
+              </div>
                     
-                    {/* Preview Sidebar */}
-                    <div className="lg:col-span-4 space-y-6 sticky top-6">
-                         <Card>
-                            <CardHeader className="pb-3 border-b"><CardTitle className="text-sm">Live Preview</CardTitle></CardHeader>
-                            <CardContent className="space-y-4 pt-4">
-                                <div className={`text-sm p-4 rounded-lg border shadow-sm ${getPreviewStyles(broadcastForm.type)}`}>
-                                    <div className="font-bold flex items-center gap-2 mb-2">
-                                        {getBroadcastIcon(broadcastForm.type)}
-                                        {broadcastForm.title || "Announcement Title"}
-                                    </div>
-                                    <p className="opacity-90">{broadcastForm.message || "Message content will appear here..."}</p>
-                                </div>
-                                <div className="text-xs text-muted-foreground px-1">
-                                    Preview of dashboard banner.
-                                </div>
-                            </CardContent>
-                         </Card>
-                    </div>
-                </div>
-            </TabsContent>
-        </Tabs>
+              {/* Preview Sidebar - Watches Zod State */}
+              <div className="lg:col-span-4 space-y-6 sticky top-6">
+                 <Card>
+                    <CardHeader className="pb-3 border-b"><CardTitle className="text-sm">Live Preview</CardTitle></CardHeader>
+                    <CardContent className="space-y-4 pt-4">
+                        <div className={`text-sm p-4 rounded-lg border shadow-sm ${getPreviewStyles(previewType)}`}>
+                            <div className="font-bold flex items-center gap-2 mb-2">
+                                {getBroadcastIcon(previewType)}
+                                {previewTitle || "Announcement Title"}
+                            </div>
+                            <p className="opacity-90">{previewMessage || "Message content will appear here..."}</p>
+                        </div>
+                        <div className="text-xs text-muted-foreground px-1">
+                            Preview of dashboard banner.
+                        </div>
+                    </CardContent>
+                 </Card>
+              </div>
+           </div>
+        </TabsContent>
+      </Tabs>
       )}
     </div>
   );
 }
 
-
-// Helper component for cleaner fields
 function ProfileField({ label, icon, value, isMono = false }: { label: string, icon: React.ReactNode, value: React.ReactNode, isMono?: boolean }) {
   return (
     <div className="space-y-1">

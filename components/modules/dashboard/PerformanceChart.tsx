@@ -10,12 +10,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { LoaderState } from "@/components/ui/loader-state"; // Adjust path if needed
-import { EmptyState } from "@/components/portal/empty-state"; // Adjust path if needed
+import { LoaderState } from "@/components/ui/loader-state"; 
+import { EmptyState } from "@/components/portal/empty-state"; 
 import { formatCurrency } from "@/lib/formatter";
+import { TIME_FILTER } from "@/lib/constants";
 
 interface PerformanceChartProps {
-    data: any[]; // You can replace 'any' with your specific DTO type if available
+    data: any[]; 
     loading: boolean;
     filter: string;
     onFilterChange: (val: string) => void;
@@ -71,8 +72,8 @@ export function PerformanceChart({ data, loading, filter, onFilterChange }: Perf
                                 <SelectValue placeholder="Period" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="ThisWeek">This Week</SelectItem>
-                                <SelectItem value="NextWeek">Next Week</SelectItem>
+                                <SelectItem value={TIME_FILTER.THIS_WEEK}>This Week</SelectItem>
+                                <SelectItem value={TIME_FILTER.NEXT_WEEK}>Next Week</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

@@ -13,7 +13,7 @@ import { getDashboardRole } from "@/lib/auth";
 // Config & Types
 import { DASHBOARD_CONFIG, DashboardRole, MASTER_ACTIONS, MasterAction } from "@/config/dashboard";
 import { useDashboard } from "@/context/DashboardContext"
-import { ROLES } from "@/lib/constants";
+import { ROLES,TIME_FILTER } from "@/lib/constants";
 import { Package } from "@/type/packages";
 import { dashboardService } from "@/services/dashboard-service";
 
@@ -26,6 +26,8 @@ import { QuickAccess } from "@/components/modules/dashboard/QuickAccess";
 import { KioskModal } from "@/components/modules/dashboard/KioskModal";
 import { SystemDiagnostics } from "@/components/portal/system-diagnostics";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+import { WidgetErrorBoundary } from "@/components/portal/widget-error-boundary";
+import { Button } from "@/components/ui/button";
 
 interface DashboardClientProps {
   initialPendingPackages: Package[]; 
@@ -48,7 +50,7 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
   const [pendingPackages] = useState<Package[]>(initialPendingPackages);
   const [unsyncedCount, setUnsyncedCount] = useState(0);
   
-  const [filter, setFilter] = useState("ThisWeek");
+  const [filter, setFilter] = useState<string>(TIME_FILTER.THIS_WEEK);
   const [isKioskOpen, setIsKioskOpen] = useState(false);
 
   const [systemStatus, setSystemStatus] = useState("Checking...");
@@ -59,7 +61,7 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
     const checkSystemHealth = async () => {
         try {
             const start = performance.now();
-            await dashboardService.getSummary("ThisWeek");
+            await dashboardService.getSummary(TIME_FILTER.THIS_WEEK);
             const latency = Math.round(performance.now() - start);
             
             setSystemStatus("200"); 
@@ -117,7 +119,10 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
         case "consumption": return (summary?.ticketConsumption || 0).toString();
         case "drafts": return (summary?.draftPackages || 0).toString();
         case "package_sync": return unsyncedCount.toString();
-        case "avg_trx": return formatCurrency((summary?.salesCount || 0) > 0 ? (summary?.salesAmount || 0) / summary!.salesCount : 0);
+        case "avg_trx": 
+            const count = summary?.salesCount || 0;
+            const amount = summary?.salesAmount || 0;
+            return formatCurrency(count > 0 ? amount / count : 0);
         case "system_health": return systemStatus;
         default: return "0";
     }
@@ -169,7 +174,7 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
             ))}
         </div>
 
-        <div className="md:hidden -mx-6 px-6">
+        <div className="md:hidden -mx-4 px-4">
              <Carousel className="w-full">
                 <CarouselContent>
                     {roleConfig.stats.map(stat => (
@@ -189,30 +194,40 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
         <div className="grid gap-6 md:grid-cols-7 items-start">
             <div className="col-span-7 lg:col-span-4 flex flex-col gap-6">
                 {showWidget('performance_chart') && (
-                    <PerformanceChart 
-                        data={summary?.weeklySalesChart || []} 
-                        loading={isLoading} 
-                        filter={filter} 
-                        onFilterChange={setFilter} 
+                    <WidgetErrorBoundary widgetName="Performance Chart">
+                        <PerformanceChart 
+                            data={summary?.weeklySalesChart || []} 
+                            loading={isLoading} 
+                            filter={filter} 
+                            onFilterChange={setFilter} 
                     />
+                    </WidgetErrorBoundary>
                 )}
                 {showWidget('top_packages') && (
-                    <TopPackagesCard data={summary?.bestSellingPackages || []} loading={isLoading} />
+                    <WidgetErrorBoundary widgetName="Top Packages">
+                        <TopPackagesCard data={summary?.bestSellingPackages || []} loading={isLoading} />
+                    </WidgetErrorBoundary>
                 )}
 
                 {showWidget('system_diagnostics') && (
                     <div className="mt-2">
-                        <SystemDiagnostics autoRun={true} />
+                        <WidgetErrorBoundary widgetName="System Diagnostics">
+                            <SystemDiagnostics autoRun={true} />
+                        </WidgetErrorBoundary>
                     </div>
                 )}
             </div>
             
             <div className="col-span-7 lg:col-span-3 flex flex-col gap-6 h-full">
                 {showWidget('pending_list') && (
-                    <PendingPackagesList data={pendingPackages} count={summary?.pendingPackages} />
+                    <WidgetErrorBoundary widgetName="Pending Packages List">
+                        <PendingPackagesList data={pendingPackages} count={summary?.pendingPackages} />
+                    </WidgetErrorBoundary>
                 )}
 
-                <QuickAccess availableActions={permittedActions} />
+                <WidgetErrorBoundary widgetName="Quick Access">
+                    <QuickAccess availableActions={permittedActions} />
+                </WidgetErrorBoundary>
             </div>
         </div>
 

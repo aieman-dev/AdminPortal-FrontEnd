@@ -8,13 +8,15 @@ interface UsePaginationProps {
   pageSize?: number;
   initialTotalPages?: number;
   initialTotalRecords?: number;
+  mode?: "server" | "client";
 }
 
 export function usePagination({ 
   initialPage = 1, 
   pageSize = 10,
   initialTotalPages = 1,
-  initialTotalRecords = 0
+  initialTotalRecords = 0,
+  mode = "server"
 }: UsePaginationProps = {}) {
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [totalPages, setTotalPages] = useState(initialTotalPages);
@@ -40,8 +42,9 @@ export function usePagination({
   // Helper to slice an array based on current state
   const paginate = useCallback(<T,>(items: T[]): T[] => {
     if (!items) return [];
+    if (mode === "server") return items;
     return items.slice(startIndex, endIndex);
-  }, [startIndex, endIndex]);
+  }, [startIndex, endIndex, mode]);
 
   return {
     currentPage,

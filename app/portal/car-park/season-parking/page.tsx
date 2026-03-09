@@ -116,8 +116,8 @@ export default function SeasonParkingPage() {
         cell: (value) => <span className="font-medium">{value}</span>
     },
     { 
-        header: "Staff No", 
-        accessor: "staffNo",
+        header: "Card No", 
+        accessor: "cardNo",
         cell: (value) => value !== "-" 
             ? <Badge variant="secondary" className="font-normal">{value}</Badge> 
             : <span className="text-muted-foreground">-</span>

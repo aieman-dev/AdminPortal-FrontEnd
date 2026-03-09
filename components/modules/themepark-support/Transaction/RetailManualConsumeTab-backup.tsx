@@ -1,4 +1,3 @@
-// components/themepark-support/tabs/Transaction/RetailManualConsumeTab.tsx
 "use client"
 
 import { useState, useMemo } from "react"
@@ -35,42 +34,15 @@ import { cn } from "@/lib/utils"
 import { PaginationControls } from "@/components/ui/pagination-controls" 
 import { usePagination } from "@/hooks/use-pagination"
 
+
 type Step = 'selection' | 'confirmation';
-
-// ============================================================================
-// 1. HELPERS & PURE FUNCTIONS
-// ============================================================================
-
-const simulateTransaction = (balance: number, cost: number) => {
-    return {
-        success: true,
-        newBalance: balance - cost,
-        isAllowed: balance >= cost,
-        message: balance >= cost 
-            ? "Simulation: Transaction would succeed." 
-            : "Simulation: Transaction would FAIL (Insufficient Funds)."
-    };
-};
-
-const getTerminalAcronym = (name: string) => {
-    if (!name) return "SIM";
-    const cleanName = name.replace(/[^a-zA-Z\s]/g, "").trim();
-    const words = cleanName.split(/\s+/);
-    if (words.length === 1) return words[0].substring(0, 3).toUpperCase();
-    return words.map(w => w[0]).join("").toUpperCase();
-};
 
 export default function RetailManualConsumeTab() {
   const toast = useAppToast()
   const router = useRouter();
-
-  // ============================================================================
-  // 2. STATE MANAGEMENT
-  // ============================================================================
-  
   const [currentStep, setCurrentStep] = useState<Step>('selection');
 
-  // Search Form State
+  // Search State
   const [consumeType, setConsumeType] = useState<string>("superapp")
   const [email, setEmail] = useState("")
   const [mobileNo, setMobileNo] = useState("")
@@ -84,7 +56,9 @@ export default function RetailManualConsumeTab() {
   const [consumeSearchResult, setConsumeSearchResult] = useState<RetailManualConsumeData | null>(null)
   const [quantities, setQuantities] = useState<Record<string, number>>({}) 
   
-  // Loading & Flow State
+  // Pagination State
+  const pager = usePagination({ pageSize: 10, mode: "client" });
+
   const [isBalanceAlertOpen, setIsBalanceAlertOpen] = useState(false);
   const [isConsumeSearching, setIsConsumeSearching] = useState(false)
   const [isExecuting, setIsExecuting] = useState(false)
@@ -94,20 +68,41 @@ export default function RetailManualConsumeTab() {
   const [simResult, setSimResult] = useState<any>(null);
   const [simulatedReceipt, setSimulatedReceipt] = useState<ReceiptData | null>(null);
 
-  // Pagination State
-  const pager = usePagination({ pageSize: 10, mode: "client" });
-
-  // Derived State Flags
+  // Logic
   const isSuperApp = consumeType === "superapp";
   const isReceipt = consumeType === "receipt";
   const isEmailDisabled = isReceipt;   
   const isMobileDisabled = isReceipt; 
   const isInvoiceDisabled = isSuperApp;
 
-  // ============================================================================
-  // 3. CORE LOGIC & API HANDLERS
-  // ============================================================================
 
+  // simlation logic (testing purposes)
+  const simulateTransaction = (balance: number, cost: number) => {
+      return {
+          success: true,
+          newBalance: balance - cost,
+          isAllowed: balance >= cost,
+          message: balance >= cost 
+              ? "Simulation: Transaction would succeed." 
+              : "Simulation: Transaction would FAIL (Insufficient Funds)."
+      };
+  };
+
+  // 2. ADD THIS ACRONYM GENERATOR HELPER
+  const getTerminalAcronym = (name: string) => {
+      if (!name) return "SIM";
+      // Remove special characters, keep letters and spaces
+      const cleanName = name.replace(/[^a-zA-Z\s]/g, "").trim();
+      const words = cleanName.split(/\s+/);
+      
+      // If it's a single word (e.g., "Kiosk"), take the first 3 letters
+      if (words.length === 1) return words[0].substring(0, 3).toUpperCase();
+      
+      // Otherwise, take the first letter of each word (e.g., "Digital Sport Arena" -> "DSA")
+      return words.map(w => w[0]).join("").toUpperCase();
+  };
+
+  // --- Search Logic ---
   const handleConsumeSearch = async () => {
     let missingFields: string[] = [];
     if (!consumeType) missingFields.push("Consume Type");
@@ -174,6 +169,7 @@ export default function RetailManualConsumeTab() {
       });
   };
 
+
   const handleNextStep = () => {
       const totalSelected = Object.values(quantities).reduce((a, b) => a + b, 0);
       if (totalSelected === 0) {
@@ -182,15 +178,6 @@ export default function RetailManualConsumeTab() {
       }
       setCurrentStep('confirmation');
   };
-
-  const handleBackStep = () => {
-      setSimResult(null);
-      setCurrentStep('selection');
-  };
-
-  const closeSimulation = () => {
-      setSimulatedReceipt(null);
-  }
 
   const handleConsumeExecute = async () => {
     if (!consumeSearchResult) return;
@@ -209,10 +196,11 @@ export default function RetailManualConsumeTab() {
 
     const totalAmount = mappedItems.reduce((sum, item) => sum + item.amount, 0);
 
-    // --- SIMULATION BRANCH ---
+    // --- INTERCEPTION FOR SIMULATION ---
     if (isSimulating) {
         setIsExecuting(true);
         
+        // 1. Simulate Math Check
         const mathResult = simulateTransaction(consumeSearchResult.creditBalance, totalAmount);
         await new Promise(resolve => setTimeout(resolve, 800));
 
@@ -222,12 +210,15 @@ export default function RetailManualConsumeTab() {
             return;
         }
 
+        // 2. Generate REALISTIC Invoice Number (Faked)
+        // Format: DSA-YYYYMMDDxxxxx (Faked)
         const today = new Date();
-        const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ""); 
-        const randomSequence = Math.floor(10000 + Math.random() * 90000); 
+        const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ""); // e.g., 20260216
+        const randomSequence = Math.floor(10000 + Math.random() * 90000); // 5 digit random
         const prefix = getTerminalAcronym(terminalName);
         const fakeInvoiceNo = `${prefix}-${dateStr}${randomSequence}`;
 
+        // 3. Construct Receipt Data
         const mockReceipt: ReceiptData = {
             invoiceNo: fakeInvoiceNo,
             date: new Date().toISOString(),
@@ -245,6 +236,7 @@ export default function RetailManualConsumeTab() {
             })
         };
 
+        // 4. Trigger the View
         setSimulatedReceipt(mockReceipt);
         toast.success("Simulation Success", `Invoice: ${fakeInvoiceNo} (Faked) created.`);
         
@@ -252,7 +244,6 @@ export default function RetailManualConsumeTab() {
         return; 
     }
 
-    // --- LIVE EXECUTION ---
     if (consumeSearchResult.creditBalance < totalAmount) {
          setIsBalanceAlertOpen(true);
         return;
@@ -296,6 +287,7 @@ export default function RetailManualConsumeTab() {
                 })
             };
 
+            //  Encode data to Base64 (Safe for URLs)
             const encodedData = Buffer.from(JSON.stringify(receiptData)).toString('base64');
 
             setConsumeSearchResult(null);
@@ -320,9 +312,17 @@ export default function RetailManualConsumeTab() {
     }
   }
 
-  // ============================================================================
-  // 4. UI CONFIGURATION (Columns & Derived State)
-  // ============================================================================
+  const handleBackStep = () => {
+      setSimResult(null);
+      setCurrentStep('selection');
+  };
+
+  // Helper to exit simulation view
+  const closeSimulation = () => {
+      setSimulatedReceipt(null);
+      // Optional: Reset form?
+      // handleBackStep(); 
+  }
 
   const cartTotal = useMemo(() => {
       if (!consumeSearchResult) return 0;
@@ -374,13 +374,11 @@ export default function RetailManualConsumeTab() {
     }}
   ], [quantities]);
 
-  // ============================================================================
-  // 5. SUB-RENDERERS (Keeps the main return clean)
-  // ============================================================================
-
-  const renderSelectionView = () => (
+  // --- REFACTORED VIEW: SELECTION TABLE (Matches ManualConsumeTab) ---
+  const renderSelectionView = () => {
+    return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 mt-6">
-            <div className="grid gap-4 md:grid-cols-2"> 
+            <div className="grid gap-4 md:grid-cols-2"> {/* Changed to 2 columns to match other tab structure even if 2nd is optional */}
                 <BalanceCard
                     title="Current Credit Balance"
                     amount={consumeSearchResult?.creditBalance || 0}
@@ -388,9 +386,11 @@ export default function RetailManualConsumeTab() {
                     icon={Wallet}
                     valueColor="text-green-600"
                 />
+                {/* Optional: Add a 'Retail Summary' card here later if needed to fill the gap */}
                 <div className="hidden md:block"></div> 
             </div>
 
+            {/* FLUSH CARD DESIGN (p-0) */}
             <Card>
                 <CardContent className="p-0 overflow-hidden">
                     <div className="bg-muted/40 px-6 py-3 border-b flex justify-between items-center">
@@ -415,6 +415,7 @@ export default function RetailManualConsumeTab() {
                         />
                     </div>
                     
+                    {/* Pagination - Added inside the flush card */}
                     {totalPages > 1 && (
                         <div className="px-6 pb-4">
                             <PaginationControls 
@@ -427,7 +428,7 @@ export default function RetailManualConsumeTab() {
                         </div>
                     )}
                 
-                    {/* Sticky Footer */}
+                    {/* Sticky Footer - Edge to Edge */}
                     <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t p-6 sticky bottom-0 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="text-sm text-muted-foreground">
@@ -458,6 +459,46 @@ export default function RetailManualConsumeTab() {
             </Card>
         </div>
     );
+  };
+
+
+  // 1. If we have a Simulated Receipt, show it instead of the form
+  if (simulatedReceipt) {
+      return (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              
+              {/* Simulation Banner */}
+              <div className="bg-amber-100 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg flex items-center justify-between shadow-sm">
+                  <div className="flex items-center gap-2">
+                      <FlaskConical className="h-5 w-5" />
+                      <div className="flex flex-col">
+                          <span className="font-bold text-sm uppercase tracking-wide">Simulation Mode</span>
+                          <span className="text-xs opacity-90">This receipt is a generated preview. No data was saved.</span>
+                      </div>
+                  </div>
+                  <Button size="sm" onClick={closeSimulation} className="bg-amber-600 hover:bg-amber-700 text-white border-none shadow-none">
+                      <ArrowLeft className="mr-2 h-4 w-4" /> Edit / Back
+                  </Button>
+              </div>
+
+              {/* The Receipt Component (Reused) */}
+              <div className="relative pointer-events-none select-none">
+                   {/* Watermark Overlay */}
+                   <div className="absolute inset-0 z-50 flex items-center justify-center opacity-[0.08] pointer-events-none overflow-hidden">
+                        <div className="transform -rotate-45 text-9xl font-black text-slate-900 whitespace-nowrap">
+                            SIMULATION
+                        </div>
+                   </div>
+                   
+                   {/* Pass the fake data to your existing component */}
+                   <ReceiptView 
+                        data={simulatedReceipt} 
+                        onBack={closeSimulation} 
+                   />
+              </div>
+          </div>
+      )
+  }
 
   const renderConfirmationView = () => {
       const selectedItems = consumeSearchResult?.items.filter(item => (quantities[item.id] || 0) > 0) || [];
@@ -525,43 +566,10 @@ export default function RetailManualConsumeTab() {
       );
   };
 
-  const renderSimulationReceiptView = () => (
-      <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="bg-amber-100 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-2">
-                  <FlaskConical className="h-5 w-5" />
-                  <div className="flex flex-col">
-                      <span className="font-bold text-sm uppercase tracking-wide">Simulation Mode</span>
-                      <span className="text-xs opacity-90">This receipt is a generated preview. No data was saved.</span>
-                  </div>
-              </div>
-              <Button size="sm" onClick={closeSimulation} className="bg-amber-600 hover:bg-amber-700 text-white border-none shadow-none">
-                  <ArrowLeft className="mr-2 h-4 w-4" /> Edit / Back
-              </Button>
-          </div>
-
-          <div className="relative pointer-events-none select-none">
-               <div className="absolute inset-0 z-50 flex items-center justify-center opacity-[0.08] pointer-events-none overflow-hidden">
-                    <div className="transform -rotate-45 text-9xl font-black text-slate-900 whitespace-nowrap">
-                        SIMULATION
-                    </div>
-               </div>
-               {simulatedReceipt && <ReceiptView data={simulatedReceipt} onBack={closeSimulation} />}
-          </div>
-      </div>
-  );
-
-  // ============================================================================
-  // 6. MAIN RENDER
-  // ============================================================================
-
-  if (simulatedReceipt) {
-      return renderSimulationReceiptView();
-  }
-
   return (
     <>
-      <div className="w-full relative z-20 mb-4 md:mb-0 md:h-0">
+    {/* Simulation Toggle */}
+    <div className="w-full relative z-20 mb-4 md:mb-0 md:h-0">
          <div className="w-full md:w-auto md:absolute right-0 md:-top-[60px]">
              <SimulationToggle isSimulating={isSimulating} onToggle={(val) => { 
                  setIsSimulating(val); 
@@ -571,10 +579,11 @@ export default function RetailManualConsumeTab() {
       </div>
 
       <SimulationWrapper isSimulating={isSimulating}>
-        {/* Search Form */}
+
         {currentStep === 'selection' && (
             <Card className={cn(isSimulating && "border-amber-200 shadow-none bg-transparent")}>
                 <CardContent>
+                {/* Same Search Form logic as before, already correct */}
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-end">
                         <div className="space-y-2">
                             <Label htmlFor="consumeType">Consume Type</Label>
@@ -656,12 +665,10 @@ export default function RetailManualConsumeTab() {
             </Card>
         )}
 
-        {/* Step Rendering */}
         {consumeSearchResult && (currentStep === 'selection' ? renderSelectionView() : renderConfirmationView())}
             
       </SimulationWrapper>
 
-      {/* Insufficient Balance Alert */}
       <AlertDialog open={isBalanceAlertOpen} onOpenChange={setIsBalanceAlertOpen}>
             <AlertDialogContent>
                 <AlertDialogHeader>

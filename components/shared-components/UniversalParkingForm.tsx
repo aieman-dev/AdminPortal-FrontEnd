@@ -63,19 +63,22 @@ export function UniversalParkingForm({
 
     // Shared Duplicate Plate Check logic
     useEffect(() => {
+        let isActive = true;
         const checkDuplicate = async () => {
             if (debouncedPlate && debouncedPlate.length > 3) {
                 setIsCheckingPlate(true); 
                 try {
                     const service = isHR ? hrService : carParkService;
-                    const res = await service.getQrListing(1, 1, plate1);
+                    const res = await service.getQrListing(1, 1, debouncedPlate);
+                    if (isActive) {
                     const isConflict = res.totalCount > 0;
                     setLocalPlateConflict(isConflict);
-                    onPlateConflict?.(isConflict); 
+                    onPlateConflict?.(isConflict);
+                    }
                 } catch (e) {
                     console.error("Plate check failed", e);
                 } finally {
-                    setIsCheckingPlate(false); 
+                    if (isActive) setIsCheckingPlate(false);
                 }
             } else {
                 setLocalPlateConflict(false);
@@ -85,6 +88,7 @@ export function UniversalParkingForm({
         };
 
         checkDuplicate();
+        return () => { isActive = false; };
     }, [debouncedPlate, isHR, onPlateConflict]);
 
     useEffect(() => {
@@ -133,20 +137,22 @@ export function UniversalParkingForm({
                         <div>
                         <Label className={labelClass}>NRIC / Passport <span className="text-red-500">*</span></Label>
                         <Input 
-                            {...register("nric")} 
+                            {...register("nric",{
+                                onBlur: (e) => setValue("nric", formatNRIC(e.target.value), { shouldValidate: true })
+                            })} 
                             className={inputClass} 
                             placeholder="ID Number" 
                             disabled={readOnlyUser} 
-                            onInput={(e) => {
-                                const target = e.target as HTMLInputElement;
-                                setValue("nric", formatNRIC(target.value));
-                            }} 
                         />
                         {errors.nric && <p className="text-[10px] text-red-500 font-medium mt-1">{errors.nric.message}</p>}
                     </div>
                         <div>
                             <Label className={labelClass}>Company Name</Label>
-                            <Input {...register("companyName")} className={inputClass} placeholder="Company (Optional)" disabled={readOnlyUser} />
+                            <Input 
+                                {...register("companyName")} 
+                                className={inputClass} 
+                                placeholder="Company (Optional)" 
+                                disabled={readOnlyUser} />
                         </div>
                     </div>
 
@@ -154,12 +160,25 @@ export function UniversalParkingForm({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
                             <Label className={labelClass}>Mobile No. (H/P) <span className="text-red-500">*</span></Label>
-                            <Input {...register("mobileContact")} type="tel" className={inputClass} placeholder="+60" disabled={readOnlyUser} onChange={(e) => setValue("mobileContact", formatMobile(e.target.value))}/>
+                            <Input 
+                                {...register("mobileContact", {
+                                    onBlur: (e) => setValue("mobileContact", formatMobile(e.target.value), { shouldValidate: true })
+                                })}
+                                type="tel" className={inputClass} 
+                                placeholder="+60" 
+                                disabled={readOnlyUser} 
+                            />
                             {errors.mobileContact && <span className="text-[10px] text-red-500 font-medium mt-1 block">{errors.mobileContact.message}</span>}
                         </div>
                         <div> 
                             <Label className={labelClass}>Office Contact</Label>
-                            <Input {...register("officeContact")} type="tel" className={inputClass} placeholder="+03" disabled={readOnlyUser} />
+                            <Input 
+                                {...register("officeContact")} 
+                                type="tel" 
+                                className={inputClass} 
+                                placeholder="+03" 
+                                disabled={readOnlyUser} 
+                            />
                         </div>
                     </div>
 
@@ -411,48 +430,70 @@ export function UniversalParkingForm({
                     {/* Vehicles */}
                     <div className="space-y-1.5">
                         <Label className={labelClass}>Registered Vehicles</Label>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-1.5">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-1.5">
                             
                             {/* Plate 01 */}
-                            <div className="relative">
-                                <span className="absolute left-3 top-3.5 text-[10px] text-muted-foreground font-bold z-10">01</span>
-                                <Input 
-                                    {...register("plate1")} 
-                                    className={cn(
-                                        inputClass, 
-                                        "pl-8 uppercase", 
-                                        plateConflict && "border-amber-500 ring-1 ring-amber-500 shadow-[0_0_0_2px_rgba(245,158,11,0.1)]"
-                                    )} 
-                                    placeholder="Required" 
-                                    onChange={(e) => { 
-                                        const normalized = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); 
-                                        setValue("plate1", normalized);
-                                    }}
-                                />
-                                {isCheckingPlate && (
-                                    <div className="absolute right-3 top-3.5">
-                                        <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
-                                    </div>
-                                )}
+                            <div className="space-y-1.5">
+                                <div className="relative">
+                                    <span className="absolute left-3 top-3.5 text-[10px] text-muted-foreground font-bold z-10">01</span>
+                                    <Input 
+                                        {...register("plate1", {
+                                            onBlur: (e) => {
+                                                const normalized = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+                                                setValue("plate1", normalized, { shouldValidate: true });
+                                            }
+                                        })}
+                                        className={cn(
+                                            inputClass, 
+                                            "pl-8 uppercase", 
+                                            plateConflict && "border-amber-500 ring-1 ring-amber-500 shadow-[0_0_0_2px_rgba(245,158,11,0.1)]"
+                                        )} 
+                                        placeholder="Required" 
+                                    />
+                                    {isCheckingPlate && (
+                                        <div className="absolute right-3 top-3.5">
+                                            <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Removed absolute positioning so it pushes the next input down */}
                                 {plateConflict && (
-                                    <div className="absolute -bottom-5 left-0 flex items-center gap-1 text-[9px] font-bold text-amber-600 whitespace-nowrap">
-                                        <AlertTriangle className="h-2.5 w-2.5" />
+                                    <div className="flex items-start gap-1 text-[10px] font-bold text-amber-600 leading-tight">
+                                        <AlertTriangle className="h-3 w-3 shrink-0" />
                                         <span>This plate is already registered to another active account</span>
                                     </div>
                                 )}
-                                {errors.plate1 && <span className="absolute -bottom-5 left-0 text-[9px] text-red-500 font-medium">{errors.plate1.message}</span>}
+                                {errors.plate1 && (
+                                    <span className="text-[10px] text-red-500 font-medium block">
+                                        {errors.plate1.message}
+                                    </span>
+                                )}
                             </div>
 
                             {/* Plate 02 */}
-                            <div className="relative">
-                                <span className="absolute left-3 top-3.5 text-[10px] text-muted-foreground font-bold z-10">02</span>
-                                <Input {...register("plate2")} className={cn(inputClass, "pl-8 uppercase")} placeholder="Optional" />
+                            <div className="space-y-1.5">
+                                <div className="relative">
+                                    <span className="absolute left-3 top-3.5 text-[10px] text-muted-foreground font-bold z-10">02</span>
+                                    <Input {...register("plate2")} className={cn(inputClass, "pl-8 uppercase")} placeholder="Optional" />
+                                </div>
+                                {errors.plate2 && (
+                                    <span className="text-[10px] text-red-500 font-medium block">
+                                        {errors.plate2.message}
+                                    </span>
+                                )}
                             </div>
 
                             {/* Plate 03 */}
-                            <div className="relative">
-                                <span className="absolute left-3 top-3.5 text-[10px] text-muted-foreground font-bold z-10">03</span>
-                                <Input {...register("plate3")} className={cn(inputClass, "pl-8 uppercase")} placeholder="Optional" />
+                            <div className="space-y-1.5">
+                                <div className="relative">
+                                    <span className="absolute left-3 top-3.5 text-[10px] text-muted-foreground font-bold z-10">03</span>
+                                    <Input {...register("plate3")} className={cn(inputClass, "pl-8 uppercase")} placeholder="Optional" />
+                                </div>
+                                {errors.plate3 && (
+                                    <span className="text-[10px] text-red-500 font-medium block">
+                                        {errors.plate3.message}
+                                    </span>
+                                )}
                             </div>
 
                         </div>

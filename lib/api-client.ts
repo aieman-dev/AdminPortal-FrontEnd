@@ -1,6 +1,30 @@
 // lib/api-client.ts
 import { AppError, ErrorType, STATUS_MESSAGES } from "@/lib/errors"
 import { USER_DATA_KEY } from "@/lib/constants"
+import { logger } from "@/lib/logger";
+
+// --- NEW: Helper to auto-transform camelCase to PascalCase ---
+const transformKeysToPascalCase = (obj: any): any => {
+    if (obj === null || obj instanceof Date || obj instanceof File || obj instanceof Blob) {
+        return obj;
+    }
+    
+    if (Array.isArray(obj)) {
+        return obj.map(v => transformKeysToPascalCase(v));
+    } 
+    
+    if (typeof obj === 'object') {
+        return Object.keys(obj).reduce((result, key) => {
+            // Capitalize the first letter
+            const pascalKey = key.charAt(0).toUpperCase() + key.slice(1);
+            result[pascalKey] = transformKeysToPascalCase(obj[key]);
+            return result;
+        }, {} as Record<string, any>);
+    }
+    
+    // Return primitive values (strings, numbers, booleans) as is
+    return obj;
+};
 
 const resolveErrorMessage = (status: number, backendMessage?: string) => {
     // 1. If backend provides a specific readable message, use it.
@@ -90,7 +114,7 @@ class ApiClient {
 
           // 403: Security Lockout vs Simple Permission
           if (response.status === 403) {
-             console.warn(`Access Denied [403] for ${cleanEndpoint}`);
+             logger.warn("Access Denied [403]", { endpoint: cleanEndpoint });
              if (finalMessage.toLowerCase().includes("expired")) {
                  triggerGlobalError(finalMessage, data); 
              }
@@ -110,7 +134,7 @@ class ApiClient {
       } catch (error) {
         // Network Errors (Server down / Offline)
         if (error instanceof TypeError && error.message === "Failed to fetch") {
-          console.warn("Backend disconnected.");
+          logger.warn("Backend disconnected / Network failure", { error });
           return { success: false, error: "Unable to connect to the server. Please check your internet." };
         }
         
@@ -129,18 +153,20 @@ class ApiClient {
   
   async post<T>(endpoint: string, body?: any, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const isFormData = body instanceof FormData;
+    const finalBody = (!isFormData && body) ? transformKeysToPascalCase(body) : body;
     return this.request<T>(endpoint, {
       method: "POST",
-      body: isFormData ? body : JSON.stringify(body),
+      body: isFormData ? body : JSON.stringify(finalBody),
       ...options,
     })
   }
 
   async put<T>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
     const isFormData = body instanceof FormData;
+    const finalBody = (!isFormData && body) ? transformKeysToPascalCase(body) : body;
     return this.request<T>(endpoint, {
       method: "PUT",
-      body: isFormData ? body : JSON.stringify(body),
+      body: isFormData ? body : JSON.stringify(finalBody),
     })
   }
 

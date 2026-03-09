@@ -173,6 +173,7 @@ export default function ConsumeTerminalTab() {
                                         pagination={purchasePagination}
                                         onSort={onPurchaseSort}
                                         sortConfig={purchaseSort}
+                                        skeletonRowCount={purchasePagination.pageSize}
                                     />
                                 </CardContent>
                             </Card>
@@ -190,6 +191,7 @@ export default function ConsumeTerminalTab() {
                                         pagination={consumePagination}
                                         onSort={onConsumeSort}
                                         sortConfig={consumeSort}
+                                        skeletonRowCount={consumePagination.pageSize}
                                     />
                                 </CardContent>
                             </Card>

@@ -142,7 +142,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             <SessionTimer/>
             <SystemTips />
 
-          <main className="flex-1 overflow-y-auto bg-background overscroll-contain">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background overscroll-contain">
             <div className="container mx-auto p-4 md:p-6 pb-24">
               <AnimatePresence mode="wait">
                 <PageWrapper key={pathname}>

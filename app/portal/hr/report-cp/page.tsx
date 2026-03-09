@@ -14,6 +14,7 @@ import { hrService } from "@/services/hr-services"
 import { PageHeader } from "@/components/portal/page-header"
 import { usePagination } from "@/hooks/use-pagination"
 import { cn } from "@/lib/utils"
+import { formatDateTime } from "@/lib/formatter"
 
 // --- 1. STATIC CONFIGURATION ---
 const STATIC_META = {
@@ -51,7 +52,7 @@ export default function StaffParkingReportPage() {
             ),
             cell: (val: any) => {
                  if (typeof val === 'string' && val.includes('T') && val.length > 10 && !isNaN(Date.parse(val))) {
-                     return <span className="whitespace-nowrap">{new Date(val).toLocaleDateString()}</span>;
+                     return <span className="whitespace-nowrap">{formatDateTime(val)}</span>;
                  }
                  if (key.toLowerCase().includes("status")) {
                      return <StatusBadge status={val} />;

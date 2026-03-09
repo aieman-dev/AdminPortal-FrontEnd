@@ -19,7 +19,8 @@ import { LoadingButton } from "@/components/ui/loading-button";
 import { EmptyState } from "@/components/portal/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PaginationControls } from "@/components/ui/pagination-controls";
-import { ModuleErrorBoundary } from "@/components/portal/module-error-boundary";
+import { WidgetErrorBoundary } from "@/components/portal/widget-error-boundary";
+import { PACKAGE_STATUS } from "@/lib/constants";
 
 interface PackageListItem {
   id: number;
@@ -66,13 +67,12 @@ export default function PackagesPage() {
   const toast = useAppToast();
   const router = useRouter();
 
-  const defaultFilter = "Pending";
+  const defaultFilter = PACKAGE_STATUS.PENDING;
+  const [activeFilter, setActiveFilter] = useState<string>(defaultFilter);
   const canCreate = canCreatePackage(user?.department);
   const ITEMS_PER_PAGE = 30; 
   
-  const [activeFilter, setActiveFilter] = useState(defaultFilter);
   const [searchQuery, setSearchQuery] = useState("");
-
   const debouncedSearch = useDebounce(searchQuery, 500);
 
   const [packageTypeFilter, setPackageTypeFilter] = useState("All"); 
@@ -161,7 +161,7 @@ export default function PackagesPage() {
   };
 
   const handlePackageClick = (id: number) => {
-    const pendingStatuses = ["Pending", "Draft", "Rejected"];
+    const pendingStatuses: string[] = [PACKAGE_STATUS.PENDING, PACKAGE_STATUS.DRAFT, PACKAGE_STATUS.REJECTED];
     if (pendingStatuses.includes(activeFilter)) {
         router.push(`/portal/packages/pdetails/requests/${id}`);
     } else {
@@ -172,12 +172,13 @@ export default function PackagesPage() {
   const handleEdit = (id: number) => router.push(`/portal/packages/form?id=${id}`);
   const handleAddNew = () => router.push("/portal/packages/form");
   
+
   const handleDuplicate = async (id: number) => {
     try {
       setIsLoading(true);
       const response = await packageService.duplicatePackage(id);
       toast.info("Package Duplicated", `New ID: ${response.newPackageId}. Status: Draft.` );
-      setActiveFilter("Draft");
+      setActiveFilter(PACKAGE_STATUS.DRAFT);
     } catch (error) {
       toast.error( "Duplication Failed", "Failed to duplicate.");
     } finally {
@@ -305,7 +306,7 @@ export default function PackagesPage() {
       }
   };
 
-  const isDraftTab = activeFilter === "Draft";
+  const isDraftTab = activeFilter === PACKAGE_STATUS.DRAFT;
 
   return (
     <div className="min-h-screen flex p-8 transition-colors duration-300 text-foreground">
@@ -367,7 +368,7 @@ export default function PackagesPage() {
           {isLoading ? (
             <PackageSkeletons />
           ) : packages.length > 0 ? (
-            <>
+            <WidgetErrorBoundary widgetName="Package Grid">
               <div className="text-sm text-muted-foreground mt-4 mb-2">
                 Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, totalRecords || packages.length)} of {totalRecords || 'many'} packages
               </div>
@@ -405,7 +406,7 @@ export default function PackagesPage() {
                   pageSize={ITEMS_PER_PAGE}
                   onPageChange={goToPage}
                />
-            </>
+            </WidgetErrorBoundary>
           ) : (
             <div className="h-80 flex items-center justify-center border border-dashed rounded-lg bg-muted/30 mt-6">
                 <EmptyState 

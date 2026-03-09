@@ -1,7 +1,8 @@
 // services/dashboard-service.ts
 import { apiClient, ApiResponse, getContent, getDataObject } from "@/lib/api-client";
 import { DashboardSummary, KioskStatus } from "@/type/dashboard";
-import { packageService } from "./package-services"; // Import peer service
+import { packageService } from "./package-services"; 
+import { logger } from "@/lib/logger";
 
 const ENDPOINTS = {
     DASHBOARD_SUMMARY: "Package/dashboard-summary",
@@ -40,7 +41,7 @@ export const dashboardService = {
             const { packages } = await packageService.getPackages("Pending", undefined, undefined, 1, "", "All");
             return packages.slice(0, 8); // Limit to 8 for dashboard
         } catch (error) {
-            console.error("Failed to fetch recent packages", error);
+            logger.error("Failed to fetch recent packages", error);
             return [];
         }
     }
