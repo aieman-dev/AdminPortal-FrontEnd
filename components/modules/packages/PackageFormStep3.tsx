@@ -213,7 +213,7 @@ const PackageFormStep3: React.FC<Props> = ({ form, onBack, onSubmit, onSaveDraft
       </Tabs>
       
       {/* Footer Actions */}
-      <div className="flex flex-col-reverse sm:flex-row justify-between gap-4 mt-auto pt-4 border-t flex-shrink-0">
+      <div className="flex flex-col-reverse sm:flex-row justify-between gap-4 mt-auto pt-4 border-t flex-shrink-0 pb-safe">
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button variant="outline" onClick={onBack} className="w-full sm:w-auto">Back</Button>
           {canDraft && (

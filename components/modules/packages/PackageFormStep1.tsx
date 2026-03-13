@@ -230,7 +230,7 @@ const PackageFormStep1: React.FC<Props> = ({ form, onNext }) => {
                 <FormLabel>Day Pass (Days) <span className="text-red-500">*</span></FormLabel>
                 <FormControl>
                     <Input {...field}
-                    type="number"
+                    type="tel"
                     min="0"  
                     placeholder="e.g. 1" 
                     onChange={(e) => {

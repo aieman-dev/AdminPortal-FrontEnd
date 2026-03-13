@@ -19,7 +19,7 @@ import { StatusBadge } from "@/components/shared-components/status-badge"
 import { 
     User, Mail, Building, Shield, Bell, Info, 
     AlertTriangle, CheckCircle2, XCircle, Calendar, 
-    Activity, Loader2, Megaphone, Send
+    Activity, Loader2, Megaphone, Send, Smartphone
 } from "lucide-react"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { useAuth } from "@/hooks/use-auth"
@@ -228,6 +228,31 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Mobile App Install Card (Visible only on smaller screens) */}
+        <div className="flex items-center justify-between p-4 bg-card border rounded-xl shadow-sm lg:hidden">
+        <div className="flex items-center gap-4">
+            <div className="h-10 w-10 rounded-full bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center border border-indigo-100 dark:border-indigo-800">
+                <Smartphone className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div>
+            <h3 className="font-semibold text-sm text-foreground">Install Mobile App</h3>
+            <p className="text-xs text-muted-foreground">Get the full-screen native experience</p>
+            </div>
+        </div>
+        <Button 
+            variant="outline" 
+            size="sm" 
+            className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/30"
+            onClick={() => {
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new Event('show-pwa-prompt'));
+            }
+            }}
+        >
+            Install
+        </Button>
+        </div>
 
         <Card className="flex-1 flex flex-col">
           <CardHeader className="pb-2">

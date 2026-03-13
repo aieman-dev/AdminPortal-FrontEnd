@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import { WidgetErrorBoundary } from "@/components/portal/widget-error-boundary";
 import { PACKAGE_STATUS } from "@/lib/constants";
+import { PullToRefresh } from "@/components/shared-components/pull-to-refresh"
 
 interface PackageListItem {
   id: number;
@@ -308,10 +309,16 @@ export default function PackagesPage() {
 
   const isDraftTab = activeFilter === PACKAGE_STATUS.DRAFT;
 
+  const handleRefresh = async () => {
+    await fetchPackages();
+}
+
   return (
-    <div className="min-h-screen flex p-8 transition-colors duration-300 text-foreground">
+  <>
+   <PullToRefresh onRefresh={handleRefresh}>
+    <div className="min-h-screen flex p-4 md:p-8 pb-24 transition-colors duration-300 text-foreground">
       <div className="w-full">
-        <div className="rounded-lg shadow-sm border p-6 bg-card border-border text-card-foreground">
+        <div className="rounded-lg shadow-sm border p-4 md:p-6 bg-card border-border text-card-foreground">
           <h2 className="text-xl font-bold mb-6">Package Status</h2>
 
           <PackageFilters
@@ -414,15 +421,17 @@ export default function PackagesPage() {
                     title="No packages found" 
                     description="Try adjusting your filters or search query." 
                 />
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      </PullToRefresh>
 
       {canCreate && (
         <button
           onClick={handleAddNew}
-          className="fixed bottom-8 right-8 bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-3 rounded-full shadow-lg flex items-center gap-2 font-semibold transition-all hover:shadow-xl z-10"
+          className="fixed bottom-8 right-8 bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-3 rounded-full shadow-lg flex items-center gap-2 font-semibold transition-all hover:shadow-xl z-10 mb-safe"
         >
           <Plus size={20} />
           Add New
@@ -441,7 +450,6 @@ export default function PackagesPage() {
         confirmLabel={modalContent.confirmLabel}
         cancelLabel={modalContent.cancelLabel}
       />
-
-    </div>
+    </>
   );
 }

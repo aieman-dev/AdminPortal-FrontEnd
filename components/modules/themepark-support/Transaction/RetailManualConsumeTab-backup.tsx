@@ -357,7 +357,7 @@ export default function RetailManualConsumeTab() {
                     <Minus className="h-3 w-3" />
                 </Button>
                 <Input 
-                    type="number" 
+                    type="tel" 
                     className="h-7 w-12 text-center rounded-none border-x-0 focus-visible:ring-0 px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     value={qty.toString()}
                     onChange={(e) => updateQuantity(row.id, parseInt(e.target.value) || 0)}
@@ -607,7 +607,13 @@ export default function RetailManualConsumeTab() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="mobileNo">Mobile No</Label>
-                        <Input id="mobileNo" className="h-11" value={mobileNo} onChange={(e) => setMobileNo(e.target.value)} disabled={isMobileDisabled} />
+                        <Input 
+                            id="mobileNo"
+                            type="tel"  
+                            className="h-11" 
+                            value={mobileNo} 
+                            onChange={(e) => setMobileNo(e.target.value)} 
+                            disabled={isMobileDisabled} />
                         </div>
                         
                         <div className="space-y-2">
@@ -643,7 +649,12 @@ export default function RetailManualConsumeTab() {
 
                         <div className="space-y-2">
                             <Label htmlFor="itemName">Item Name (Search)</Label>
-                            <Input id="itemName" className="h-11" value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="e.g. Burger" />
+                            <Input 
+                                id="itemName" 
+                                className="h-11" 
+                                value={itemName} 
+                                onChange={(e) => setItemName(e.target.value)} 
+                                placeholder="Item name" />
                         </div>
 
                         <div></div>

@@ -252,4 +252,15 @@
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
+
+  /* Safe area insets for iOS Home Swipe Bar */
+  .pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom), 1.5rem) !important;
+  }
+  .mb-safe {
+    margin-bottom: max(env(safe-area-inset-bottom), 1.5rem) !important;
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top) !important;
+  }
 }

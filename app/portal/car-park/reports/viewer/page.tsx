@@ -210,8 +210,8 @@ const validateFilters = () => {
             <div key={param.name} className="space-y-1 w-full">
                 <Label className={labelClass}>{param.label}</Label>
                 <Input 
-                    type={param.type === 'number' ? 'number' : 'text'}
-                    placeholder={param.placeholder || "Enter value..."}
+                    type={param.type === 'number' ? 'tel' : 'text'}
+                    placeholder={param.placeholder || "Enter value"}
                     value={value || ""}
                     onChange={(e) => setDynamicFilters(prev => ({ ...prev, [param.name]: param.type === 'number' ? Number(e.target.value) : e.target.value }))}
                     className={inputClass}

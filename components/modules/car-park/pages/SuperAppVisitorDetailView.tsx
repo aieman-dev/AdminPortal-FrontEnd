@@ -255,7 +255,9 @@ export function SuperAppVisitorDetailView({
 
                         <div className="space-y-2">
                             <Label>Terminal ID</Label>
-                            <Input type="number" value={manualTerminalId} onChange={(e) => setManualTerminalId(e.target.value)}/>
+                            <Input 
+                                type="tel" 
+                                value={manualTerminalId} onChange={(e) => setManualTerminalId(e.target.value)}/>
                             <p className="text-xs text-muted-foreground">Default: {SYSTEM_TERMINAL_ID}</p>
                         </div>
                         <div className="space-y-2">
@@ -265,7 +267,7 @@ export function SuperAppVisitorDetailView({
                         {manualDirection === "Out" && (
                             <div className="space-y-2">
                                 <Label>Deduction Amount (RM)</Label>
-                                <Input type="number" className="font-bold" placeholder="0.00" value={manualAmount} onChange={(e) => setManualAmount(e.target.value)}/>
+                                <Input type="text" inputMode="decimal" className="font-bold" placeholder="0.00" value={manualAmount} onChange={(e) => setManualAmount(e.target.value)}/>
                             </div>
                         )}
                     </div>

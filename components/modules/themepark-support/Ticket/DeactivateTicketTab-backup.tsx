@@ -1,12 +1,13 @@
-// components/modules/themepark-support/Ticket/DeactivateTicketTab.tsx
+// components/themepark-support/tabs/Ticket/DeactivateTicketTab.tsx
 "use client"
 
-import React, { useState, useMemo } from "react"
+import React, { useState, useEffect, useMemo } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { Loader2, SearchX, ShoppingBag, FlaskConical } from "lucide-react" 
+import { Ticket, Loader2, SearchX, ShoppingBag, FlaskConical } from "lucide-react" 
 import { StatusBadge } from "@/components/shared-components/status-badge"
 import { SearchField } from "@/components/shared-components/search-field"
 import { useAppToast } from "@/hooks/use-app-toast"
@@ -14,7 +15,10 @@ import { useAutoSearch } from "@/hooks/use-auto-search"
 import { itPoswfService } from "@/services/themepark-support"
 import { formatDateTime} from "@/lib/formatter";
 import { cn } from "@/lib/utils"
-import { DeactivatableTicket, ConsumptionHistory } from "@/type/themepark-support"
+import { 
+  type DeactivatableTicket, 
+  type ConsumptionHistory, 
+} from "@/type/themepark-support"
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
@@ -23,35 +27,27 @@ import { Separator } from "@/components/ui/separator"
 import { SimulationToggle } from "@/components/shared-components/simulation-toggle"
 import { SimulationWrapper } from "@/components/shared-components/simulation-wrapper"
 
+
 export default function DeactivateTicketTab() {
   const toast = useAppToast()
   const isMobile = useIsMobile()
 
-  // ============================================================================
-  // 1. STATE MANAGEMENT
-  // ============================================================================
-
   const [searchQuery, setSearchQuery] = useState("")
   const [ticketDetails, setTicketDetails] = useState<DeactivatableTicket[]>([])
   const [consumptionHistory, setConsumptionHistory] = useState<ConsumptionHistory[]>([])
-  
-  // Loading & View States
   const [isSearching, setIsSearching] = useState(false)
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
   const [deactivatingRow, setDeactivatingRow] = useState<ConsumptionHistory | null>(null)
   const [updatingRowIds, setUpdatingRowIds] = useState<Set<string>>(new Set());
 
-  // Mobile Sheet State
+  // --- Mobile Sheet State ---
   const [selectedTicket, setSelectedTicket] = useState<DeactivatableTicket | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  // Simulation State
+  // --- SIMULATION STATE ---
   const [isSimulating, setIsSimulating] = useState(false);
   
-  // ============================================================================
-  // 2. CORE LOGIC & API HANDLERS
-  // ============================================================================
-
+  // Core Fetch Logic
   const fetchData = async (query: string, retainState: boolean = false) => {
     if (!query.trim()) return;
 
@@ -114,6 +110,7 @@ export default function DeactivateTicketTab() {
     }
   };
 
+  // Auto Search Handler
   useAutoSearch((query) => {
       setSearchQuery(query);
       fetchData(query, false);
@@ -127,6 +124,7 @@ export default function DeactivateTicketTab() {
       fetchData(searchQuery.trim(), false);
   }
 
+
   const handleDeactivateClick = (row: ConsumptionHistory) => {
     const isActive = row.status.toLowerCase() === "active";
     if (!isActive) {
@@ -136,6 +134,7 @@ export default function DeactivateTicketTab() {
     setDeactivatingRow(row)
     setIsConfirmOpen(true)
   }
+  
 
   const handleDeactivateConfirm = async () => {
     if (!deactivatingRow) return;
@@ -173,15 +172,7 @@ export default function DeactivateTicketTab() {
     }
   }
 
-  const handleRowClick = (ticket: DeactivatableTicket) => {
-      setSelectedTicket(ticket);
-      setIsSheetOpen(true);
-  }
-
-  // ============================================================================
-  // 3. UI CONFIGURATION (Columns & Renderers)
-  // ============================================================================
-
+  // --- Render Helpers ---
   const renderDeactivateButton = (row: ConsumptionHistory) => {
     const isAlreadyDeactivated = row.status.toLowerCase() !== "active";
     const isRowUpdating = updatingRowIds.has(row.id);
@@ -200,6 +191,13 @@ export default function DeactivateTicketTab() {
     )
   }
 
+  // --- MOBILE HANDLER ---
+  const handleRowClick = (ticket: DeactivatableTicket) => {
+      setSelectedTicket(ticket);
+      setIsSheetOpen(true);
+  }
+
+  // --- UPDATED COLUMN DEFINITIONS WITH BADGE ---
   const masterColumns: TableColumn<DeactivatableTicket>[] = useMemo(() => [
       { header: "Ticket No", accessor: "ticketNo", cell: (value, row) => {
           const childCount = consumptionHistory.filter(c => c.ticketNo === row.ticketNo).length;
@@ -223,6 +221,7 @@ export default function DeactivateTicketTab() {
   ], [consumptionHistory]);
 
 
+  // --- DESKTOP SUB-COMPONENT ---
   const renderDetailRow = (ticket: DeactivatableTicket) => {
       const children = consumptionHistory.filter(c => c.ticketNo === ticket.ticketNo);
       if (children.length === 0) return <div className="py-4 pl-12 text-sm text-muted-foreground italic">No consumption history found for this ticket.</div>;
@@ -260,12 +259,9 @@ export default function DeactivateTicketTab() {
       );
   };
 
-  // ============================================================================
-  // 4. MAIN RENDER
-  // ============================================================================
-
   return (
     <>
+    {/* SIMULATION TOGGLE */}
       <div className="w-full relative z-20 mb-4 md:mb-0 md:h-0">
          <div className="w-full md:w-auto md:absolute right-0 md:-top-[60px]">
              <SimulationToggle isSimulating={isSimulating} onToggle={(val) => { 
@@ -293,7 +289,7 @@ export default function DeactivateTicketTab() {
             <Card className={cn(isSimulating && "border-amber-200 shadow-none bg-transparent mt-4")}>
             <div className="p-6 border-b">
                     <div className="flex items-center gap-2 text-lg font-semibold">
-                        <ShoppingBag className="h-5 w-5 text-muted-foreground" />
+                        <Ticket className="h-5 w-5 text-muted-foreground" />
                         Ticket & Consumption Details
                     </div>
                 </div>

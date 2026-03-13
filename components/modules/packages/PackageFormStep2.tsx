@@ -174,7 +174,7 @@ const PackageFormStep2: React.FC<Props> = ({ form, onNext, onBack }) => {
           <div className="mb-4 flex-shrink-0 flex items-center gap-3">
               <div className="relative flex-1">
                   <Input 
-                      placeholder="Search items..." 
+                      placeholder="Search items" 
                       value={query} 
                       onChange={(e) => setQuery(e.target.value)} 
                   />
@@ -199,45 +199,47 @@ const PackageFormStep2: React.FC<Props> = ({ form, onNext, onBack }) => {
 
                 return (
                   <div key={item.attractionId} onClick={() => toggleSelect(item)} className={`flex items-center gap-4 p-3 border rounded-lg cursor-pointer transition-colors ${selected ? "bg-indigo-50 border-indigo-600" : "hover:bg-muted/50"}`}>
-                    
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
                     {/* ITEM IMAGE */}
-                    <HoverCard openDelay={500} closeDelay={100}>
-                        <HoverCardTrigger asChild>
-                            <div className="relative h-12 w-12 shrink-0 rounded-md overflow-hidden bg-muted border group cursor-zoom-in">
-                                <img 
-                                    src={item.image} 
-                                    alt={item.itemName}
-                                    className="h-full w-full object-cover"
-                                    onError={(e) => (e.currentTarget.src = "/packages/DefaultPackageImage.png")}
-                                />
-                            </div>
-                        </HoverCardTrigger>
-                        
-                        <HoverCardContent 
-                            side="right" 
-                            align="start" 
-                            className="w-72 h-72 p-0 overflow-hidden border-4 border-white shadow-2xl rounded-xl z-50 ml-4"
-                        >
-                            <img 
-                                src={item.image} 
-                                alt="Zoom" 
-                                className="w-full h-full object-cover" 
-                            />
-                        </HoverCardContent>
-                    </HoverCard>
+                      <HoverCard openDelay={500} closeDelay={100}>
+                          <HoverCardTrigger asChild>
+                              <div className="relative h-12 w-12 shrink-0 rounded-md overflow-hidden bg-muted border group cursor-zoom-in">
+                                  <img 
+                                      src={item.image} 
+                                      alt={item.itemName}
+                                      className="h-full w-full object-cover"
+                                      onError={(e) => (e.currentTarget.src = "/packages/DefaultPackageImage.png")}
+                                  />
+                              </div>
+                          </HoverCardTrigger>
+                          
+                          <HoverCardContent 
+                              side="right" 
+                              align="start" 
+                              className="w-72 h-72 p-0 overflow-hidden border-4 border-white shadow-2xl rounded-xl z-50 ml-4"
+                          >
+                              <img 
+                                  src={item.image} 
+                                  alt="Zoom" 
+                                  className="w-full h-full object-cover" 
+                              />
+                          </HoverCardContent>
+                      </HoverCard>
 
-                    <div className="flex-1 font-semibold text-sm leading-tight">{item.itemName}</div>
+                      <div className="flex-1 font-semibold text-sm leading-tight">{item.itemName}</div>
+                    </div>
                     
                     <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                         <Input 
-                            type="number" 
+                            type={isPointMode ? "tel" : "text"} 
+                            inputMode={isPointMode ? "numeric" : "decimal"}
                             className="w-20 h-9 text-center bg-white shadow-sm" 
                             value={activeItem?.[valueField] ?? ""} 
                             onChange={(e) => handleItemChange(item, valueField, e.target.value)} 
                             placeholder={isPointMode ? "Pts" : "RM"} 
                         />
                         <Input 
-                            type="number" 
+                            type="tel" 
                             className="w-16 h-9 text-center bg-white shadow-sm" 
                             value={activeItem?.entryQty ?? ""} 
                             onChange={(e) => handleItemChange(item, "entryQty", e.target.value)} 
@@ -293,7 +295,7 @@ const PackageFormStep2: React.FC<Props> = ({ form, onNext, onBack }) => {
               )}
           </div>
 
-          <div className="mt-4 pt-4 border-t bg-card rounded-lg p-4 shadow-sm border flex-shrink-0">
+          <div className="mt-4 pt-4 border-t bg-card rounded-lg p-4 shadow-sm border flex-shrink-0 pb-safe">
               <div className="flex justify-between items-end mb-4">
                   <span className="text-sm font-medium text-muted-foreground">Total Estimate</span>
                   <span className="text-2xl font-bold text-indigo-600 leading-none">

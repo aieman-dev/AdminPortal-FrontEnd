@@ -1,9 +1,10 @@
-// components/modules/themepark-support/Account/SearchHistoryRecordTab.tsx
 "use client"
 
-import React, { useState, useMemo, useCallback } from "react"
+import React, { useState, useMemo, useEffect, useCallback } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
+import { EmailAutocomplete } from "@/components/ui/email-autocomplete"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SearchField } from "@/components/shared-components/search-field"
@@ -14,17 +15,22 @@ import { itPoswfService } from "@/services/themepark-support";
 import { formatCurrency, formatDate } from "@/lib/formatter";
 import { useAppToast } from "@/hooks/use-app-toast"
 import { useAutoSearch } from "@/hooks/use-auto-search"
+import { usePagination } from "@/hooks/use-pagination"
 import { useDataTable } from "@/hooks/use-data-table"
 import { Button } from "@/components/ui/button";
-import { SearchX, ShoppingBag, Calendar } from "lucide-react";
+import { Pencil, SearchX, ShoppingBag, Calendar } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile"; 
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"; 
+import { 
+    Sheet, 
+    SheetContent, 
+    SheetHeader, 
+    SheetTitle, 
+    SheetDescription 
+} from "@/components/ui/sheet"; 
 import { ScrollArea } from "@/components/ui/scroll-area"; 
+import { Separator } from "@/components/ui/separator";
 
-// ============================================================================
-// 1. HELPERS & PURE FUNCTIONS
-// ============================================================================
-
+// --- Helpers ---
 function parseAmount(amount: string | number): number {
     if (typeof amount === 'number') return amount;
     if (!amount) return 0;
@@ -32,31 +38,25 @@ function parseAmount(amount: string | number): number {
     return parseFloat(cleanStr) || 0;
 }
 
+
 export default function SearchHistoryRecordTab() {
   const toast = useAppToast();
   const isMobile = useIsMobile();
 
-  // ============================================================================
-  // 2. STATE MANAGEMENT
-  // ============================================================================
-  
-  // Search State
+  // --- State for Mobile Details Sheet ---
+  const [selectedInvoice, setSelectedInvoice] = useState<GroupedInvoice | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+
   const [searchType, setSearchType] = useState<"email" | "mobile" | "invoice">("email")
   const [searchTerm, setSearchTerm] = useState("")
-  const [isSearching, setIsSearching] = useState(false)
 
   // Data Store
   const [rawHistoryData, setRawHistoryData] = useState<TransactionHistory[]>([])
   const [ticketData, setTicketData] = useState<TicketHistory[]>([])
+  const [isSearching, setIsSearching] = useState(false)
 
-  // Mobile Sheet State
-  const [selectedInvoice, setSelectedInvoice] = useState<GroupedInvoice | null>(null);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  // ============================================================================
-  // 3. DATA PROCESSING & TABLE HOOKS
-  // ============================================================================
-
+  // --- DATA PROCESSING (Moved up to feed the hook) ---
   const groupedTransactions = useMemo(() => {
       const groups: Record<string, GroupedInvoice> = {};
       (rawHistoryData || []).forEach(item => {
@@ -77,6 +77,8 @@ export default function SearchHistoryRecordTab() {
       return Object.values(groups);
   }, [rawHistoryData]);
 
+  // --- 2. IMPLEMENT SHARED TABLE HOOK ---
+  
   // Hook for Transactions Table
   const { 
     paginatedData: paginatedTransactions, 
@@ -99,16 +101,14 @@ export default function SearchHistoryRecordTab() {
       pageSize: 10 
   });
 
-  // ============================================================================
-  // 4. CORE LOGIC & API HANDLERS
-  // ============================================================================
-
+  // Core Search Logic
   const executeSearch = useCallback(async (type: string, term: string) => {
     if (!term) return;
     setIsSearching(true);
 
     resetTrxPager();
     resetTicketPager();
+    
     setRawHistoryData([]);
     setTicketData([]);
 
@@ -123,7 +123,7 @@ export default function SearchHistoryRecordTab() {
             if (totalCount === 0) {
                  toast.info("Search Complete", "No records found.");
             } else {
-                 toast.success("Search Complete",`Found ${totalCount} records.`);
+                 toast.info("Search Complete",`Found ${totalCount} records.`);
             }
         } else {
             toast.error("Search Failed",  response.error || "Server error.");
@@ -135,7 +135,8 @@ export default function SearchHistoryRecordTab() {
     }
   }, [toast, resetTrxPager, resetTicketPager]);
 
-  // Auto-Detect & Search
+
+  // 2. AUTO-DETECT & SEARCH EFFECT
   useAutoSearch((query) => {
       const cleanQuery = query.trim();
       setSearchTerm(cleanQuery);
@@ -153,20 +154,19 @@ export default function SearchHistoryRecordTab() {
       executeSearch(detectedType, cleanQuery);
   });
 
+  // 3. MANUAL TRIGGER
   const handleManualSearch = () => {
       executeSearch(searchType, searchTerm);
   }
 
+  // Handler for Row Click (Mobile Only)
   const handleRowClick = (row: GroupedInvoice) => {
       setSelectedInvoice(row);
       setIsSheetOpen(true);
   };
 
-  // ============================================================================
-  // 5. UI CONFIGURATION (Columns & Renderers)
-  // ============================================================================
-
-  const transactionColumns: TableColumn<GroupedInvoice>[] = useMemo(() => [
+  // --- COLUMN DEFINITIONS ---
+  const transactionColumns: TableColumn<GroupedInvoice>[] = [
       { header: "Invoice No", accessor: "invoiceNo", sortable: true, className: "w-[300px]", cell: (val, row) => (
           <div className="flex items-center gap-2">
              <span className="font-medium text-blue-600 dark:text-blue-400">{val}</span>
@@ -178,7 +178,7 @@ export default function SearchHistoryRecordTab() {
       { header: "Total Amount", accessor: "totalAmount", sortable: true, className: "w-[150px] text-right", cell: (val) => formatCurrency(val)},
       { header: "Type", accessor: "trxType", sortable: true, className: "text-center", cell: (val) => <StatusBadge status={val} /> },
       { header: "Created Date", accessor: "createdDate", sortable: true, className: "text-center", cell: (val) => <span className="text-muted-foreground text-sm">{formatDate(val as string)}</span> }
-  ], []);
+  ];
 
   const ticketColumns: TableColumn<TicketHistory>[] = useMemo (() => [
     { header: "Ticket No", accessor: "ticketNo", cell: (value) => <span className="font-medium">{value}</span> },
@@ -191,6 +191,7 @@ export default function SearchHistoryRecordTab() {
     { header: "Created Date", accessor: "createdDate", cell: (value) => <span className="text-muted-foreground text-sm w-[180px]">{formatDate(value as string)}</span> },
   ], []);
 
+  // --- SUB-COMPONENT RENDERER  (DESKTOP)---
   const renderDetailRow = (group: GroupedInvoice) => {
       return (
         <div className="py-2 pl-4 ml-8 border-l-2 border-gray-200 bg-gray-50/50 dark:bg-gray-900/10 rounded-r-md my-2">
@@ -211,10 +212,6 @@ export default function SearchHistoryRecordTab() {
         </div>
       );
   };
-
-  // ============================================================================
-  // 6. MAIN RENDER
-  // ============================================================================
 
   return (
     <div className="space-y-6">

@@ -96,7 +96,7 @@ export const hrService = {
         const payload = { email: query }; 
         const response = await apiClient.post<BackendResponse<any[] | any>>(ENDPOINTS.SEARCH_ACCOUNTS, payload);
 
-        if (!response.success) return [];
+        if (!response.success) throw new Error(response.error || "Failed to search accounts.");
 
         const content = response.data?.content || response.data?.data || response.data;
         let items = [];
@@ -110,7 +110,7 @@ export const hrService = {
     getSuperAppAccount: async (accId: string | number) : Promise<Account | null> => {
         const payload = { accID: Number(accId) };
         const response = await apiClient.post<BackendResponse<any>>(ENDPOINTS.GET_ACCOUNT_DETAILS, payload);
-        if (!response.success || !response.data) return null;
+        if (!response.success || !response.data) throw new Error(response.error || "Failed to load account details.");
         const data = response.data?.content || response.data?.data || response.data;
         return mapToAccount(data);
     },
@@ -139,7 +139,7 @@ export const hrService = {
 
     getDepartments: async (): Promise<CarParkDepartment[]> => {
         const response = await apiClient.get<BackendResponse<CarParkDepartment[]>>(ENDPOINTS.GET_DEPARTMENTS);
-        if (!response.success) return [];
+        if (!response.success) throw new Error(response.error || "Failed to retrieve departments.");
         return response.data?.content || response.data as any || [];
     },
 
@@ -174,11 +174,10 @@ export const hrService = {
         const response = await apiClient.post<any>(ENDPOINTS.STAFF_LIST, payload);
         
         if (!response.success || !response.data) {
-            return { items: [], totalCount: 0, totalPages: 0 };
+            throw new Error(response.error || "Failed to load staff list.");
         }
         
         const content = getDataObject<any>(response.data);
-        
         return {
             items: content.staff || [],
             totalCount: content.totalRecords || 0,
@@ -189,7 +188,7 @@ export const hrService = {
 
     getStaffDetail: async (staffId: number): Promise<StaffDetail | null> => {
         const response = await apiClient.get<any>(`${ENDPOINTS.STAFF_DETAIL}/${staffId}`);
-        if (!response.success || !response.data) return null;
+        if (!response.success || !response.data) throw new Error(response.error || "Failed to load staff detail.");
         return getDataObject<StaffDetail>(response.data);
     },
 
@@ -211,20 +210,20 @@ export const hrService = {
     // NEW STAFF REGISTRATION (WITH PARKING)
     getPhases: async () => {
         const response = await apiClient.get<any>(ENDPOINTS.GET_PHASES);
-        if (!response.success) return [];
+        if (!response.success) throw new Error(response.error || "Failed to retrieve phases.");
         return response.data?.content || [];
     },
 
     getUnits: async (phaseId: string | number) => {
         if (!phaseId) return [];
         const response = await apiClient.get<any>(`${ENDPOINTS.GET_UNITS}/${phaseId}`);
-        if (!response.success) return [];
+        if (!response.success) throw new Error(response.error || "Failed to retrieve units.");
         return response.data?.content || [];
     },
 
     getPackages: async () => {
         const response = await apiClient.get<any>(ENDPOINTS.GET_PACKAGES);
-        if (!response.success) return [];
+        if (!response.success) throw new Error(response.error || "Failed to retrieve packages.");
         return response.data?.content || [];
     },
     
@@ -294,7 +293,7 @@ export const hrService = {
         const payload: ActivePassesPayload = { pageNumber, pageSize, searchQuery };
         const response = await apiClient.post<any>(ENDPOINTS.QR_LISTING, payload);
 
-        if (!response.success) return { items: [], totalCount: 0, totalPages: 0 };
+        if (!response.success) throw new Error(response.error || "Failed to load passes.");
         const data = response.data?.content || response.data;
         
         return {
@@ -321,7 +320,7 @@ export const hrService = {
                 if (!params.qrId && (errMsg.includes("Conflict") || errMsg.includes("Active Pass Found"))) {
                     return { error: "CONFLICT_SEASON_PASS", qrId: errContent?.qrId }; 
                 }
-                return null;
+                throw new Error(response.error || "Failed to load passes.");
             }
 
             const raw = response.data.content || response.data;
@@ -375,23 +374,20 @@ export const hrService = {
 
         } catch (error) {
             logger.error("getPassDetail Error:", error);
-            return null;
+            throw error;
         }
     },
 
     // Wallet & History
     checkBalance: async (email: string): Promise<number> => {
-        try {
-            const payload = { email };
-            const response = await apiClient.post<any>(ENDPOINTS.CHECK_BALANCE, payload);
-            if (response.success && response.data) {
-                const content = response.data.content || response.data;
-                return content.balance || 0;
-            }
-            return 0;
-        } catch (error) {
-            return 0;
+        const payload = { email };
+        const response = await apiClient.post<any>(ENDPOINTS.CHECK_BALANCE, payload);
+        if (!response.success) throw new Error(response.error || "Failed to retrieve wallet balance.");
+        if (response.data) {
+            const content = response.data.content || response.data;
+            return content.balance || 0;
         }
+        return 0;
     },
 
     getParkingHistory: async (payload: ParkingHistoryPayload): Promise<ParkingHistoryResponse> => {
@@ -403,7 +399,7 @@ export const hrService = {
             endDate: payload.endDate
         };
         const response = await apiClient.post<any>(ENDPOINTS.PARKING_HISTORY, apiPayload);
-        if (!response.success) return { items: [], totalCount: 0, pageNumber: 1, pageSize: 10, totalPages: 0 };
+        if (!response.success) throw new Error(response.error || "Failed to load parking history.");
         
         const data = response.data?.content || response.data;
         return {
@@ -458,7 +454,7 @@ export const hrService = {
     generateReport: async (payload: ReportPayload): Promise<ReportResponse> => {
         const response = await apiClient.post<any>(ENDPOINTS.EXECUTE_REPORT, payload);
         if (!response.success || !response.data) {
-             return { items: [], totalCount: 0, pageNumber: 1, pageSize: 10, totalPages: 0 };
+             throw new Error(response.error || "Failed to execute report.");
         }
         const content = getDataObject<any>(response.data);
         return {

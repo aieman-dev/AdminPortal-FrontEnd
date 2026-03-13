@@ -57,7 +57,7 @@ const StepIndicator: React.FC<Props> = ({ current, onClickStep, onBackClick }) =
   // -------- DESKTOP / TABLET (Sidebar) Layout --------
   return (
     // CHANGE 1: Updated Sidebar Background Gradient for Dark Mode
-    <aside className="sticky top-4 h-[calc(100vh-2rem)] w-60 md:w-64 lg:w-60 rounded-l-2xl 
+    <aside className="relative h-full w-60 md:w-64 lg:w-60 rounded-l-2xl 
       bg-[linear-gradient(135deg,#E7E7FE_0%,#484BBC_80%)] 
       dark:bg-[linear-gradient(135deg,#0f172a_0%,#1e1b4b_90%)] 
       dark:border-r dark:border-white/10

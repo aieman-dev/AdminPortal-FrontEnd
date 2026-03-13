@@ -313,7 +313,7 @@ export function SeasonParkingDetailView({ qrId, backPath, backLabel, moduleName 
                     <div className="py-4 space-y-4">
                         <div className="space-y-2">
                             <Label>Terminal ID</Label>
-                            <Input value={manualTerminalId} onChange={(e) => setManualTerminalId(e.target.value)} type="number" />
+                            <Input value={manualTerminalId} onChange={(e) => setManualTerminalId(e.target.value)} type="tel" />
                             <p className="text-xs text-muted-foreground">Default Gate: 383</p>
                         </div>
                     </div>

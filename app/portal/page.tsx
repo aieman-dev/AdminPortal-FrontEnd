@@ -4,6 +4,7 @@ import { Package } from "@/type/packages";
 import { ROLES } from "@/lib/constants";
 import { getServerUserRole } from "@/lib/server-auth";
 import { ModuleErrorBoundary } from "@/components/portal/module-error-boundary";
+import { cookies } from "next/headers";
 
 export default async function DashboardPage() {
   //  Get the role safely
@@ -14,8 +15,12 @@ export default async function DashboardPage() {
 
   let pendingPackages: Package[] = [];
 
+  // Check if token exists before attempting server fetch to prevent dev-mode crash in fresh PWA sandboxes
+  const cookieStore = await cookies();
+  const hasToken = cookieStore.has("accessToken");
+
   // Conditional Fetching
-  if (canViewPackages) {
+  if (canViewPackages && hasToken) {
     try {
       const payload = {
         Status: "Pending",

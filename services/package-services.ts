@@ -77,8 +77,8 @@ const extractAgeCode = (ageCategory: string | undefined): string => {
     return match ? match[1].trim() : ageCategory;
 };
 
-// --- SERVICE IMPLEMENTATION ---
 
+{/*--------------------- Package Services -------------------------------*/}
 export const packageService = {
 
   //  DASHBOARD SUMMARY
@@ -93,17 +93,10 @@ export const packageService = {
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await fetch("/api/proxy-upload", {
-        method: "POST",
-        body: formData,
-    });
-
+    const response = await fetch("/api/proxy-upload", { method: "POST", body: formData });
     const data = await response.json();
 
-    if (!response.ok) {
-        throw new Error(data.error || "Image upload failed");
-    }
-    
+    if (!response.ok) throw new Error(data.error || "Image upload failed");
     return data.imageId;
   },
 
@@ -112,7 +105,9 @@ export const packageService = {
     const payload = { PageNumber: pageNumber, PageSize: pageSize };
     const response = await apiClient.post<any>(ENDPOINTS.SEARCH_IMAGES, payload);
 
-    if (!response.success || !response.data) return { images: [], totalRecords: 0 };
+    if (!response.success || !response.data) {
+        throw new Error(response.error || "Failed to search images.");
+    }
 
     const data = response.data;
     const content = data.content || data;
@@ -239,7 +234,7 @@ export const packageService = {
 
     if (!response.success) {
       logger.error("Fetch packages failed:", response.error);
-      return { packages: [], totalPages: 0, totalRecords: 0 };
+      throw new Error(response.error || "Failed to fetch packages.");;
     }
 
     const rawData = response.data;
@@ -298,7 +293,7 @@ export const packageService = {
     
     const response = await apiClient.post<any>(ENDPOINTS.PACKAGE_LISTING, payload);
     
-    if (!response.success) return { packages: [], totalPages: 0, totalRecords: 0 };
+    if (!response.success) throw new Error(response.error || "Failed to fetch package listing.");
 
     const root = response.data?.content || response.data;
     const rawList = Array.isArray(root) ? root : (root?.data || []);

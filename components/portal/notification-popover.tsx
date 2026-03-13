@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { 
   Bell, Check, Clock, AlertTriangle, 
   Info, XCircle, Inbox 
@@ -26,6 +27,7 @@ export interface NotificationItem {
   type: string
   isRead: boolean
   createdDate: string
+  relatedId?: string | null
   source: "broadcast" | "personal"
 }
 
@@ -46,6 +48,7 @@ export function NotificationPopover({
 }: NotificationPopoverProps) {
   const [isOpen, setIsOpen] = useState(false)
   const isMobile = useIsMobile()
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState("all")
 
   // Combine and Sort by Date
@@ -62,6 +65,60 @@ export function NotificationPopover({
     if (t === 'critical') return <XCircle className="h-4 w-4 text-red-500" />
     if (t === 'warning') return <AlertTriangle className="h-4 w-4 text-amber-500" />
     return <Info className="h-4 w-4 text-blue-500" />
+  }
+
+  // --- SMART ROUTING LOGIC (Approach A: Prefixes) ---
+  const handleNotificationClick = (item: NotificationItem) => {
+    // 1. Trigger the read API
+    onMarkAsRead?.(item.id, item.source)
+
+    // 2. Routing Logic
+    if (item.relatedId) {
+      
+      // Check if it's using the new Prefix format (e.g., "PKG-124")
+      if (item.relatedId.includes("-")) {
+        const dashIndex = item.relatedId.indexOf("-");
+        const moduleCode = item.relatedId.substring(0, dashIndex).toUpperCase();
+        const targetId = item.relatedId.substring(dashIndex + 1);
+
+        setIsOpen(false); // Close popover
+
+        switch (moduleCode) {
+          case "PKGREQ":
+            // Route to Pending/Rejected Request View
+            router.push(`/portal/packages/pdetails/requests/${targetId}`);
+            break;
+          case "PKG":
+            // Route to Live Package View
+            router.push(`/portal/packages/pdetails/package/${targetId}`);
+            break;
+          case "CPA":
+            // Route to Car Park Application
+            router.push(`/portal/car-park/application/${targetId}`);
+            break;
+          case "AUDIT":
+            // Route to Activity Audit (Great for MIS!)
+            router.push(`/portal/staff-management?tab=audit&search=${targetId}`);
+            break;
+          default:
+            console.warn(`Unknown notification routing module: ${moduleCode}`);
+            break;
+        }
+      } 
+      // LEGACY FALLBACK: If backend just sends "124" without a prefix yet
+      else {
+        const titleLower = item.title.toLowerCase();
+        
+        if (titleLower.includes("package")) {
+          setIsOpen(false); 
+          if (titleLower.includes("approved") || titleLower.includes("active")) {
+            router.push(`/portal/packages/pdetails/package/${item.relatedId}`);
+          } else {
+            router.push(`/portal/packages/pdetails/requests/${item.relatedId}`);
+          }
+        }
+      }
+    }
   }
 
   // REFACTOR: Accept className to allow dynamic height on mobile vs fixed on desktop
@@ -84,7 +141,8 @@ export function NotificationPopover({
               onClick={() => onMarkAsRead?.(item.id, item.source)}
               className={cn(
                 "flex items-start gap-3 p-4 text-left border-b transition-colors hover:bg-muted/50 w-full",
-                !item.isRead ? "bg-muted/30" : "bg-transparent"
+                !item.isRead ? "bg-muted/30" : "bg-transparent",
+                item.relatedId ? "cursor-pointer" : "cursor-default"
               )}
             >
               <div className={cn(

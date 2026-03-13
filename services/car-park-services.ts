@@ -110,7 +110,7 @@ export const carParkService = {
         const response = await apiClient.post<any>(ENDPOINTS.SEARCH_ACCOUNTS, payload);
 
         if (!response.success) {
-             return [];
+             throw new Error(response.error || "Failed to search accounts.");
         }
 
         const content = response.data?.content || response.data?.data || response.data;
@@ -128,7 +128,7 @@ export const carParkService = {
     getSuperAppAccount: async (accId: string | number) : Promise<Account | null> => {
         const payload = { accID: Number(accId) };
         const response = await apiClient.post<any>(ENDPOINTS.GET_ACCOUNT_DETAILS, payload);
-        if (!response.success || !response.data) return null;
+        if (!response.success || !response.data) throw new Error(response.error || "Failed to retrieve account details.");
         const data = response.data?.content || response.data?.data || response.data;
         return mapToAccount(data);
     },
@@ -138,7 +138,11 @@ export const carParkService = {
             const payload = { email };
             const response = await apiClient.post<any>(ENDPOINTS.CHECK_BALANCE, payload);
             
-            if (response.success && response.data) {
+            if (!response.success) {
+            throw new Error(response.error || "Failed to check wallet balance.");
+            }
+
+            if (response.data) {
                 const content = response.data.content || response.data;
                 return content.balance || 0;
             }
@@ -176,26 +180,26 @@ export const carParkService = {
 
     getPhases: async () => {
         const response = await apiClient.get<any>(ENDPOINTS.GET_PHASES);
-        if (!response.success) return [];
+        if (!response.success) throw new Error(response.error || "Failed to fetch phases.");
         return response.data?.content || [];
     },
 
     getUnits: async (phaseId: string | number) => {
         if (!phaseId) return [];
         const response = await apiClient.get<any>(`${ENDPOINTS.GET_UNITS}/${phaseId}`);
-        if (!response.success) return [];
+        if (!response.success) throw new Error(response.error || "Failed to fetch units.");
         return response.data?.content || [];
     },
 
     getPackages: async () => {
         const response = await apiClient.get<any>(ENDPOINTS.GET_PACKAGES);
-        if (!response.success) return [];
+        if (!response.success) throw new Error(response.error || "Failed to fetch packages.");
         return response.data?.content || [];
     },
 
     getDepartments: async (): Promise<CarParkDepartment[]> => {
         const response = await apiClient.get<any>(ENDPOINTS.GET_DEPARTMENTS);
-        if (!response.success) return [];
+        if (!response.success) throw new Error(response.error || "Failed to fetch departments.");
         return response.data?.content || response.data || [];
     },
     
@@ -278,7 +282,7 @@ export const carParkService = {
         const response = await apiClient.post<any>(ENDPOINTS.QR_LISTING, payload);
 
         if (!response.success) {
-            return { items: [], totalCount: 0, totalPages: 0, pageNumber, pageSize };
+            throw new Error(response.error || "Failed to fetch QR listing.");
         }
         const data = response.data?.content || response.data;
         
@@ -293,13 +297,8 @@ export const carParkService = {
 
     getQrListingID: async (params: { qrId?: string | number; accId?: string | number }): Promise<PassDetailResult> => {
         const payload: Record<string, string> = {};
-
-        if (params.qrId) {
-            payload.qrId = String(params.qrId);
-        } 
-        else if (params.accId) {
-            payload.accId = String(params.accId);
-        }
+        if (params.qrId) payload.qrId = String(params.qrId);
+        else if (params.accId) payload.accId = String(params.accId);
 
         try {
             const response = await apiClient.post<any>(ENDPOINTS.CHECK_STATUS, payload);
@@ -312,7 +311,7 @@ export const carParkService = {
                 if (!params.qrId && (errMsg.includes("Conflict") || errMsg.includes("Active Pass Found"))) {
                     return { error: "CONFLICT_SEASON_PASS", qrId: errContent?.qrId }; 
                 }
-                return null;
+                throw new Error(errMsg || "Failed to retrieve pass details.");
             }
 
             const raw = response.data.content || response.data;
@@ -482,10 +481,7 @@ export const carParkService = {
 //-------------- Car Park Reports ---------------
     getReports: async (): Promise<ReportDefinition[]> => {
             const response = await apiClient.get<any>(ENDPOINTS.GET_REPORTS);
-            
-            if (!response.success) {
-                return [];
-            }
+            if (!response.success) throw new Error(response.error || "Failed to fetch reports list.");
 
             const rawList = getContent<any>(response.data);
 
@@ -500,10 +496,8 @@ export const carParkService = {
 
         getReportMetadata: async (reportName: string, options?: RequestInit): Promise<ReportMetadata | null> => {
         const url = `${ENDPOINTS.GET_REPORT_META}/${reportName}/meta`;
-        
         const response = await apiClient.get<any>(url, options);
-        
-        if (!response.success || !response.data) return null;
+        if (!response.success || !response.data) throw new Error(response.error || "Failed to load report metadata.");
 
         const rootContent = response.data?.content || response.data;
         const actualData = rootContent?.content || rootContent;
@@ -513,9 +507,8 @@ export const carParkService = {
 
         generateReport: async (payload: ReportPayload): Promise<ReportResponse> => {
         const response = await apiClient.post<any>(ENDPOINTS.EXECUTE_REPORT, payload);
-        
         if (!response.success || !response.data) {
-             return { items: [], totalCount: 0, pageNumber: 1, pageSize: 10, totalPages: 0 };
+             throw new Error(response.error || "Failed to generate report.");
         }
 
         const content = getDataObject<any>(response.data);
@@ -532,24 +525,20 @@ export const carParkService = {
 //-------------- Car Park SuperApp Applications ---------------
 
     getApplications: async (pageNumber: number, pageSize: number, searchQuery: string = ""): Promise<ApplicationListResponse> => {
-        const payload = {
-            pageNumber,
-            pageSize,
-            searchQuery: searchQuery || ""
-        };
+        const payload = {pageNumber, pageSize, searchQuery: searchQuery || ""};
 
         try {
             const response = await apiClient.post<any>(ENDPOINTS.GET_APPLICATIONS, payload);
 
             if (!response.success) {
-                return { items: [], totalCount: 0, totalPages: 0, pageNumber: 1, pageSize: 10 };
+                throw new Error(response.error || "Failed to fetch applications.");
             }
 
             const data = getDataObject<any>(response.data);
             const rawItems = data.items || [];
 
             const items = rawItems.map((item: any) => ({
-                id: item.applicationId, // Map for DataTable key
+                id: item.applicationId, 
                 applicationId: item.applicationId,
                 accountId: item.accountId,
                 name: item.name,
@@ -578,7 +567,7 @@ export const carParkService = {
         const response = await apiClient.get<any>(`${ENDPOINTS.GET_APPLICATION_DETAIL}/${id}`);
         
         if (!response.success || !response.data) {
-            return null;
+            throw new Error(response.error || "Failed to load application details.");
         }
 
         const content = getDataObject<any>(response.data);

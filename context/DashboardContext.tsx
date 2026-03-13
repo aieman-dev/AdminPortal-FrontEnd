@@ -123,7 +123,23 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(intervalId);
   }, [isAuthenticated, refreshStats]);
 
-  
+
+  // Effect D: Push unread count to the native PWA App Icon
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && 'setAppBadge' in navigator) {
+      if (unreadCount > 0) {
+        navigator.setAppBadge(unreadCount).catch((error) => {
+           console.error("Failed to set app badge:", error);
+        });
+      } else {
+        if ('clearAppBadge' in navigator) {
+            navigator.clearAppBadge().catch(console.error);
+        }
+      }
+    }
+  }, [unreadCount]);
+
+
   return (
     <DashboardContext.Provider value={{
       broadcasts, personalNotifications, unreadCount,

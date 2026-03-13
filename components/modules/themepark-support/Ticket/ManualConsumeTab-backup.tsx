@@ -413,7 +413,7 @@ export default function ManualConsumeTab() {
                         <Minus className="h-3 w-3" />
                     </Button>
                     <Input 
-                        type="number" 
+                        type="tel" 
                         className="h-7 w-12 text-center rounded-none border-x-0 focus-visible:ring-0 px-1"
                         value={qty.toString()}
                         onChange={(e) => updateQuantity(row.id, parseInt(e.target.value) || 0, maxQty)}
@@ -674,6 +674,7 @@ export default function ManualConsumeTab() {
                         <Label htmlFor="mobileNo">Mobile No</Label>
                         <Input 
                             id="mobileNo"
+                            type="tel" 
                             value={mobileNo} onChange={(e) => setMobileNo(e.target.value)} 
                             disabled={isReceipt}
                             className="h-11"

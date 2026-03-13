@@ -139,7 +139,7 @@ export const staffService = {
     
     if (!response.success || !response.data) {
       logger.warn("Staff list fetch returned empty/failed", { error: response.error })
-      return [];
+      throw new Error(response.error || "Failed to fetch staff list.");
     }
     
     const rawList = getContent<BackendStaffDTO>(response.data);
@@ -148,9 +148,11 @@ export const staffService = {
 
   getAllAuditLogs: async (payload: AuditLogListPayload): Promise<AuditLogResponse | null> => {
     const response = await apiClient.post<any>(ENDPOINTS.AUDIT_LOG_LIST, payload);
-    if (!response.success || !response.data) return null;
-    const content = getDataObject<any>(response.data);
+    if (!response.success || !response.data) {
+      throw new Error(response.error || "Failed to fetch audit logs.");
+    }
 
+    const content = getDataObject<any>(response.data);
     const totalRecords = content.totalRecords || 0;
     const pageSize = content.pageSize || payload.pageSize;
     const totalPages = Math.ceil(totalRecords / pageSize);
@@ -166,14 +168,18 @@ export const staffService = {
 
   getUserAuditLogs: async (userId: string | number, page: number = 1, size: number = 20): Promise<AuditLogResponse | null> => {
     const response = await apiClient.get<any>(`${ENDPOINTS.AUDIT_LOG_USER}/${userId}?page=${page}&size=${size}`);
-    if (!response.success || !response.data) return null;
+    if (!response.success || !response.data) {
+      throw new Error(response.error || "Failed to fetch user audit logs.");
+    }
     return getDataObject<AuditLogResponse>(response.data);
   },
 
   getAuditModules: async (): Promise<string[]> => {
     try {
       const response = await apiClient.get<any>(ENDPOINTS.AUDIT_MODULES);
-      if (!response.success || !response.data) return [];
+      if (!response.success || !response.data) {
+        throw new Error(response.error || "Failed to fetch audit modules.");
+      }
       return getContent<string>(response.data);
 
     } catch (error) {

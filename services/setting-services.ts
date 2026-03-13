@@ -4,7 +4,7 @@ const ENDPOINTS = {
   BROADCAST : "account/create-broadcast",
   ALERTS: "account/dashboard-alerts",
   TOGGLE_NOTIFICATIONS: "account/toggle-notifications",
-  MARK_ALL_READ : "account/markRead"
+  MARK_ALL_READ : "account/notifications/markRead"
 };
 
 export interface BroadcastPayload {

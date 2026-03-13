@@ -15,22 +15,22 @@ export const dashboardService = {
     /** Main Summary Data */
     getSummary: async (filter: string = "ThisWeek"): Promise<DashboardSummary | null> => {
         const response = await apiClient.get<any>(`${ENDPOINTS.DASHBOARD_SUMMARY}?filter=${filter}`);
-        if (!response.success) throw new Error(response.error);
+        if (!response.success) throw new Error(response.error || "Failed to retrieve dashboard summary.");
         return getDataObject<DashboardSummary>(response.data);
     },
 
     /** Kiosk Status */
     getKioskStatus: async (): Promise<KioskStatus[]> => {
         const response = await apiClient.get<any>(ENDPOINTS.KIOSK_STATUS);
-        return response.success ? getContent<KioskStatus>(response.data) : [];
+        if (!response.success) throw new Error(response.error || "Failed to retrieve kiosk status.");
+        return getContent<KioskStatus>(response.data);
     },
 
     /** Unsynced Count (IT Admin) */
     getUnsyncedCount: async (): Promise<number> => {
-        try {
-            const response = await apiClient.post<any>(ENDPOINTS.UNSYNCED_PACKAGES, {});
-            return response.success && response.data ? getContent(response.data).length : 0;
-        } catch { return 0; }
+        const response = await apiClient.post<any>(ENDPOINTS.UNSYNCED_PACKAGES, {});
+        if (!response.success || !response.data) throw new Error(response.error || "Failed to fetch unsynced packages.");
+        return getContent(response.data).length
     },
 
     /** * Unified wrapper to get recent packages.
@@ -42,7 +42,7 @@ export const dashboardService = {
             return packages.slice(0, 8); // Limit to 8 for dashboard
         } catch (error) {
             logger.error("Failed to fetch recent packages", error);
-            return [];
+            throw error;
         }
     }
 };

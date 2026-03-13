@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { Lightbulb, X, ChevronRight, ChevronLeft, HelpCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, motion, useMotionValue } from "framer-motion"
 import { MODULE_GUIDES } from "@/config/system-tips-data"
 import { useIsMobile } from "@/hooks/use-mobile"
 
@@ -15,6 +15,18 @@ export function SystemTips() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const isMobile = useIsMobile();
     const safePath = pathname || "";
+
+    // --- THE MAGIC: This syncs the Y position between the button and the panel ---
+    const dragY = useMotionValue(0);
+    const [dragBounds, setDragBounds] = useState({ top: -80, bottom: 500 });
+
+    useEffect(() => {
+        // Prevent dragging off the screen based on device height
+        setDragBounds({
+            top: isMobile ? -(window.innerHeight - 150) : -80,
+            bottom: isMobile ? 20 : window.innerHeight - 300
+        });
+    }, [isMobile]);
 
     // Find the guide for the current page, fallback to "default"
     const activeGuideKey = Object.keys(MODULE_GUIDES).find(key => key !== 'default' && safePath.startsWith(key)) || "default";
@@ -70,6 +82,12 @@ export function SystemTips() {
                         /* === TRIGGER BUTTON === */
                         <motion.button
                             key="guide-tab"
+                            style={{ y: dragY, touchAction: "none" }}
+                            drag="y" 
+                            dragConstraints={dragBounds}
+                            dragElastic={0.1}
+                            dragMomentum={false}
+
                             initial={{ scale: 0.8, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.8, opacity: 0 }}
@@ -90,9 +108,11 @@ export function SystemTips() {
                             )}
                         </motion.button>
                     ) : (
-                        /* === CONTENT PANEL === */
+                        /* === CONTENT PANEL ==== */
                         <motion.div
                             key="guide-panel"
+                            style={{ y: dragY }}
+                            
                             variants={isMobile ? mobileVariants : desktopVariants}
                             initial="hidden"
                             animate="visible"
