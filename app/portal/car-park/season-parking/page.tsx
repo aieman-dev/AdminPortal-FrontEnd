@@ -5,14 +5,13 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Pencil, QrCode, Plus, MapPin, Clock, ChevronRight } from "lucide-react" 
-import { Separator } from "@radix-ui/react-select"
+import { Pencil, QrCode, Plus, ChevronRight } from "lucide-react" 
 import { useAppToast } from "@/hooks/use-app-toast"
 import { useAutoSearch } from "@/hooks/use-auto-search"
 import { usePagination } from "@/hooks/use-pagination"
 import { PageHeader } from "@/components/portal/page-header"
-import { formatDate, formatDateTime } from "@/lib/formatter"
-import { cn } from "@/lib/utils"
+import {  formatDateTime } from "@/lib/formatter"
+import { PullToRefresh } from "@/components/shared-components/pull-to-refresh"
 
 // Services & Types
 import { carParkService } from "@/services/car-park-services" 
@@ -43,6 +42,11 @@ export default function SeasonParkingPage() {
   
   // Initialize search from local storage
   const [searchTerm, setSearchTerm] = useState("");
+
+  // simple refresh handler
+  const handleRefresh = async () => {
+      await fetchData(pagination.currentPage, searchTerm);
+  }
 
   // --- Main Fetch Logic ---
   const fetchData = useCallback(async (page: number, query: string) => {
@@ -195,52 +199,56 @@ export default function SeasonParkingPage() {
   ], []);
 
   return (
-    <div className="space-y-6">
+    <>
+      <PullToRefresh onRefresh={handleRefresh}>
+        <div className="space-y-6 min-h-screen pb-24">
 
-      {/* Header */}
-      <PageHeader 
-        title="Season Parking" 
-        description="Manage season pass, check validity status, and update user details." 
-      />
-
-      <Card>
-        <CardContent>
-            <SearchField 
-                label="Search Records"
-                placeholder="Search by Email or Car Plate"
-                value={searchTerm}
-                onChange={setSearchTerm}
-                onSearch={handleSearchClick}
-                isSearching={isSearching}
-                inputType="email"
-            />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-0">
-          <DataTable
-            columns={columns}
-            data={data}
-            keyExtractor={(row) => row.qrId.toString()}
-            isLoading={isSearching}
-            emptyIcon={QrCode}
-            emptyTitle="No Records Found"
-            skeletonRowCount={10}
-            emptyMessage={
-                isSearching 
-                ? "Searching..." 
-                : searchTerm 
-                    ? `No records found matching "${searchTerm}"`
-                    : "Enter a keyword to search."
-            }
-            pagination={{
-                ...pagination.paginationProps,
-                onPageChange: (newPage) => fetchData(newPage, searchTerm) 
-            }}
+          {/* Header */}
+          <PageHeader 
+            title="Season Parking" 
+            description="Manage season pass, check validity status, and update user details." 
           />
-        </CardContent>
-      </Card>
+
+          <Card>
+            <CardContent>
+                <SearchField 
+                    label="Search Records"
+                    placeholder="Search by Email or Car Plate"
+                    value={searchTerm}
+                    onChange={setSearchTerm}
+                    onSearch={handleSearchClick}
+                    isSearching={isSearching}
+                    inputType="email"
+                />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-0">
+              <DataTable
+                columns={columns}
+                data={data}
+                keyExtractor={(row) => row.qrId.toString()}
+                isLoading={isSearching}
+                emptyIcon={QrCode}
+                emptyTitle="No Records Found"
+                skeletonRowCount={10}
+                emptyMessage={
+                    isSearching 
+                    ? "Searching..." 
+                    : searchTerm 
+                        ? `No records found matching "${searchTerm}"`
+                        : "Enter a keyword to search."
+                }
+                pagination={{
+                    ...pagination.paginationProps,
+                    onPageChange: (newPage) => fetchData(newPage, searchTerm) 
+                }}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </PullToRefresh>
 
         {user?.role === "CP_Admin" || user?.department === "MIS_SUPERADMIN" ? (
           <button
@@ -251,6 +259,6 @@ export default function SeasonParkingPage() {
             New Registration
           </button>
         ) : null}
-    </div>
+    </>
   )
 }

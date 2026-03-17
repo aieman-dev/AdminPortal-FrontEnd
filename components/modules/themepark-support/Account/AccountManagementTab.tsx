@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
 import { SearchField } from "@/components/shared-components/search-field"
 import { StatusBadge } from "@/components/shared-components/status-badge"
-import { Skeleton } from "@/components/ui/skeleton";
 import { Pencil, Users } from "lucide-react"
 import { itPoswfService } from "@/services/themepark-support" 
 import { Account } from "@/type/themepark-support" 
@@ -88,6 +87,17 @@ export default function AccountManagementTab() {
   const handleEdit = (accountId: string) => {
     router.push(`/portal/themepark-support/account-master/${accountId}`) 
   }
+
+  useEffect(() => {
+    const handleTabRefresh = () => {
+        if (searchEmail) {
+            executeSearch(searchEmail.trim());
+        }
+    };
+
+    window.addEventListener('refresh-active-tab', handleTabRefresh);
+    return () => window.removeEventListener('refresh-active-tab', handleTabRefresh);
+  }, [searchEmail, executeSearch]);
 
   // Define Columns for the DataTable
   const accountColumns: TableColumn<Account>[] = useMemo(() => [

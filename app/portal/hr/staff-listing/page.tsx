@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/portal/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { EmailAutocomplete } from "@/components/ui/email-autocomplete"
+import { PullToRefresh } from "@/components/shared-components/pull-to-refresh"
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table"
 import { SearchField } from "@/components/shared-components/search-field"
 import { useAppToast } from "@/hooks/use-app-toast"
@@ -64,6 +64,9 @@ export default function StaffListingPage() {
         fetchStaffList(1, searchTerm);
     };
 
+    const handleRefresh = async () => {
+        await fetchStaffList(pagination.currentPage, searchTerm);
+    }
 
     // --- HANDLERS ---
     
@@ -149,57 +152,59 @@ export default function StaffListingPage() {
     ], []);
 
     return (
-        <div className="space-y-6">
-            <PageHeader title="All Staff Directory" description="View and manage the master list of all staff members." >
-                <div className="flex gap-2">
-                    <Button className="h-9 gap-2 bg-primary text-primary-foreground hover:opacity-90 transition-colors shadow-sm" onClick={() => router.push("/portal/hr/new-staff-non-cp")}>
-                        <Users className="h-4 w-4" /> Add Staff
-                    </Button>
-                </div>
-            </PageHeader>
+        <PullToRefresh onRefresh={handleRefresh}>
+            <div className="space-y-6 min-h-screen">
+                <PageHeader title="All Staff Directory" description="View and manage the master list of all staff members." >
+                    <div className="flex gap-2">
+                        <Button className="h-9 gap-2 bg-primary text-primary-foreground hover:opacity-90 transition-colors shadow-sm" onClick={() => router.push("/portal/hr/new-staff-non-cp")}>
+                            <Users className="h-4 w-4" /> Add Staff
+                        </Button>
+                    </div>
+                </PageHeader>
 
-            <Card>
-                <CardContent>
-                    <SearchField 
-                        label="Search Directory"
-                        placeholder="Search by Name, Staff No or Department"
-                        value={searchTerm}
-                        onChange={setSearchTerm}
-                        onSearch={handleSearchClick}
-                        isSearching={isLoading}
-                        inputType="email"
-                    />
-                </CardContent>
-            </Card>
+                <Card>
+                    <CardContent>
+                        <SearchField 
+                            label="Search Directory"
+                            placeholder="Search by Name, Staff No or Department"
+                            value={searchTerm}
+                            onChange={setSearchTerm}
+                            onSearch={handleSearchClick}
+                            isSearching={isLoading}
+                            inputType="email"
+                        />
+                    </CardContent>
+                </Card>
 
-            <Card className="min-h-[500px] flex flex-col overflow-hidden">
-                <CardContent className="p-0 flex-1">
-                    <DataTable 
-                        columns={columns}
-                        data={data}
-                        keyExtractor={(row) => String(row.staffId)}
-                        isLoading={isLoading}
-                        emptyIcon={Users}
-                        emptyTitle="No Staff Found"
-                        onRowClick={(row) => handleOpenSheet(row)}
-                        pagination={{
-                            currentPage: pagination.currentPage,
-                            totalPages: pagination.totalPages,
-                            totalRecords: pagination.totalRecords,
-                            pageSize: pagination.pageSize,
-                            onPageChange: (p) => fetchStaffList(p, searchTerm)
-                        }}
-                    />
-                </CardContent>
-            </Card>
+                <Card className="min-h-[500px] flex flex-col overflow-hidden">
+                    <CardContent className="p-0 flex-1">
+                        <DataTable 
+                            columns={columns}
+                            data={data}
+                            keyExtractor={(row) => String(row.staffId)}
+                            isLoading={isLoading}
+                            emptyIcon={Users}
+                            emptyTitle="No Staff Found"
+                            onRowClick={(row) => handleOpenSheet(row)}
+                            pagination={{
+                                currentPage: pagination.currentPage,
+                                totalPages: pagination.totalPages,
+                                totalRecords: pagination.totalRecords,
+                                pageSize: pagination.pageSize,
+                                onPageChange: (p) => fetchStaffList(p, searchTerm)
+                            }}
+                        />
+                    </CardContent>
+                </Card>
 
-            <StaffEditSheet 
-                isOpen={isSheetOpen} 
-                onClose={() => setIsSheetOpen(false)} 
-                staff={selectedStaff}
-                onSave={handleSaveStaff}
-                onDelete={handleDeleteStaff}
-            />
-        </div>
+                <StaffEditSheet 
+                    isOpen={isSheetOpen} 
+                    onClose={() => setIsSheetOpen(false)} 
+                    staff={selectedStaff}
+                    onSave={handleSaveStaff}
+                    onDelete={handleDeleteStaff}
+                />
+            </div>
+        </PullToRefresh>
     )
 }

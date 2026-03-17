@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -108,6 +108,15 @@ export default function PackageListingTab() {
     }
   }
 
+  useEffect(() => {
+    const handleTabRefresh = () => {
+        handlePackageSearch(packageSearchTerm);
+    };
+
+    window.addEventListener('refresh-active-tab', handleTabRefresh);
+    return () => window.removeEventListener('refresh-active-tab', handleTabRefresh);
+  }, [packageSearchTerm]);
+  
 
   const packageColumns: TableColumn<ItPoswfPackage>[] = useMemo (() =>[
     { header: "Package ID", accessor: "packageId", className: "pl-6", cell: (value) => <span className="font-medium">{value}</span> },

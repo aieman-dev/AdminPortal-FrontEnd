@@ -28,20 +28,13 @@ export function useAuth() {
       // Set initial state from storage
       setUser(storedUser);
 
+      // Unlock the UI immediately! Do not wait for the server ping.
+      setLoading(false);
+
       // 2. REALITY CHECK (Background)
-      // We ping the server to ensure the HttpOnly cookie is actually valid.
+      // Ping the server to ensure the HttpOnly cookie is actually valid without a strict timeout.
       try {
-        // Create an abort controller that times out after 5 seconds
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        
-        await Promise.race([
-            staffService.getMe(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000))
-        ]);
-
-        clearTimeout(timeoutId);
-
+        await staffService.getMe();
       } catch (error: any) {
         // Check if the error is specifically an Authentication failure
         const isAuthError = error?.status === 401 || error?.statusCode === 401;
@@ -58,8 +51,6 @@ export function useAuth() {
           // This allows the user to stay on the page until the backend comes back up.
           console.error("Backend unreachable. Keeping session alive for now.", error);
         }
-      } finally {
-        setLoading(false);
       }
     };
 

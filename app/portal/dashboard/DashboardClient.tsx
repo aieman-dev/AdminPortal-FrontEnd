@@ -27,7 +27,7 @@ import { KioskModal } from "@/components/modules/dashboard/KioskModal";
 import { SystemDiagnostics } from "@/components/portal/system-diagnostics";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { WidgetErrorBoundary } from "@/components/portal/widget-error-boundary";
-import { Button } from "@/components/ui/button";
+import { PullToRefresh } from "@/components/shared-components/pull-to-refresh";
 
 interface DashboardClientProps {
   initialPendingPackages: Package[]; 
@@ -46,7 +46,7 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
 
 
   // State & Context
-  const { summary, kioskData, refreshKiosks, isLoading } = useDashboard()
+  const { summary, kioskData, refreshKiosks, refreshAll, isLoading } = useDashboard()
   const [pendingPackages] = useState<Package[]>(initialPendingPackages);
   const [unsyncedCount, setUnsyncedCount] = useState(0);
   
@@ -159,84 +159,86 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
   const showWidget = (key: string) => roleConfig?.widgets?.includes(key as any);
 
   return (
-    <motion.div className="space-y-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        <PageHeader title={`Hello, ${user?.name?.split(' ')[0]}`} description="Dashboard Overview" />
+    <PullToRefresh onRefresh={refreshAll}>
+        <motion.div className="space-y-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <PageHeader title={`Hello, ${user?.name?.split(' ')[0]}`} description="Dashboard Overview" />
 
-        {/* Stats Grid */}
-        <div className="hidden md:grid grid-cols-4 gap-4">
-            {roleConfig.stats.map(stat => (
-                <StatCardItem 
-                    key={stat.id} 
-                    stat={stat} 
-                    value={getStatValue(stat.id)} 
-                    description={stat.id === "package_sync" ? "Synced" : ""}
-                />
-            ))}
-        </div>
-
-        <div className="md:hidden -mx-4 px-4">
-             <Carousel className="w-full">
-                <CarouselContent>
-                    {roleConfig.stats.map(stat => (
-                        <CarouselItem key={stat.id} className="basis-[85%] pl-4">
-                            <StatCardItem 
-                                stat={stat} 
-                                value={getStatValue(stat.id)} 
-                                description={stat.id === "package_sync" ? "Synced" : ""}
-                            />
-                        </CarouselItem>
-                    ))}
-                </CarouselContent>
-             </Carousel>
-        </div>
-
-        {/* --- DYNAMIC WIDGET LAYOUT --- */}
-        <div className="grid gap-6 md:grid-cols-7 items-start">
-            <div className="col-span-7 lg:col-span-4 flex flex-col gap-6">
-                {showWidget('performance_chart') && (
-                    <WidgetErrorBoundary widgetName="Performance Chart">
-                        <PerformanceChart 
-                            data={summary?.weeklySalesChart || []} 
-                            loading={isLoading} 
-                            filter={filter} 
-                            onFilterChange={setFilter} 
+            {/* Stats Grid */}
+            <div className="hidden md:grid grid-cols-4 gap-4">
+                {roleConfig.stats.map(stat => (
+                    <StatCardItem 
+                        key={stat.id} 
+                        stat={stat} 
+                        value={getStatValue(stat.id)} 
+                        description={stat.id === "package_sync" ? "Synced" : ""}
                     />
-                    </WidgetErrorBoundary>
-                )}
-                {showWidget('top_packages') && (
-                    <WidgetErrorBoundary widgetName="Top Packages">
-                        <TopPackagesCard data={summary?.bestSellingPackages || []} loading={isLoading} />
-                    </WidgetErrorBoundary>
-                )}
+                ))}
+            </div>
 
-                {showWidget('system_diagnostics') && (
-                    <div className="mt-2">
-                        <WidgetErrorBoundary widgetName="System Diagnostics">
-                            <SystemDiagnostics autoRun={true} />
+            <div className="md:hidden -mx-4 px-4">
+                <Carousel className="w-full">
+                    <CarouselContent>
+                        {roleConfig.stats.map(stat => (
+                            <CarouselItem key={stat.id} className="basis-[85%] pl-4">
+                                <StatCardItem 
+                                    stat={stat} 
+                                    value={getStatValue(stat.id)} 
+                                    description={stat.id === "package_sync" ? "Synced" : ""}
+                                />
+                            </CarouselItem>
+                        ))}
+                    </CarouselContent>
+                </Carousel>
+            </div>
+
+            {/* --- DYNAMIC WIDGET LAYOUT --- */}
+            <div className="grid gap-6 md:grid-cols-7 items-start">
+                <div className="col-span-7 lg:col-span-4 flex flex-col gap-6">
+                    {showWidget('performance_chart') && (
+                        <WidgetErrorBoundary widgetName="Performance Chart">
+                            <PerformanceChart 
+                                data={summary?.weeklySalesChart || []} 
+                                loading={isLoading} 
+                                filter={filter} 
+                                onFilterChange={setFilter} 
+                        />
                         </WidgetErrorBoundary>
-                    </div>
-                )}
-            </div>
-            
-            <div className="col-span-7 lg:col-span-3 flex flex-col gap-6 h-full">
-                {showWidget('pending_list') && (
-                    <WidgetErrorBoundary widgetName="Pending Packages List">
-                        <PendingPackagesList data={pendingPackages} count={summary?.pendingPackages} />
+                    )}
+                    {showWidget('top_packages') && (
+                        <WidgetErrorBoundary widgetName="Top Packages">
+                            <TopPackagesCard data={summary?.bestSellingPackages || []} loading={isLoading} />
+                        </WidgetErrorBoundary>
+                    )}
+
+                    {showWidget('system_diagnostics') && (
+                        <div className="mt-2">
+                            <WidgetErrorBoundary widgetName="System Diagnostics">
+                                <SystemDiagnostics autoRun={true} />
+                            </WidgetErrorBoundary>
+                        </div>
+                    )}
+                </div>
+                
+                <div className="col-span-7 lg:col-span-3 flex flex-col gap-6 h-full">
+                    {showWidget('pending_list') && (
+                        <WidgetErrorBoundary widgetName="Pending Packages List">
+                            <PendingPackagesList data={pendingPackages} count={summary?.pendingPackages} />
+                        </WidgetErrorBoundary>
+                    )}
+
+                    <WidgetErrorBoundary widgetName="Quick Access">
+                        <QuickAccess availableActions={permittedActions} />
                     </WidgetErrorBoundary>
-                )}
-
-                <WidgetErrorBoundary widgetName="Quick Access">
-                    <QuickAccess availableActions={permittedActions} />
-                </WidgetErrorBoundary>
+                </div>
             </div>
-        </div>
 
-        <KioskModal 
-            isOpen={isKioskOpen} 
-            onClose={() => setIsKioskOpen(false)} 
-            data={kioskData} 
-            onRefresh={refreshKiosks}
-        />
-    </motion.div>
+            <KioskModal 
+                isOpen={isKioskOpen} 
+                onClose={() => setIsKioskOpen(false)} 
+                data={kioskData} 
+                onRefresh={refreshKiosks}
+            />
+        </motion.div>
+    </PullToRefresh>
   )
 }

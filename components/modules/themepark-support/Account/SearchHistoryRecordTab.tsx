@@ -1,7 +1,7 @@
 // components/modules/themepark-support/Account/SearchHistoryRecordTab.tsx
 "use client"
 
-import React, { useState, useMemo, useCallback } from "react"
+import React, { useState, useMemo, useCallback, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -161,6 +161,17 @@ export default function SearchHistoryRecordTab() {
       setSelectedInvoice(row);
       setIsSheetOpen(true);
   };
+
+  useEffect(() => {
+    const handleTabRefresh = () => {
+        if (searchTerm) {
+            executeSearch(searchType, searchTerm);
+        }
+    };
+
+    window.addEventListener('refresh-active-tab', handleTabRefresh);
+    return () => window.removeEventListener('refresh-active-tab', handleTabRefresh);
+  }, [searchTerm, searchType, executeSearch]);
 
   // ============================================================================
   // 5. UI CONFIGURATION (Columns & Renderers)

@@ -4,6 +4,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { PageHeader } from "@/components/portal/page-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { X, Calendar, Key, Wallet } from "lucide-react"
+import { PullToRefresh } from "@/components/shared-components/pull-to-refresh"
 import { LoaderState } from "@/components/ui/loader-state"
 import { ResponsiveTabsHeader, TabOption } from "@/components/portal/responsive-tabs-header"
 import dynamic from "next/dynamic"
@@ -44,34 +45,41 @@ export default function TicketMasterPage() {
     router.replace(`${pathname}?${params.toString()}`)
   }
 
+  const handleGlobalRefresh = async () => {
+    window.dispatchEvent(new Event('refresh-active-tab'));
+    await new Promise(resolve => setTimeout(resolve, 800));
+  }
+
   const tabTransitionClass = "mt-0 space-y-6 outline-none animate-in fade-in slide-in-from-bottom-5 duration-500 fill-mode-forward";
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Ticket Master"
-        description="Manage ticket lifecycles: deactivation, expiry extension, QR security, and manual consumption."
-      />
-
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-        <ResponsiveTabsHeader 
-            tabs={ticketTabs} 
-            activeTab={activeTab} 
-            onValueChange={handleTabChange} 
+    <PullToRefresh onRefresh={handleGlobalRefresh}>
+      <div className="space-y-6 pb-12 min-h-[calc(100vh-80px)]">
+        <PageHeader
+          title="Ticket Master"
+          description="Manage ticket lifecycles: deactivation, expiry extension, QR security, and manual consumption."
         />
 
-        <TabsContent value="deactivate-ticket" className={tabTransitionClass}>
-            <DeactivateTicketTab />
-        </TabsContent>
-        <TabsContent value="extend-expiry" className={tabTransitionClass}>
-            <ExtendExpiryTab />
-        </TabsContent>
-        <TabsContent value="update-qr-password"className={tabTransitionClass}>
-            <UpdateQrPasswordTab />
-        </TabsContent>
-        <TabsContent value="manual-consume"className={tabTransitionClass}>
-            <ManualConsumeTab />
-        </TabsContent>
-      </Tabs>
-    </div>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+          <ResponsiveTabsHeader 
+              tabs={ticketTabs} 
+              activeTab={activeTab} 
+              onValueChange={handleTabChange} 
+          />
+
+          <TabsContent value="deactivate-ticket" className={tabTransitionClass}>
+              <DeactivateTicketTab />
+          </TabsContent>
+          <TabsContent value="extend-expiry" className={tabTransitionClass}>
+              <ExtendExpiryTab />
+          </TabsContent>
+          <TabsContent value="update-qr-password"className={tabTransitionClass}>
+              <UpdateQrPasswordTab />
+          </TabsContent>
+          <TabsContent value="manual-consume"className={tabTransitionClass}>
+              <ManualConsumeTab />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </PullToRefresh>
   )
 }

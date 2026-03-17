@@ -1,7 +1,7 @@
 // components/modules/themepark-support/Ticket/DeactivateTicketTab.tsx
 "use client"
 
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
@@ -177,6 +177,15 @@ export default function DeactivateTicketTab() {
       setSelectedTicket(ticket);
       setIsSheetOpen(true);
   }
+
+  useEffect(() => {
+    const handleTabRefresh = () => {
+        if (searchQuery) fetchData(searchQuery, false);
+    };
+
+    window.addEventListener('refresh-active-tab', handleTabRefresh);
+    return () => window.removeEventListener('refresh-active-tab', handleTabRefresh);
+  }, [searchQuery]);
 
   // ============================================================================
   // 3. UI CONFIGURATION (Columns & Renderers)

@@ -4,6 +4,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { PageHeader } from "@/components/portal/page-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Users, History, Loader2 } from "lucide-react"
+import { PullToRefresh } from "@/components/shared-components/pull-to-refresh"
 import { LoaderState } from "@/components/ui/loader-state"
 import { ResponsiveTabsHeader, TabOption } from "@/components/portal/responsive-tabs-header"
 import dynamic from "next/dynamic"
@@ -35,29 +36,36 @@ export default function AccountMasterPage() {
     router.replace(`${pathname}?${params.toString()}`)
    }
 
+   const handleGlobalRefresh = async () => {
+    window.dispatchEvent(new Event('refresh-active-tab'));
+    await new Promise(resolve => setTimeout(resolve, 800));
+   }
+
    const tabTransitionClass = "mt-0 space-y-6 outline-none animate-in fade-in slide-in-from-bottom-5 duration-500 fill-mode-forward";
   
    return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Account Master"
-        description="Search, edit, and manage user accounts and retrieve all associated transaction history."
-      />
-
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-        <ResponsiveTabsHeader 
-            tabs={accountTabs} 
-            activeTab={activeTab} 
-            onValueChange={handleTabChange} 
+    <PullToRefresh onRefresh={handleGlobalRefresh}>
+      <div className="space-y-6 pb-12 min-h-[calc(100vh-80px)]">
+        <PageHeader
+          title="Account Master"
+          description="Search, edit, and manage user accounts and retrieve all associated transaction history."
         />
 
-        <TabsContent value="account-management" className={tabTransitionClass}>
-            <AccountManagementTab />
-        </TabsContent>
-        <TabsContent value="search-history-record" className={tabTransitionClass}>
-            <SearchHistoryRecordTab />
-        </TabsContent>
-      </Tabs>
-    </div>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+          <ResponsiveTabsHeader 
+              tabs={accountTabs} 
+              activeTab={activeTab} 
+              onValueChange={handleTabChange} 
+          />
+
+          <TabsContent value="account-management" className={tabTransitionClass}>
+              <AccountManagementTab />
+          </TabsContent>
+          <TabsContent value="search-history-record" className={tabTransitionClass}>
+              <SearchHistoryRecordTab />
+          </TabsContent>
+        </Tabs>
+      </div>
+   </PullToRefresh>
   )
 }

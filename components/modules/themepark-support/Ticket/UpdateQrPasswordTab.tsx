@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { SearchField } from "@/components/shared-components/search-field" // <--- Import
 import { PasswordDisplay } from "@/components/shared-components/password-display"
@@ -76,6 +76,15 @@ export default function UpdateQrPasswordTab() {
       setIsResetting(false);
     }
   }
+
+  useEffect(() => {
+    const handleTabRefresh = () => {
+        if (qrInvoiceNo) handleQrSearch();
+    };
+
+    window.addEventListener('refresh-active-tab', handleTabRefresh);
+    return () => window.removeEventListener('refresh-active-tab', handleTabRefresh);
+  }, [qrInvoiceNo]);
 
   return (
     <>

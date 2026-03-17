@@ -177,6 +177,16 @@ export default function UpdateTerminalTab() {
     }
   }
 
+  useEffect(() => {
+    const handleTabRefresh = () => {
+        handleTerminalSearch(terminalSearchTerm);
+    };
+
+    window.addEventListener('refresh-active-tab', handleTabRefresh);
+    return () => window.removeEventListener('refresh-active-tab', handleTabRefresh);
+  }, [terminalSearchTerm]);
+  
+
   // 3. COLUMNS
   const terminalColumns: TableColumn<Terminal>[] = useMemo (() => [
       { 

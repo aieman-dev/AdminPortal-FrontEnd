@@ -1,7 +1,7 @@
 // components/themepark-support/tabs/Ticket/ManualConsumeTab.tsx
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ReceiptData, ReceiptView } from "@/components/modules/themepark-support/Receipt/ReceiptView"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
@@ -345,6 +345,17 @@ export default function ManualConsumeTab() {
         }
     }
 
+    useEffect(() => {
+    const handleTabRefresh = () => {
+        // Only trigger if we have the minimum required fields
+        if (terminalId && (email || invoiceNo)) {
+            handleConsumeSearch();
+        }
+    };
+
+    window.addEventListener('refresh-active-tab', handleTabRefresh);
+    return () => window.removeEventListener('refresh-active-tab', handleTabRefresh);
+  }, [terminalId, email, invoiceNo, consumeType, ticketType, ticketStatus]);
 
   // ============================================================================
   // 4. UI CONFIGURATION (Columns & Derived State)

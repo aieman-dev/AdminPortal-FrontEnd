@@ -73,6 +73,17 @@ export default function ShopifyOrderTab() {
       performSearch(orderName);
   }
 
+  useEffect(() => {
+    const handleTabRefresh = () => {
+        if (orderName) {
+            performSearch(orderName);
+        }
+    };
+
+    window.addEventListener('refresh-active-tab', handleTabRefresh);
+    return () => window.removeEventListener('refresh-active-tab', handleTabRefresh);
+  }, [orderName]);
+
   const orderTrxColumns: TableColumn<ShopifyTableData>[] = useMemo(() => [
     { header: "Order Name (Searched)", accessor: "orderName", cell: (value) => <span className="font-semibold">{value}</span> },
     { header: "Transaction ID", accessor: "trxId" },

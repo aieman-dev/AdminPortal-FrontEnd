@@ -63,6 +63,20 @@ export default function ResyncTransactionTab() {
 
   useAutoSearch(handleExecute);
 
+
+  // Listen for the global refresh event
+  useEffect(() => {
+    const handleTabRefresh = () => {
+        if (transactionId) {
+            handleExecute(transactionId);
+        }
+    };
+
+    window.addEventListener('refresh-active-tab', handleTabRefresh);
+    return () => window.removeEventListener('refresh-active-tab', handleTabRefresh);
+  }, [transactionId]);
+
+  
   return (
     <>
       <Card>

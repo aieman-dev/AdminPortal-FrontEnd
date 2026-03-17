@@ -136,6 +136,15 @@ export default function BComparePackageTab() {
         }
     };
 
+    useEffect(() => {
+        const handleTabRefresh = () => {
+            fetchUnsyncedPackages();
+        };
+
+        window.addEventListener('refresh-active-tab', handleTabRefresh);
+        return () => window.removeEventListener('refresh-active-tab', handleTabRefresh);
+    }, [searchQuery, packageType]);
+
     const columns: TableColumn<SelectableUnsyncPackage>[] = useMemo (() => [
         { 
             header: "Select", 

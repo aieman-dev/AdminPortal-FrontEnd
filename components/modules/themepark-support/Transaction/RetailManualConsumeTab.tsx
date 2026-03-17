@@ -1,7 +1,7 @@
 // components/themepark-support/tabs/Transaction/RetailManualConsumeTab.tsx
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -319,6 +319,17 @@ export default function RetailManualConsumeTab() {
         setIsExecuting(false);
     }
   }
+
+  useEffect(() => {
+    const handleTabRefresh = () => {
+        if (terminalId) {
+            handleConsumeSearch();
+        }
+    };
+
+    window.addEventListener('refresh-active-tab', handleTabRefresh);
+    return () => window.removeEventListener('refresh-active-tab', handleTabRefresh);
+  }, [terminalId, email, invoiceNo, consumeType, tGroupId]);
 
   // ============================================================================
   // 4. UI CONFIGURATION (Columns & Derived State)

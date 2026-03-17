@@ -20,6 +20,7 @@ import { StatusBadge } from "@/components/shared-components/status-badge"
 import { type TableColumn, DataTable } from "@/components/shared-components/data-table"
 import { SearchField } from "@/components/shared-components/search-field"
 import { formatDateTime } from "@/lib/formatter"
+import { PullToRefresh } from "@/components/shared-components/pull-to-refresh"
 
 const LOCAL_STORAGE_KEY = 'superAppVisitorSearch';
 
@@ -33,6 +34,11 @@ export default function SuperAppVisitor() {
   
   // Initialize search from local storage
   const [searchTerm, setSearchTerm] = useState("");
+
+  //  Add refresh handler
+  const handleRefresh = async () => {
+      await fetchData(searchTerm);
+  }
 
   // --- Main Fetch Logic ---
   const fetchData = useCallback(async (query: string) => {
@@ -128,47 +134,49 @@ export default function SuperAppVisitor() {
   ], []);
 
   return (
-    <div className="space-y-6">
+    <PullToRefresh onRefresh={handleRefresh}>
+        <div className="space-y-6 min-h-screen">
 
-      {/* Header */}
-      <PageHeader 
-        title="SuperApp Visitor" 
-        description="Manage SuperApp visitor accounts, check status, and update details." 
-      />
+        {/* Header */}
+        <PageHeader 
+          title="SuperApp Visitor" 
+          description="Manage SuperApp visitor accounts, check status, and update details." 
+        />
 
-      <Card>
-        <CardContent>
-            <SearchField 
-                label="Search Account"
-                placeholder="Search by Email"
-                value={searchTerm}
-                onChange={setSearchTerm}
-                onSearch={handleSearchClick}
-                isSearching={isSearching}
-                inputType="email"
+        <Card>
+          <CardContent>
+              <SearchField 
+                  label="Search Account"
+                  placeholder="Search by Email"
+                  value={searchTerm}
+                  onChange={setSearchTerm}
+                  onSearch={handleSearchClick}
+                  isSearching={isSearching}
+                  inputType="email"
+              />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-0">
+            <DataTable
+              columns={columns}
+              data={data}
+              keyExtractor={(row) => row.accId}
+              isLoading={isSearching}
+              emptyIcon={Users}
+              emptyTitle="No Records Found"
+              emptyMessage={
+                    isSearching 
+                    ? "Searching..." 
+                    : searchTerm 
+                        ? `No records found matching "${searchTerm}"`
+                        : "Enter a keyword to search."
+                }
             />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-0">
-          <DataTable
-            columns={columns}
-            data={data}
-            keyExtractor={(row) => row.accId}
-            isLoading={isSearching}
-            emptyIcon={Users}
-            emptyTitle="No Records Found"
-            emptyMessage={
-                  isSearching 
-                  ? "Searching..." 
-                  : searchTerm 
-                      ? `No records found matching "${searchTerm}"`
-                      : "Enter a keyword to search."
-              }
-          />
-        </CardContent>
-      </Card>
-    </div>
+          </CardContent>
+        </Card>
+      </div>
+    </PullToRefresh>
   )
 }

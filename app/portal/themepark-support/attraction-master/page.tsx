@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/portal/page-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { PackageIcon, Settings, History, DivideCircle } from "lucide-react"
 import { LoaderState } from "@/components/ui/loader-state"
+import { PullToRefresh } from "@/components/shared-components/pull-to-refresh"
 import { ResponsiveTabsHeader, TabOption } from "@/components/portal/responsive-tabs-header"
 import dynamic from "next/dynamic"
 
@@ -47,38 +48,45 @@ export default function AttractionMasterPage() {
     router.replace(`${pathname}?${params.toString()}`)
    }
 
+   const handleGlobalRefresh = async () => {
+    window.dispatchEvent(new Event('refresh-active-tab'));
+    await new Promise(resolve => setTimeout(resolve, 800));
+   }
+
    const tabTransitionClass = "mt-0 space-y-6 outline-none animate-in fade-in slide-in-from-bottom-5 duration-500 fill-mode-forward";
    
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Attraction Master"
-        description="Manage packages, terminal access, and retrieve consumption history by terminal."
-      />
-
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6 w-full">
-        <ResponsiveTabsHeader 
-            tabs={attractionTabs} 
-            activeTab={activeTab} 
-            onValueChange={handleTabChange} 
+    <PullToRefresh onRefresh={handleGlobalRefresh}>
+      <div className="space-y-6 pb-12 min-h-[calc(100vh-80px)]">
+        <PageHeader
+          title="Attraction Master"
+          description="Manage packages, terminal access, and retrieve consumption history by terminal."
         />
 
-        <TabsContent value="package-listing"className={tabTransitionClass}>
-            <PackageListingTab />
-        </TabsContent>
-        
-        <TabsContent value="update-terminal" className={tabTransitionClass}>
-            <UpdateTerminalTab />
-        </TabsContent>
-        
-        <TabsContent value="consume-history-by-terminal" className={tabTransitionClass}>
-            <ConsumeHistoryByTerminalTab />
-        </TabsContent>
-        
-        <TabsContent value="bcompare-package" className={tabTransitionClass}>
-            <BComparePackageTab />
-        </TabsContent>
-      </Tabs>
-    </div>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6 w-full">
+          <ResponsiveTabsHeader 
+              tabs={attractionTabs} 
+              activeTab={activeTab} 
+              onValueChange={handleTabChange} 
+          />
+
+          <TabsContent value="package-listing"className={tabTransitionClass}>
+              <PackageListingTab />
+          </TabsContent>
+          
+          <TabsContent value="update-terminal" className={tabTransitionClass}>
+              <UpdateTerminalTab />
+          </TabsContent>
+          
+          <TabsContent value="consume-history-by-terminal" className={tabTransitionClass}>
+              <ConsumeHistoryByTerminalTab />
+          </TabsContent>
+          
+          <TabsContent value="bcompare-package" className={tabTransitionClass}>
+              <BComparePackageTab />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </PullToRefresh>
   )
 }

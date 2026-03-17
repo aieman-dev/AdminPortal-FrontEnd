@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
@@ -132,6 +132,15 @@ export default function ExtendExpiryTab() {
       setSelectedTicket(ticket);
       setIsSheetOpen(true);
   }
+
+  useEffect(() => {
+    const handleTabRefresh = () => {
+        if (extendSearchQuery) handleExtendSearch();
+    };
+
+    window.addEventListener('refresh-active-tab', handleTabRefresh);
+    return () => window.removeEventListener('refresh-active-tab', handleTabRefresh);
+  }, [extendSearchQuery]);
 
   // Define columns
   const columns: TableColumn<ExtendTicketData>[] = useMemo(() => [

@@ -1,5 +1,5 @@
 "use client"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { History, Search } from "lucide-react"
 import { Label } from "@/components/ui/label"
@@ -67,6 +67,17 @@ export default function ConsumeHistoryByTerminalTab() {
             setIsHistorySearching(false);
         }
     }
+
+    useEffect(() => {
+        const handleTabRefresh = () => {
+            if (selectedTerminalId) {
+                handleHistorySearch();
+            }
+        };
+
+        window.addEventListener('refresh-active-tab', handleTabRefresh);
+        return () => window.removeEventListener('refresh-active-tab', handleTabRefresh);
+    }, [selectedTerminalId, searchDate]);
 
     const commonColumns: TableColumn<TerminalTransaction>[] = useMemo(() => [
         { header: "Transaction ID", accessor: "trxID", className: "pl-6", cell: (value) => <span className="font-medium">{value}</span> },

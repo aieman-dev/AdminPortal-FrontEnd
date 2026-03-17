@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { PageHeader } from "@/components/portal/page-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { PullToRefresh } from "@/components/shared-components/pull-to-refresh"
 import { XCircle, Wallet, CheckCircle2, ShoppingBag, Settings } from "lucide-react"
 import { LoaderState } from "@/components/ui/loader-state"
 import { ResponsiveTabsHeader, TabOption } from "@/components/portal/responsive-tabs-header"
@@ -54,42 +55,51 @@ export default function TransactionMasterPage() {
 
   const tabTransitionClass = "mt-0 space-y-6 outline-none animate-in fade-in slide-in-from-bottom-5 duration-500 fill-mode-forward";
   
+  //  Dispatch a custom event when the user pulls down
+  const handleGlobalRefresh = async () => {
+    window.dispatchEvent(new Event('refresh-active-tab'));
+    
+    await new Promise(resolve => setTimeout(resolve, 800));
+  }
+
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Transaction Master"
-        description="Unified management for transaction reversal, consumption, resync, and Shopify order validation."
-      />
-
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-
-        {/* SHARED HEADER COMPONENT */}
-        <ResponsiveTabsHeader 
-            tabs={transactionTabs} 
-            activeTab={activeTab} 
-            onValueChange={handleTabChange} 
+    <PullToRefresh onRefresh={handleGlobalRefresh}>
+        <div className="space-y-6 pb-12 min-h-[calc(100vh-80px)]">
+        <PageHeader
+            title="Transaction Master"
+            description="Unified management for transaction reversal, consumption, resync, and Shopify order validation."
         />
 
-        <TabsContent value="void-transaction" className={tabTransitionClass}>
-            <VoidTransactionTab />
-        </TabsContent>
-        
-        <TabsContent value="retail-manual-consume" className={tabTransitionClass}>
-            <RetailManualConsumeTab />
-        </TabsContent>
-        
-        <TabsContent value="resync-transaction" className={tabTransitionClass}>
-            <ResyncTransactionTab />
-        </TabsContent>
-        
-        <TabsContent value="shopify-order" className={tabTransitionClass}>
-            <ShopifyOrderTab />
-        </TabsContent>
-        
-        <TabsContent value="consume-terminal" className={tabTransitionClass}>
-            <ConsumeTerminalTab />
-        </TabsContent>
-      </Tabs>
-    </div>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+
+            {/* SHARED HEADER COMPONENT */}
+            <ResponsiveTabsHeader 
+                tabs={transactionTabs} 
+                activeTab={activeTab} 
+                onValueChange={handleTabChange} 
+            />
+
+            <TabsContent value="void-transaction" className={tabTransitionClass}>
+                <VoidTransactionTab />
+            </TabsContent>
+            
+            <TabsContent value="retail-manual-consume" className={tabTransitionClass}>
+                <RetailManualConsumeTab />
+            </TabsContent>
+            
+            <TabsContent value="resync-transaction" className={tabTransitionClass}>
+                <ResyncTransactionTab />
+            </TabsContent>
+            
+            <TabsContent value="shopify-order" className={tabTransitionClass}>
+                <ShopifyOrderTab />
+            </TabsContent>
+            
+            <TabsContent value="consume-terminal" className={tabTransitionClass}>
+                <ConsumeTerminalTab />
+            </TabsContent>
+        </Tabs>
+        </div>
+    </PullToRefresh>
   )
 }

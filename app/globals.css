@@ -233,6 +233,8 @@
     @apply border-border outline-ring/50;
   }
   body {
+    /* Add this line to kill the native browser pull-to-refresh */
+    overscroll-behavior-y: none;
     @apply bg-background text-foreground;
   }
 }

@@ -4,6 +4,7 @@ import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowRight } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import { PullToRefresh } from "@/components/shared-components/pull-to-refresh"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/portal/page-header"
 import { SearchField } from "@/components/shared-components/search-field"
@@ -45,6 +46,10 @@ export default function ApplicationsPage() {
         setSearchTerm(query);
         fetchApplications(1, query);
     });
+
+    const handleRefresh = async () => {
+        await fetchApplications(pagination.currentPage, searchTerm);
+    }
 
     const handleSearchClick = () => {
         fetchApplications(1, searchTerm);
@@ -102,45 +107,47 @@ export default function ApplicationsPage() {
     ];
 
     return (
-        <div className="space-y-6">
-            <PageHeader 
-                title="Application New SuperApp" 
-                description="Review and process pending season pass applications." 
-            />
+        <PullToRefresh onRefresh={handleRefresh}>
+            <div className="space-y-6 min-h-screen">
+                <PageHeader 
+                    title="Application New SuperApp" 
+                    description="Review and process pending season pass applications." 
+                />
 
-            <Card>
-                <CardContent>
-                    <SearchField 
-                        label="Search Applications"
-                        placeholder="Search by name or email"
-                        value={searchTerm}
-                        onChange={setSearchTerm}
-                        onSearch={handleSearchClick}
-                        isSearching={loading}
-                        inputType="email"
-                    />
-                </CardContent>
-            </Card>
+                <Card>
+                    <CardContent>
+                        <SearchField 
+                            label="Search Applications"
+                            placeholder="Search by name or email"
+                            value={searchTerm}
+                            onChange={setSearchTerm}
+                            onSearch={handleSearchClick}
+                            isSearching={loading}
+                            inputType="email"
+                        />
+                    </CardContent>
+                </Card>
 
-            <Card>
-                <CardContent className="p-0">
-                    <DataTable 
-                        columns={columns}
-                        data={applications}
-                        keyExtractor={(row) => row.id.toString()}
-                        isLoading={loading}
-                        emptyTitle="No Pending Applications"
-                        emptyMessage="All caught up! There are no applications to review."
-                        pagination={{
-                            currentPage: pagination.currentPage,
-                            totalPages: pagination.totalPages,
-                            totalRecords: pagination.totalRecords,
-                            pageSize: pagination.pageSize,
-                            onPageChange: (page) => fetchApplications(page, searchTerm)
-                        }}
-                    />
-                </CardContent>
-            </Card>
-        </div>
+                <Card>
+                    <CardContent className="p-0">
+                        <DataTable 
+                            columns={columns}
+                            data={applications}
+                            keyExtractor={(row) => row.id.toString()}
+                            isLoading={loading}
+                            emptyTitle="No Pending Applications"
+                            emptyMessage="All caught up! There are no applications to review."
+                            pagination={{
+                                currentPage: pagination.currentPage,
+                                totalPages: pagination.totalPages,
+                                totalRecords: pagination.totalRecords,
+                                pageSize: pagination.pageSize,
+                                onPageChange: (page) => fetchApplications(page, searchTerm)
+                            }}
+                        />
+                    </CardContent>
+                </Card>
+            </div>
+        </PullToRefresh>
     )
 }
