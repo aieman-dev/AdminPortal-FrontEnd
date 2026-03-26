@@ -1,23 +1,40 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { BACKEND_API_BASE } from "@/lib/config";
-import { decodeJwt, jwtVerify } from "jose";
+import { jwtVerify } from "jose";
 import { BACKEND_ROLE_MAP, ROLES } from "@/lib/constants";
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
-// Note: In serverless (Vercel), this resets on cold starts, but still effective for bursts.
-const rateLimitMap = new Map();
+// Initialize Redis and the Rate Limiter OUTSIDE the middleware function
+// This ensures the connection is cached across edge invocations
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL || "",
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
+});
+
+// Create a sliding window limiter: 100 requests per 1 minute
+const ratelimit = new Ratelimit({
+  redis: redis,
+  limiter: Ratelimit.slidingWindow(100, "1 m"),
+  analytics: true, // Optional: Gives you cool charts in the Upstash dashboard
+});
 
 // ---  Verify and decode the token securely ---
 async function getVerifiedPayload(token: string) {
+  // 1. Fail securely if the secret is missing
+  if (!process.env.JWT_SECRET) {
+     console.error("FATAL ERROR: JWT_SECRET is missing from environment variables.");
+     return null; 
+  }
+  
   try {
      const secret = new TextEncoder().encode(process.env.JWT_SECRET || "");
      const { payload } = await jwtVerify(token, secret);
      return payload;
      
-    // Fallback: Securely decode without verifying signature (Better than atob)
-    //return decodeJwt(token);
   } catch (e) {
-    return null; // Treat invalid tokens as expired/failed
+    return null; 
   }
 }
 
@@ -25,8 +42,9 @@ async function isTokenExpired(token: string) {
   const payload = await getVerifiedPayload(token);
   if (!payload || !payload.exp) return true;
   
-  // Check if expiry time is in the past (with 10s buffer)
-  return (Math.floor(Date.now() / 1000) >= payload.exp - 10);
+  // Check if expiry time is in the past (with 60s buffer)
+  const BUFFER_SECONDS = 60; 
+  return (Math.floor(Date.now() / 1000) >= payload.exp - BUFFER_SECONDS);
 }
 
 // --- Extract Role for Edge RBAC ---
@@ -45,30 +63,35 @@ async function getUserRole(token: string) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // --------------- SECURITY LOGIC (RATE LIMITING) ---------------------------
-  if (pathname.startsWith("/api")) {
-    const ip = request.headers.get("x-forwarded-for") || "unknown";
-    const LIMIT = 100; // Max requests per minute
-    const WINDOW_MS = 60 * 1000;
+  // --------------- SECURITY LOGIC (UPSTASH RATE LIMITING) ---------------------------
+  // We only rate limit API routes and Login attempts to save Redis operations
+  if (pathname.startsWith("/api") || pathname.startsWith("/login")) {
     
-    const now = Date.now();
-    const windowStart = now - WINDOW_MS;
-
-    const requestLog = rateLimitMap.get(ip) || [];
+    // In Next.js, request.ip is available in production. Fallback to header or localhost.
+    const ip =  request.headers.get("x-forwarded-for") || "127.0.0.1";
     
-    // Filter out old requests outside the window
-    const recentRequests = requestLog.filter((timestamp: number) => timestamp > windowStart);
+    try {
+      const { success, limit, reset, remaining } = await ratelimit.limit(ip);
 
-    if (recentRequests.length >= LIMIT) {
-      return new NextResponse(
-        JSON.stringify({ success: false, message: "Too many requests. Please try again later." }),
-        { status: 429, headers: { "Content-Type": "application/json" } }
-      );
+      if (!success) {
+        console.warn(`Rate limit exceeded for IP: ${ip}`);
+        return new NextResponse(
+          JSON.stringify({ success: false, message: "Too many requests. Please try again later." }),
+          { 
+            status: 429, 
+            headers: { 
+              "Content-Type": "application/json",
+              "X-RateLimit-Limit": limit.toString(),
+              "X-RateLimit-Remaining": remaining.toString(),
+              "X-RateLimit-Reset": reset.toString()
+            } 
+          }
+        );
+      }
+    } catch (error) {
+      // Fail open: If Redis goes down, we don't want to lock everyone out of the portal
+      console.error("Upstash Redis Error:", error);
     }
-
-    // Record current request
-    recentRequests.push(now);
-    rateLimitMap.set(ip, recentRequests);
   }
 
   // --------------- AUTHENTICATION LOGIC (Token Management) ---------------------------
@@ -132,10 +155,19 @@ export async function middleware(request: NextRequest) {
 
         console.log("Middleware: Token refreshed successfully.");
         accessToken = newAccessToken;
+    } else {
+        // If backend rejects the refresh token, throw to the catch block
+        throw new Error("Backend rejected refresh token");
       }
     } catch (error) {
-      console.error("Middleware: Refresh failed", error);
-      // If refresh fails (e.g., Backend error), fall through to logout logic
+      console.error("Middleware: Refresh failed, forcing clean logout", error);
+      
+      // Create a redirect response and nuke the bad cookies
+      const failedRefreshRedirect = NextResponse.redirect(new URL("/login", request.url));
+      failedRefreshRedirect.cookies.delete("accessToken");
+      failedRefreshRedirect.cookies.delete("refreshToken");
+      
+      return failedRefreshRedirect; // Immediately stop and send to login
     }
   }
 

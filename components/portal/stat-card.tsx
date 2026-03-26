@@ -20,7 +20,6 @@ interface StatCardProps {
   onClick?: () => void
 }
 
-// 2. Wrap component in memo()
 const StatCard = memo(({ 
   title, 
   value, 
@@ -30,12 +29,12 @@ const StatCard = memo(({
   valueColor = "text-foreground",
   onClick
 }: StatCardProps) => {
-    // 3. Optimize Parsing Logic (Only run when 'value' changes)
+    
+    // Optimize Parsing Logic
     const { numericValue, isCurrency, isSplit, splitParts } = useMemo(() => {
         const isCurrency = value.includes("RM");
         const isSplit = value.includes("/");
         const splitParts = isSplit ? value.split("/") : [value];
-        // resilient parsing: remove non-digits but keep decimal points if needed
         const numericValue = parseInt(splitParts[0].replace(/[^0-9]/g, '')) || 0;
 
         return { numericValue, isCurrency, isSplit, splitParts };
@@ -43,7 +42,7 @@ const StatCard = memo(({
     
     const spring = useSpring(0, { bounce: 0, duration: 2000 });
     
-    // Transform logic remains the same, but relies on memoized values
+    // Transform logic 
     const displayValue = useTransform(spring, (current) => {
         const rounded = Math.round(current);
         if (isCurrency) return `RM ${rounded.toLocaleString()}`;
@@ -57,11 +56,8 @@ const StatCard = memo(({
 
     const activeColorClass = valueColor === "text-foreground" ? "text-primary" : valueColor;
 
-  return (
-    <div 
-        className={cn("relative h-28 w-full z-0 group/wrapper", onClick && "cursor-pointer")}
-        onClick={onClick}
-        >
+    // --- EXTRACT INNER CONTENT ---
+    const cardContent = (
         <Card className="absolute inset-x-0 top-0 h-full hover:h-auto min-h-full flex flex-col overflow-hidden hover:shadow-xl transition-all duration-300 border-border/50 bg-gradient-to-br from-card to-card/50 p-6 hover:z-50">
             <div className="flex items-start justify-between w-full relative z-10">
                 <div className="space-y-1 flex-1 min-w-0 pr-2">
@@ -92,7 +88,6 @@ const StatCard = memo(({
                             )}
                         </motion.div>
 
-                        {/* Description: Hidden by default, reveals on hover without pushing layout */}
                         <div className="grid grid-rows-[0fr] group-hover/wrapper:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-in-out">
                             <div className="overflow-hidden">
                                 <p className="text-xs text-muted-foreground/80 mt-2 opacity-0 group-hover/wrapper:opacity-100 transition-opacity duration-500 delay-75">
@@ -109,14 +104,31 @@ const StatCard = memo(({
                 </div>
             </div>
 
-            {/* Hover Background Effect (Subtle matching tint) */}
             <div className={cn("absolute inset-0 bg-gradient-to-br from-current to-transparent opacity-0 group-hover/wrapper:opacity-5 transition-opacity duration-500 pointer-events-none", activeColorClass)} />
         </Card>
-    </div>
-  )
+    );
+
+    // --- CONDITIONALLY RENDER AS BUTTON OR DIV ---
+    if (onClick) {
+        return (
+            <button 
+                type="button"
+                onClick={onClick}
+                aria-label={`View details for ${title}`}
+                className="relative h-28 w-full z-0 group/wrapper cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-xl transition-transform active:scale-[0.98]"
+            >
+                {cardContent}
+            </button>
+        );
+    }
+
+    return (
+        <div className="relative h-28 w-full z-0 group/wrapper">
+            {cardContent}
+        </div>
+    );
 });
 
-// 4. Add Display Name
 StatCard.displayName = "StatCard";
 
 export { StatCard };

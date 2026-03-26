@@ -36,8 +36,7 @@ export async function serverFetch<T>(endpoint: string, options: RequestInit = {}
       return null;
     }
 
-    const json = await res.json();
-    return json as T; 
+    return await res.json() as T;
   } catch (error) {
     logger.error("ServerFetch Fatal:", error);
     return null;

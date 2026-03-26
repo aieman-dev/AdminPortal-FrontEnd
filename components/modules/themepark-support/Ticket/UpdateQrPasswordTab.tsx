@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { SearchField } from "@/components/shared-components/search-field" // <--- Import
 import { PasswordDisplay } from "@/components/shared-components/password-display"
@@ -21,7 +21,7 @@ export default function UpdateQrPasswordTab() {
   const [isResetting, setIsResetting] = useState(false)
   const [resetSuccess, setResetSuccess] = useState(false)
 
-  const handleQrSearch = async (query?: string) => {
+  const handleQrSearch = useCallback(async (query?: string) => {
     const term = query !== undefined ? query : qrInvoiceNo;
 
     if (!term) return
@@ -49,7 +49,7 @@ export default function UpdateQrPasswordTab() {
     } finally {
       setIsQrSearching(false);
     }
-  }
+  }, [qrInvoiceNo])
 
   useAutoSearch(handleQrSearch);
 

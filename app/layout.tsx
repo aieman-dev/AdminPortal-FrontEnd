@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   title: "Theme Park Portal - Secure Authentication System",
   description: "Production-ready theme park portal with authentication and dashboard",
   generator: "v0.app",
-  manifest: "/manifest.json", 
+  manifest: "/manifest.webmanifest",
   formatDetection: {
     telephone: false, 
   },

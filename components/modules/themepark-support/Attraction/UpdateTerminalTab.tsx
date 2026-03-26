@@ -1,7 +1,7 @@
 // components/themepark-support/tabs/Attraction/UpdateTerminalTab.tsx
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -95,7 +95,7 @@ export default function UpdateTerminalTab() {
   const [isUpdating, setIsUpdating] = useState(false)
 
   // 2. LOGIC
-  const handleTerminalSearch = async (query?: string) => {
+  const handleTerminalSearch = useCallback(async (query?: string) => {
     const term = query !== undefined ? query : terminalSearchTerm;
     setIsTerminalSearching(true)
     setTerminals([]) 
@@ -116,7 +116,7 @@ export default function UpdateTerminalTab() {
     } finally {
         setIsTerminalSearching(false)
     }
-  }
+  }, [terminalSearchTerm])
 
     useEffect(() => {
       const fetchTypes = async () => {

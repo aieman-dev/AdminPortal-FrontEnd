@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
@@ -35,7 +35,7 @@ export default function ExtendExpiryTab() {
   const [selectedTicket, setSelectedTicket] = useState<ExtendTicketData | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  const handleExtendSearch = async (query?: string) => {
+  const handleExtendSearch = useCallback(async (query?: string) => {
     const term = query !== undefined ? query : extendSearchQuery;
 
     if (!term) return
@@ -72,7 +72,8 @@ export default function ExtendExpiryTab() {
     } finally {
       setIsExtendSearching(false)
     }
-  }
+  },  [extendSearchQuery])
+  
 
   useAutoSearch(handleExtendSearch);
 

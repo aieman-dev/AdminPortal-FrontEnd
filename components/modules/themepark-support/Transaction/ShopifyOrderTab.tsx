@@ -1,7 +1,7 @@
 // components/it-poswf/tabs/Transaction/ShopifyOrderTab.tsx
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { ShoppingBag, Search, SearchX, Loader2 } from "lucide-react"
@@ -29,7 +29,7 @@ export default function ShopifyOrderTab() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   // 3. CORE SEARCH LOGIC
-  const performSearch = async (query: string) => {
+  const performSearch = useCallback(async (query: string) => {
     const rawInput = query.trim().replace(/#/g, '');
     
     if (!rawInput) return;
@@ -64,7 +64,7 @@ export default function ShopifyOrderTab() {
     } finally {
       setIsSearching(false)
     }
-  }
+  }, []) 
 
   useAutoSearch(performSearch);
 

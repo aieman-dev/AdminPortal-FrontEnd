@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -18,7 +18,7 @@ export default function ResyncTransactionTab() {
   const [showResyncSuccess, setShowResyncSuccess] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
 
-  const handleExecute = async (idOverride?: string) => {
+  const handleExecute = useCallback(async (idOverride?: string) => {
     const targetId = idOverride !== undefined ? idOverride : transactionId;
 
     if (!targetId.trim()) {
@@ -59,7 +59,7 @@ export default function ResyncTransactionTab() {
     } finally {
         setIsExecuting(false);
     }
-  }
+  }, [transactionId]) 
 
   useAutoSearch(handleExecute);
 

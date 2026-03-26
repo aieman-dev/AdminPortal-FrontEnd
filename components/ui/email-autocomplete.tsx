@@ -21,13 +21,13 @@ export function EmailAutocomplete({ className, value, onChange, onKeyDown, ...pr
   const [inputValue, setInputValue] = React.useState(value?.toString() || "")
   const [selectedIndex, setSelectedIndex] = React.useState(0) // 1. Track selection
   
+  const id = React.useId()
+  const listboxId = `${id}-listbox`
   const containerRef = React.useRef<HTMLDivElement>(null)
   const listRef = React.useRef<HTMLDivElement>(null)
 
   // Sync internal state if prop changes
-  React.useEffect(() => {
-    setInputValue(value?.toString() || "")
-  }, [value])
+  React.useEffect(() => { setInputValue(value?.toString() || "") }, [value])
 
   // Filter logic
   const query = inputValue.split("@")[1] || ""
@@ -36,18 +36,12 @@ export function EmailAutocomplete({ className, value, onChange, onKeyDown, ...pr
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVal = e.target.value
     setInputValue(newVal)
-    setSelectedIndex(0) // Reset selection on typing
-    
+    setSelectedIndex(0)
     if (onChange) onChange(e)
 
-    // Open logic: contains exactly one '@' and domain isn't fully matched yet
     if (newVal.includes("@")) {
       const parts = newVal.split("@")
-      if (parts.length === 2 && !COMMON_DOMAINS.includes(parts[1])) {
-        setIsOpen(true)
-      } else {
-        setIsOpen(false)
-      }
+      setIsOpen(parts.length === 2 && !COMMON_DOMAINS.includes(parts[1]))
     } else {
       setIsOpen(false)
     }
@@ -59,18 +53,9 @@ export function EmailAutocomplete({ className, value, onChange, onKeyDown, ...pr
       const finalValue = `${parts[0]}@${domain}`
       setInputValue(finalValue)
       setIsOpen(false)
-      setSelectedIndex(0)
-      
-      // Trigger standard React change event for parent forms
       if (onChange) {
-        const event = {
-          target: { value: finalValue },
-          currentTarget: { value: finalValue }
-        } as React.ChangeEvent<HTMLInputElement>
-        onChange(event)
+        onChange({ target: { value: finalValue }, currentTarget: { value: finalValue } } as any)
       }
-      
-      // Refocus input to keep typing flow
       containerRef.current?.querySelector("input")?.focus()
     }
   }
@@ -88,13 +73,10 @@ export function EmailAutocomplete({ className, value, onChange, onKeyDown, ...pr
 
   // 2. Keyboard Navigation Handler
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if ( e.key === " "){
-      e.preventDefault();
-      return;
-    }
+    if (e.key === " ") { e.preventDefault(); return; }
     if (!isOpen || filteredDomains.length === 0) {
-        if (onKeyDown) onKeyDown(e);
-        return;
+      if (onKeyDown) onKeyDown(e);
+      return;
     }
 
     if (e.key === "ArrowDown") {
@@ -104,14 +86,12 @@ export function EmailAutocomplete({ className, value, onChange, onKeyDown, ...pr
       e.preventDefault();
       setSelectedIndex((prev) => (prev - 1 + filteredDomains.length) % filteredDomains.length);
     } else if (e.key === "Enter" || e.key === "Tab") {
-      // 3. Select the highlighted item
       e.preventDefault();
-      e.stopPropagation(); // Stop form submission / focus change
+      e.stopPropagation(); 
       handleSelectDomain(filteredDomains[selectedIndex]);
     } else if (e.key === "Escape") {
       setIsOpen(false);
     } else {
-      // For any other key, pass it to the parent (e.g. user typing letters)
       if (onKeyDown) onKeyDown(e);
     }
   };
@@ -125,31 +105,40 @@ export function EmailAutocomplete({ className, value, onChange, onKeyDown, ...pr
         onKeyDown={handleKeyDown}
         className={cn("w-full", className)}
         autoComplete="off"
-        // Prevent browser autocomplete from covering our menu
+        role="combobox"
         aria-autocomplete="list"
         aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-controls={listboxId}
+        aria-activedescendant={isOpen ? `${id}-option-${selectedIndex}` : undefined}
       />
       
       {isOpen && filteredDomains.length > 0 && (
         <div 
-            ref={listRef}
+            id={listboxId}
+            role="listbox"
             className="absolute z-50 w-full mt-1 bg-popover text-popover-foreground rounded-md border shadow-md animate-in fade-in-0 zoom-in-95 overflow-hidden"
         >
           <div className="p-1">
              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Suggestions</div>
              {filteredDomains.map((domain, index) => (
-                <div
+                <button
                   key={domain}
+                  type="button"
+                  id={`${id}-option-${index}`}
+                  role="option"
+                  aria-selected={index === selectedIndex}
+                  tabIndex={-1} 
                   onClick={() => handleSelectDomain(domain)}
-                  onMouseEnter={() => setSelectedIndex(index)} // Sync mouse hover with keyboard index
+                  onMouseEnter={() => setSelectedIndex(index)}
                   className={cn(
-                    "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors",
+                    "relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors border-none bg-transparent text-left",
                     index === selectedIndex ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"
                   )}
                 >
                   <span className="text-muted-foreground">{inputValue.split("@")[0]}@</span>
                   <span className="font-medium text-foreground">{domain}</span>
-                </div>
+                </button>
              ))}
           </div>
         </div>

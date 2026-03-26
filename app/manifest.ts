@@ -9,17 +9,19 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: '/',
     display: 'standalone', // Hides the browser UI (URL bar, navigation)
     background_color: '#ffffff',
-    theme_color: '#ffffff', // Matches your primary indigo color
+    theme_color: '#ffffff',
     icons: [
       {
         src: '/icon-app/icon-192x192.png',
         sizes: '192x192',
         type: 'image/png',
+        purpose: 'maskable',
       },
       {
-        src: '/icon-app  bv /icon-512x512.png',
+        src: '/icon-app/icon-512x512.png',
         sizes: '512x512',
         type: 'image/png',
+        purpose: 'maskable',
       },
       // Note: You can add high-res icons here later
       // { src: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },

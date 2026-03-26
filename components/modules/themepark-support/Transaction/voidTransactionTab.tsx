@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardHeader,CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -22,7 +22,6 @@ import { cn } from "@/lib/utils"
 import { logger } from "@/lib/logger"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { PullToRefresh } from "@/components/shared-components/pull-to-refresh"
 
 
 export default function VoidTransactionTab() {
@@ -47,7 +46,7 @@ export default function VoidTransactionTab() {
   } | null>(null)
 
 
-  const handleVoidSearch = async (query: string) => {
+  const handleVoidSearch = useCallback(async (query: string) => {
     if (!query) return
     
     // Sync input state if triggered via URL
@@ -75,7 +74,8 @@ export default function VoidTransactionTab() {
     } finally {
       setIsVoidSearching(false)
     }
-  }
+  }, [])
+  
 
   useAutoSearch(handleVoidSearch);
 

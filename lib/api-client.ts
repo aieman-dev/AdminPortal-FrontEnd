@@ -179,8 +179,18 @@ export const apiClient = new ApiClient()
 
 
 export function getContent<T>(data: any): T[] {
-    if (data?.content && Array.isArray(data.content)) return data.content;
-    if (data?.data && Array.isArray(data.data)) return data.data; 
+    if (!data) return [];
+    
+    // 1. Handle double-nesting (Specific to some search endpoints)
+    if (data.content?.content && Array.isArray(data.content.content)) {
+        return data.content.content;
+    }
+    
+    // 2. Handle standard wrappers
+    if (data.content && Array.isArray(data.content)) return data.content;
+    if (data.data && Array.isArray(data.data)) return data.data; 
+    
+    // 3. Handle raw array
     if (Array.isArray(data)) return data;
     return [];
 }
