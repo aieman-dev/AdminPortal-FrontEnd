@@ -12,7 +12,7 @@ import { type TerminalTransaction} from "@/type/themepark-support"
 import { formatDateTime } from "@/lib/formatter";
 import { TerminalSelector } from "@/components/shared-components/terminal-selector"
 import { DatePicker } from "@/components/ui/date-picker"
-
+import { logger } from "@/lib/logger"
 
 
 export default function ConsumeHistoryByTerminalTab() {
@@ -61,7 +61,7 @@ export default function ConsumeHistoryByTerminalTab() {
                 toast.error("Search Failed", response.error || "Could not retrieve history.");
             }
         } catch (error) {
-            console.error("History Search Error:", error);
+            logger.error("History Search Error:", { error });
             toast.error( "Network Error", "Failed to connect to the history service.");
         } finally {
             setIsHistorySearching(false);

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 const Portal = ({ children }: { children: React.ReactNode }) => {
   const [mounted, setMounted] = useState(false);
@@ -18,6 +19,7 @@ type ConfirmationModalProps = {
   variant?: 'default' | 'destructive' | 'warning';
   confirmLabel?: string;
   cancelLabel?: string;
+  requireInput?: string;
 };
 
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -29,8 +31,14 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   variant = 'default',
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
+  requireInput,
 }) => {
-  if (!isOpen) return null;
+  const [inputValue, setInputValue] = useState("");
+
+  // Reset input every time modal opens
+  useEffect(() => {
+    if (isOpen) setInputValue("");
+  }, [isOpen]);
 
   const currentDate = new Date().toLocaleString("en-GB", {
     day: "2-digit",
@@ -43,6 +51,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 
   const isDestructive = variant === 'destructive';
   const isWarning = variant === 'warning';
+  const isConfirmDisabled = requireInput ? inputValue !== requireInput : false;
 
   return (
     <Portal>
@@ -71,6 +80,21 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             </div>
           </div>
 
+          {/* Render input field if requireInput is provided */}
+          {requireInput && (
+              <div className="mb-6 space-y-2">
+                 <p className="text-sm text-gray-600 dark:text-gray-400 text-center font-medium">
+                    Type <span className="font-bold text-red-600 select-all">{requireInput}</span> to confirm.
+                 </p>
+                 <Input 
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder={requireInput}
+                    className="text-center font-mono font-bold tracking-widest uppercase border-red-200 focus-visible:ring-red-500"
+                 />
+              </div>
+          )}
+
           <div className="flex flex-col-reverse sm:flex-row gap-3 sm:gap-4">
             <button
               onClick={onCancel}
@@ -81,13 +105,15 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             
             <button
               onClick={onConfirm}
+              disabled={isConfirmDisabled}
               className={`flex-1 px-6 py-3 text-white font-semibold rounded-lg transition-colors shadow-md flex items-center justify-center gap-2
-                ${isDestructive 
-                  ? "bg-red-600 hover:bg-red-700" 
-                  : isWarning
-                      ? "bg-orange-500 hover:bg-orange-600"
-                      : "bg-[#5B5FEF] hover:bg-[#4a4edb]"
-                }`}
+                ${isConfirmDisabled ? "opacity-50 cursor-not-allowed bg-gray-400" : 
+                  isDestructive 
+                    ? "bg-red-600 hover:bg-red-700" 
+                    : isWarning
+                        ? "bg-orange-500 hover:bg-orange-600"
+                        : "bg-[#5B5FEF] hover:bg-[#4a4edb]"
+                  }`}
             >
               {confirmLabel}
             </button>

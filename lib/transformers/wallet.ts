@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/api-client";
+import { logger } from "@/lib/logger"
 
 /**
  * Standardizes currency string cleaning across the portal.
@@ -23,7 +24,7 @@ export async function fetchUserBalance(email: string): Promise<number> {
         }
         return 0;
     } catch (error) {
-        console.error("Balance Check Error:", error);
+        logger.error("Balance Check Error:", { error });
         return 0;
     }
 }

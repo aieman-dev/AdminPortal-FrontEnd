@@ -34,6 +34,7 @@ import { CONSUME_TYPES, TERMINAL_GROUPS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { PaginationControls } from "@/components/ui/pagination-controls" 
 import { usePagination } from "@/hooks/use-pagination"
+import { logger } from "@/lib/logger"
 
 type Step = 'selection' | 'confirmation';
 
@@ -158,7 +159,7 @@ export default function RetailManualConsumeTab() {
             toast.error("Search Failed", response.error || "No items found.");
         }
     } catch (error) {
-        console.error("Search Error:", error);
+        logger.error("Search Error:", { error });
         toast.error("Error", "Search failed.");
     } finally {
         setIsConsumeSearching(false);

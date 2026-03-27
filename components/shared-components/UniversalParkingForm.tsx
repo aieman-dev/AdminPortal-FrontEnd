@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils"
 import { CarParkPhase, CarParkUnit, CarParkPackage, CarParkDepartment } from "@/type/car-park"
 import { carParkService } from "@/services/car-park-services"
 import { hrService } from "@/services/hr-services"
+import { logger } from "@/lib/logger"
 
 interface UniversalParkingFormProps {
     form: UseFormReturn<CarParkFormValues>;
@@ -76,7 +77,7 @@ export function UniversalParkingForm({
                     onPlateConflict?.(isConflict);
                     }
                 } catch (e) {
-                    console.error("Plate check failed", e);
+                    logger.error("Plate check failed", { error: e });
                 } finally {
                     if (isActive) setIsCheckingPlate(false);
                 }

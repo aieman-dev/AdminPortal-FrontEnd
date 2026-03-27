@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import GlobalError from '../app/global-error'; // Adjust path if needed
+import GlobalError from '../app/global-error'; 
+import { logger } from "@/lib/logger"
 
 const meta = {
   title: 'System/GlobalError',
@@ -15,6 +16,6 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   args: {
     error: new Error("Simulation of a system crash"),
-    reset: () => console.log("Reset clicked"),
+    reset: () => logger.info("Reset clicked"),
   },
 };

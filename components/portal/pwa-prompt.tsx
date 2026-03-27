@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { X, Share, PlusSquare } from "lucide-react"
+import { logger } from "@/lib/logger"
 
 export function PWAPrompt() {
   const [showPrompt, setShowPrompt] = useState(false)
@@ -11,11 +12,11 @@ export function PWAPrompt() {
     if (typeof window !== "undefined" && 'serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').then(
-          (registration) => {
-            console.log('Service Worker registered successfully.');
+          () => {
+            logger.info('Service Worker registered successfully.');
           },
           (err) => {
-            console.error('Service Worker registration failed:', err);
+            logger.error('Service Worker registration failed:', { error: err });
           }
         );
       });

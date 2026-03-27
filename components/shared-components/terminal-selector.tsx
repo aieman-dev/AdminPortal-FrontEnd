@@ -21,6 +21,7 @@ import {
 import { itPoswfService } from "@/services/themepark-support"
 import { Terminal } from "@/type/themepark-support"
 import { useDebounce } from "@/hooks/use-debounce"
+import { logger } from "@/lib/logger"
 
 interface TerminalSelectorProps {
   value: string
@@ -72,7 +73,7 @@ export function TerminalSelector({
             }
         }
       } catch (error) {
-        console.error("Terminal search error:", error)
+        logger.error("Terminal search error:", { error })
         setTerminals([])
       } finally {
         if (isActive) setLoading(false)

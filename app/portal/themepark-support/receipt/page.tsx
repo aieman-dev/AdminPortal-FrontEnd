@@ -8,6 +8,7 @@ import { LoaderState } from "@/components/ui/loader-state"
 import { EmptyState } from "@/components/portal/empty-state"
 import { SearchX, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { logger } from "@/lib/logger"
 
 export default function ReceiptPage() {
     const searchParams = useSearchParams();
@@ -35,7 +36,7 @@ export default function ReceiptPage() {
                     setLoading(false);
                     return; 
                 } catch (e) {
-                    console.error("Failed to decode receipt data from URL", e);
+                    logger.error("Failed to decode receipt data from URL", { error: e });
                     // Fall through to API fetch if tampering occurred
                 }
             }
@@ -66,7 +67,7 @@ export default function ReceiptPage() {
                     setData(null);
                 }
             } catch (error) {
-                console.error("Receipt API Fallback Error", error);
+                logger.error("Receipt API Fallback Error", { error });
                 setData(null);
             } finally {
                 setLoading(false);

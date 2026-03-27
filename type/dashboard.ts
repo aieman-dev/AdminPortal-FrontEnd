@@ -14,8 +14,8 @@ export interface KioskStatus {
 export interface DashboardChartData {
     date: string;
     dayName: string;
-    totalAmount: number;
-    isForecast?: boolean;
+    actualAmount: number;
+    forecastAmount: number;
 }
 
 export interface BestSellingPackage {

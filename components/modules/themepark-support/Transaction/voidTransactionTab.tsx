@@ -23,7 +23,6 @@ import { logger } from "@/lib/logger"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-
 export default function VoidTransactionTab() {
   const toast = useAppToast()
 
@@ -68,7 +67,7 @@ export default function VoidTransactionTab() {
         toast.error("Search Failed",  response.error || "Could not retrieve transactions.");
       }
     } catch (error) {
-      console.error("Void Search Error:", error);
+      logger.error("Void Search Error:", { error });
       setVoidSearchResult([]);
       toast.error("Network Error", "Failed to connect to the transaction search service.");
     } finally {
@@ -139,7 +138,7 @@ export default function VoidTransactionTab() {
       logger.info("Executing Void Transaction", { trxId: voidingTransaction.trxID, response: response.data })
 
     } catch (error) {
-      console.error("Void Error:", error);
+      logger.error("Void Error:", { error });
       toast.error( "Void Failed", error instanceof Error ? error.message : "An unexpected error occurred.");
       logger.error("Void Transaction Failed", { 
           trxId: voidingTransaction?.trxID, 

@@ -14,7 +14,7 @@ import { itPoswfService } from "@/services/themepark-support"
 import { type TerminalTransaction } from "@/type/themepark-support"
 import { formatCurrency, formatDateTime } from "@/lib/formatter";
 import { useDataTable } from "@/hooks/use-data-table"
-
+import { logger } from "@/lib/logger"
 
 export default function ConsumeTerminalTab() {
     const toast = useAppToast();
@@ -98,7 +98,7 @@ export default function ConsumeTerminalTab() {
                 toast.error( "Search Failed", response.error || "Could not retrieve history.");
             }
         } catch (error) {
-            console.error("History Search Error:", error);
+            logger.error("History Search Error:", { error });
             toast.error("Network Error", "Failed to connect.");
         } finally {
             setIsHistorySearching(false);

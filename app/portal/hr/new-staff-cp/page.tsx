@@ -22,7 +22,7 @@ import { carParkFormSchema, CarParkFormValues } from "@/lib/schemas/car-park"
 import { NavigationGuard } from "@/components/portal/navigation-guard" 
 import { useNavigation } from "@/context/navigation-context"
 import { UniversalParkingForm } from "@/components/shared-components/UniversalParkingForm"
-
+import { logger } from "@/lib/logger"
 
 export default function HRRegistrationPage() {
     const router = useRouter()
@@ -60,7 +60,7 @@ export default function HRRegistrationPage() {
                 setDepartments(deptData)
                 setPhases(phasesData)
             } catch (error) {
-                console.error("Failed to load metadata", error)
+                logger.error("Failed to load metadata", { error });
             } finally {
                 setLoadingPhases(false)
             }

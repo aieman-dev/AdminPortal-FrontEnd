@@ -22,6 +22,7 @@ import { StatusBadge } from "@/components/shared-components/status-badge"
 import { formatDate } from "@/lib/formatter"
 import { DatePicker } from "@/components/ui/date-picker"
 import { addMonths, addYears } from "date-fns"
+import { logger } from "@/lib/logger"
 
 interface StaffDrawerProps {
     staff: StaffMember | null;
@@ -91,7 +92,7 @@ export function StaffDrawer({ staff, isOpen, onClose, onUpdate }: StaffDrawerPro
                 recordStatus: selectedStatus
             };
 
-            console.log("Sending Update Payload:", payload);
+            logger.info("Sending Update Payload:", { payload });
             await staffService.updateStaffRole(payload);
 
             toast.success( "Success", "User role details updated successfully." );
@@ -100,7 +101,7 @@ export function StaffDrawer({ staff, isOpen, onClose, onUpdate }: StaffDrawerPro
             onClose();
 
         } catch (error) {
-            console.error("Update Error:", error);
+            logger.error("Update Error:", { error });
             toast.error( "Update Failed",  error instanceof Error ? error.message : "Could not update role.");
         } finally {
             setIsSaving(false);
@@ -123,7 +124,7 @@ export function StaffDrawer({ staff, isOpen, onClose, onUpdate }: StaffDrawerPro
             setManualPassword(""); // Clear after success
 
         } catch (error) {
-            console.error("Reset Error:", error);
+            logger.error("Reset Error:", { error });
             toast.error("Reset Failed", error instanceof Error ? error.message : "Could not reset password.");
         } finally {
             setIsResetting(false);

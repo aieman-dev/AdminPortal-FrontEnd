@@ -15,7 +15,7 @@ import { packageService } from "@/services/package-services"
 import { SelectableUnsyncPackage } from "@/type/themepark-support"
 import { useDataTable } from "@/hooks/use-data-table"
 import { Pagination } from "@/components/ui/pagination"
-
+import { logger } from "@/lib/logger"
 
 export default function BComparePackageTab() {
     const toast = useAppToast();
@@ -67,7 +67,7 @@ export default function BComparePackageTab() {
                 toast.error("Search Failed", response.error || "Could not retrieve packages.");
             }
         } catch (error) {
-            console.error("API Search Error:", error);
+            logger.error("API Search Error:", { error });
             toast.error("Network Error", "Failed to connect to the package service.");
         } finally {
             setIsSearching(false);
@@ -125,11 +125,11 @@ export default function BComparePackageTab() {
                 throw new Error(response.error || "Sync API failed to return success status.")
             }
         } catch (error) {
-            console.error("Sync Execute Error:", error);
+            logger.error("Sync Execute Error:", { error });
             toast.error("Sync Failed", 
                  error instanceof Error 
                     ? error.message.includes("500") ? "Internal Server Error during sync execution." : error.message
-                    : "An unexpected error occurred during sync. Check console for details.",
+                    : "An unexpected error occurred during sync. Check console/logger for details.",
                );
         } finally {
             setIsSyncing(false);

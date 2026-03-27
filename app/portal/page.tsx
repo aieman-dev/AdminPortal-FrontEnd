@@ -6,6 +6,7 @@ import { ROLES } from "@/lib/constants";
 import { getServerUserRole } from "@/lib/server-auth";
 import { ModuleErrorBoundary } from "@/components/portal/module-error-boundary";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/logger";
 
 export default async function DashboardPage() {
   const userRole = await getServerUserRole();
@@ -39,7 +40,7 @@ export default async function DashboardPage() {
       }
         
     } catch (error) {
-      console.warn("Dashboard Package Load Warning:", error);
+      logger.warn("Dashboard Package Load Warning:", { error });
     }
   } 
 

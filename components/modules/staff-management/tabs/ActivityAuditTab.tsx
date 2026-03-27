@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { 
     Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetDescription 
 } from "@/components/ui/sheet"
+import { logger } from "@/lib/logger"
 
 // --- RESTORED ORIGINAL HELPERS ---
 
@@ -167,7 +168,7 @@ export default function ActivityAuditTab({ onRowClick }: { onRowClick: (log: Aud
                 pager.setMetaData(data.totalPages, data.totalRecords);
             }
         } catch (e) { 
-            console.error(e)
+            logger.error("Failed to fetch audit logs", { error: e });
         } finally { 
             setIsLoading(false) 
         }

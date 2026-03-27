@@ -12,6 +12,7 @@ import { usePagination } from "@/hooks/use-pagination"
 import { PageHeader } from "@/components/portal/page-header"
 import {  formatDateTime } from "@/lib/formatter"
 import { PullToRefresh } from "@/components/shared-components/pull-to-refresh"
+import { logger } from "@/lib/logger"
 
 // Services & Types
 import { carParkService } from "@/services/car-park-services" 
@@ -63,7 +64,7 @@ export default function SeasonParkingPage() {
          // Optional: toast.info("Search Complete", `Found ${totalCount} records.`)
       }
     } catch (error) {
-      console.error("Search Error:", error)
+      logger.error("Search Error:", { error });
       setData([])
       toast.error("Error", "Failed to fetch data.")
     } finally {

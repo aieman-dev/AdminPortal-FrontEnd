@@ -11,6 +11,7 @@ import { Settings2, Save, RotateCcw } from "lucide-react";
 import { MasterAction } from "@/config/dashboard"; 
 import { useAppToast } from "@/hooks/use-app-toast";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 
 interface Props {
@@ -45,7 +46,7 @@ export function QuickAccess({ availableActions }: Props) {
                     return;
                 }
             } catch (e) { 
-                console.error("Failed to load quick actions", e); 
+                logger.error("Failed to load quick actions", { error: e });
             }
         }
         

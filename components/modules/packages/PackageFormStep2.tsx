@@ -20,6 +20,7 @@ import { getProxiedImageUrl } from "@/lib/utils";
 import { formatCurrency, isPointPackage } from "@/lib/formatter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { logger } from "@/lib/logger";
 
 type Props = {
   form: UseFormReturn<PackageFormValues>; 
@@ -60,7 +61,11 @@ const PackageFormStep2: React.FC<Props> = ({ form, onNext, onBack }) => {
           }
         });
         setAvailableItems(Array.from(uniqueMap.values()));
-      } catch (error) { console.error(error); } finally { setLoading(false); }
+      } catch (error) { 
+          logger.error("Failed to load available items", { error }); 
+      } finally { 
+        setLoading(false); 
+      }
     };
     fetchItems();
   }, []);

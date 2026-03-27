@@ -14,20 +14,36 @@ export interface BroadcastPayload {
   expirydate: string; 
 }
 
-export interface BroadcastItem {
+export interface NotificationItem {
     id: number;
+    targetUserId: string | null;
     title: string;
     message: string;
     type: string; 
+    relatedId: string | null;
     isRead: boolean;
     createdDate: string;
-    expiryDate: string;
+    expiryDate: string | null;
 }
 
+
 export interface DashboardAlertsDTO {
-    broadcasts: BroadcastItem[];
-    personalNotifications: any[];
+    broadcasts: NotificationItem[];
+    personalNotifications: NotificationItem[];
     unreadCount: number;
+}
+
+export interface ToggleNotificationResponse {
+    message?: string;
+}
+
+export interface MarkReadResponse {
+    success?: boolean;
+    message?: string;
+}
+
+export interface BroadcastResponse {
+    message?: string; 
 }
 
 
@@ -46,25 +62,25 @@ export const settingService = {
     return null;
   },
 
-  toggleGlobalNotifications: async (value: boolean) => {
-    const response = await apiClient.post(ENDPOINTS.TOGGLE_NOTIFICATIONS, value);
+  toggleGlobalNotifications: async (value: boolean) : Promise< ToggleNotificationResponse > => {
+    const response = await apiClient.post<{ content: ToggleNotificationResponse }>(ENDPOINTS.TOGGLE_NOTIFICATIONS, value);
     
     if (!response.success) {
         throw new Error(response.error || "Failed to update notification settings");
     }
-    return response.data;
+    return getDataObject<ToggleNotificationResponse>(response.data);
   },
 
-  createBroadcast: async (payload: BroadcastPayload) => {
-    const response = await apiClient.post(ENDPOINTS.BROADCAST, payload);
+  createBroadcast: async (payload: BroadcastPayload) : Promise<BroadcastResponse> => {
+    const response = await apiClient.post<{ content: BroadcastResponse }>(ENDPOINTS.BROADCAST, payload);
     if (!response.success) {
         throw new Error(response.error || "Failed to post broadcast");
     }
-    return response.data;
+    return getDataObject<BroadcastResponse>(response.data);
   },
 
   getDashboardAlerts: async (): Promise<DashboardAlertsDTO> => {
-      const response = await apiClient.get<any>(ENDPOINTS.ALERTS); 
+      const response = await apiClient.get<{ content: DashboardAlertsDTO }>(ENDPOINTS.ALERTS); 
       
       if (!response.success) {
           return { broadcasts: [], personalNotifications: [], unreadCount: 0 };
@@ -72,13 +88,13 @@ export const settingService = {
       return getDataObject<DashboardAlertsDTO>(response.data);
   },
 
-  markAllNotificationsAsRead: async () => {
-    const response = await apiClient.post(ENDPOINTS.MARK_ALL_READ, {});
+  markAllNotificationsAsRead: async () : Promise<MarkReadResponse> => {
+    const response = await apiClient.post<{ content: MarkReadResponse }>(ENDPOINTS.MARK_ALL_READ, {});
     
     if (!response.success) {
         throw new Error(response.error || "Failed to mark notifications as read");
     }
-    return response.data;
+    return getDataObject<MarkReadResponse>(response.data);
   }
 
 };

@@ -18,7 +18,7 @@ import { StaffEditSheet } from "@/components/modules/hr/sheet/StaffEditSheet"
 import { hrService } from "@/services/hr-services"
 import { StaffListItem, StaffDetail, UpdateStaffPayload } from "@/type/hr"
 import { cn } from "@/lib/utils"
-
+import { logger } from "@/lib/logger"
 
 export default function StaffListingPage() {
     const router = useRouter()
@@ -104,7 +104,7 @@ export default function StaffListingPage() {
             fetchStaffList(pagination.currentPage, searchTerm);
 
         } catch (error) {
-             console.error("Update Error:", error);
+             logger.error("Update Error:", { error });
              throw error; 
         }
     }
@@ -117,7 +117,7 @@ export default function StaffListingPage() {
             fetchStaffList(pagination.currentPage, searchTerm);
 
         } catch (error) {
-             console.error("Delete Error:", error);
+             logger.error("Delete Error:", { error });
              throw error; 
         }
     }

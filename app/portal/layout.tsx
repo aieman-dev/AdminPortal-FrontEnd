@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import { AnimatePresence } from "framer-motion"
+import { logger } from "@/lib/logger"
 
 // Components
 import { Sidebar } from "@/components/portal/sidebar"
@@ -53,7 +54,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           await settingService.markAllNotificationsAsRead();
           refreshAll(); // Ask context to update data
       } catch (error) {
-          console.error("Failed to mark all read:", error);
+          logger.error("Failed to mark all read:", { error });
       }
   };
 

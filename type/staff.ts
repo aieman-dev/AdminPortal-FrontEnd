@@ -44,6 +44,18 @@ export interface StaffAccount {
     createdDate: string
 }
 
+export interface UpdateRolePayload {
+  RoleID: number | string;
+  RoleName: string;
+  ExpiryDate: string | null;
+  RecordStatus: string;
+}
+
+export interface ResetPasswordPayload {
+  AccID: string;
+  NewPassword: string;
+}
+
 // --- NEW AUDIT LOG INTERFACES ---
 
 export interface AuditLog {
@@ -78,19 +90,19 @@ export interface AuditLogListPayload {
   endDate?: string;
 }
 
+
 // --- BACKEND DTOs (Data Transfer Objects) ---
 // Matches the raw JSON from the ASP.NET Backend
 
 export interface BackendStaffDTO {
   accID: number;
+  roleID: number;
   roleName: string;
   recordStatus: string;
   email: string;
   fullName: string;
   createdDate: string;
   expiryDate?: string;
-  roleID?: number;
-  receiveNotifications?: boolean;
 }
 
 export interface BackendSearchedUserDTO {
@@ -115,4 +127,20 @@ export interface StaffListPayload {
 
 export interface SearchUserPayload {
   query: string;
+}
+
+export interface GetMeResponse {
+    userId: number;
+    firstName: string;
+    lastName: string;
+    email: string;
+    roles: string[]; 
+    status: string;
+    createdDate: string;
+    expiryDate: string;
+    receiveNotifications: boolean;
+}
+
+export interface GenericMessageResponse {
+    message: string;
 }

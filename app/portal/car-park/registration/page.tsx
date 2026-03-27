@@ -20,6 +20,7 @@ import { carParkFormSchema, CarParkFormValues } from "@/lib/schemas/car-park"
 import { NavigationGuard } from "@/components/portal/navigation-guard" 
 import { useNavigation } from "@/context/navigation-context"
 import { UniversalParkingForm } from "@/components/shared-components/UniversalParkingForm";
+import { logger } from "@/lib/logger"
 
 export default function NewRegistrationPage() {
     const router = useRouter()
@@ -44,11 +45,6 @@ export default function NewRegistrationPage() {
     const [formDataToSubmit, setFormDataToSubmit] = useState<CarParkFormValues | null>(null)
     const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
-    // Prevent body scroll on mount (legacy requirement)
-    useEffect(() => {
-        document.body.style.overflow = "hidden"
-        return () => { document.body.style.overflow = "auto" }
-    }, [])
 
     // 1. Load Initial Data
     useEffect(() => {
@@ -58,7 +54,7 @@ export default function NewRegistrationPage() {
                 const data = await carParkService.getPhases()
                 setPhases(data)
             } catch (error) {
-                console.error("Failed to load phases", error)
+                logger.error("Failed to load phases", { error });
             } finally {
                 setLoadingPhases(false)
             }
@@ -74,7 +70,7 @@ export default function NewRegistrationPage() {
                 setSeasonPackages(pkgData)
                 setDepartments(deptData)
             } catch (error) {
-                console.error("Failed to load metadata", error)
+                logger.error("Failed to load metadata", { error });
             }
         }
 
@@ -133,7 +129,7 @@ export default function NewRegistrationPage() {
             const data = await carParkService.getUnits(value)
             setUnits(data)
         } catch (error) {
-            console.error("Failed to load units", error)
+            logger.error("Failed to load units", { error });
             toast.error("Error", "Failed to load units")
         } finally {
             setLoadingUnits(false)

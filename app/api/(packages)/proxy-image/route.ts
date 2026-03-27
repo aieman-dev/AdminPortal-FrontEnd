@@ -1,5 +1,6 @@
 // app/api/(packages)/proxy-image/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
     return new Response(imageBlob, { headers });
 
   } catch (error) {
-    console.error("Image proxy error:", error);
+    logger.error("Image proxy error:", { error });
     return new NextResponse("Internal server error", { status: 500 });
   }
 }

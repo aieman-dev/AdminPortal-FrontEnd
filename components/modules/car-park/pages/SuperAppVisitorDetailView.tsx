@@ -12,6 +12,7 @@ import { carParkService } from "@/services/car-park-services"
 import { CarParkPackage, ParkingDetailData, ParkingDetailStatus } from "@/type/car-park"
 import { cn, isUserInside } from "@/lib/utils"
 import { getErrorMessage } from "@/lib/api-client"
+import { logger } from "@/lib/logger"
 
 import { ParkingStatusDetail } from "@/components/modules/car-park/ParkingStatusDetail"
 import { ParkingActivityHistory } from "@/components/modules/car-park/ParkingActivityHistory"
@@ -125,7 +126,7 @@ export function SuperAppVisitorDetailView({
                  toast.error("Not Found", "No records found for this Account ID.");
             }
         } catch (error) {
-            console.error("Load Error:", error);
+            logger.error("Load Error:", { error });
             toast.error("Error", "Failed to load details.");
         } finally {
             setIsLoading(false);

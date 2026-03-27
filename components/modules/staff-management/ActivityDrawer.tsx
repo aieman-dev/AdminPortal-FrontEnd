@@ -12,6 +12,7 @@ import { useAppToast } from "@/hooks/use-app-toast"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { formatDateTime } from "@/lib/formatter"
+import { logger } from "@/lib/logger"
 
 
 interface ActivityDrawerProps {
@@ -84,7 +85,7 @@ export function ActivityDrawer({ log, isOpen, onClose }: ActivityDrawerProps) {
         const parsed = JSON.parse(text);
         contentToCopy = JSON.stringify(parsed, null, 2);
     } catch (e) {
-        console.warn("Could not format JSON, copying raw text.");
+        logger.warn("Could not format JSON, copying raw text.", { error: e });
     }
 
     navigator.clipboard.writeText(contentToCopy);

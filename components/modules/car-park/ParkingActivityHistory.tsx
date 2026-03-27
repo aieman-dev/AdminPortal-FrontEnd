@@ -24,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { logger } from "@/lib/logger"
 
 interface ParkingActivityHistoryProps {
     accId: number;
@@ -76,7 +77,7 @@ export function ParkingActivityHistory({ accId }: ParkingActivityHistoryProps) {
             setCurrentPage(response.pageNumber);
 
         } catch (error) {
-            console.error("History fetch error:", error);
+            logger.error("History fetch error:", { error });
             toast.error("Error", "Failed to load parking history.");
         } finally {
             setLoading(false);

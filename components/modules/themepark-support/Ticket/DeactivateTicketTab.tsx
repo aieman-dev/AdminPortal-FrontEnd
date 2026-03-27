@@ -22,6 +22,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { SimulationToggle } from "@/components/shared-components/simulation-toggle"
 import { SimulationWrapper } from "@/components/shared-components/simulation-wrapper"
+import { logger } from "@/lib/logger"
 
 export default function DeactivateTicketTab() {
   const toast = useAppToast()
@@ -105,7 +106,7 @@ export default function DeactivateTicketTab() {
         }
         
     } catch (error) {
-        console.error("Search Error:", error);
+        logger.error("Search Error:", { error });
         if (!retainState) {
             toast.error("Search Failed", "An unexpected error occurred during search.");
         }
@@ -238,32 +239,34 @@ export default function DeactivateTicketTab() {
 
       return (
         <div className="py-2 pl-4 ml-8 border-l-2 border-gray-200 bg-gray-50/50 dark:bg-gray-900/10 rounded-r-md">
-            <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 pl-2 flex">
-                <div className="w-[160px]">Consumption No</div>
-                <div className="w-[140px]">Item No</div>
-                <div className="flex-1">Item Name</div>
-                <div className="w-[100px] text-center pr-8">Consumed Qty</div>
-                <div className="w-[180px]">Modified Date</div>
-                <div className="w-[120px] text-center">Status</div>
-                <div className="w-[140px] text-center">Action</div>
-            </div>
-            <div className="flex flex-col">
-                {children.map(child => {
-                    const isRowUpdating = updatingRowIds.has(child.id);
-                    return (
-                        <div key={child.id} className="flex items-center text-sm py-2 pl-2 border-t border-border/30 first:border-0 hover:bg-white/40 dark:hover:bg-black/20 transition-colors">
-                            <div className="w-[160px] font-mono text-xs text-gray-600 truncate pr-2" title={child.consumptionNo}>{child.consumptionNo}</div>
-                            <div className="w-[140px] text-xs text-muted-foreground truncate pr-2" title={child.ticketItemNo}>{child.ticketItemNo}</div>
-                            <div className="flex-1 font-medium text-foreground/80 truncate pr-4" title={child.ticketName}>{child.ticketName}</div>
-                            <div className="w-[100px] text-center text-sm pr-8">{child.consumeQty}</div>
-                            <div className="w-[180px] text-xs text-muted-foreground">{formatDateTime(child.modifiedDate)}</div>
-                            <div className="w-[120px] flex justify-center">
-                                {isRowUpdating ? <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse"><Loader2 className="h-3 w-3 animate-spin" />Updating</div> : <StatusBadge status={child.status} className="h-5 text-[10px]" />}
+            <div className="min-w-[850px]">
+                <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 pl-2 flex">
+                    <div className="w-[160px]">Consumption No</div>
+                    <div className="w-[140px]">Item No</div>
+                    <div className="flex-1">Item Name</div>
+                    <div className="w-[100px] text-center pr-8">Consumed Qty</div>
+                    <div className="w-[180px]">Modified Date</div>
+                    <div className="w-[120px] text-center">Status</div>
+                    <div className="w-[140px] text-center">Action</div>
+                </div>
+                <div className="flex flex-col">
+                    {children.map(child => {
+                        const isRowUpdating = updatingRowIds.has(child.id);
+                        return (
+                            <div key={child.id} className="flex items-center text-sm py-2 pl-2 border-t border-border/30 first:border-0 hover:bg-white/40 dark:hover:bg-black/20 transition-colors">
+                                <div className="w-[160px] font-mono text-xs text-gray-600 truncate pr-2" title={child.consumptionNo}>{child.consumptionNo}</div>
+                                <div className="w-[140px] text-xs text-muted-foreground truncate pr-2" title={child.ticketItemNo}>{child.ticketItemNo}</div>
+                                <div className="flex-1 font-medium text-foreground/80 truncate pr-4" title={child.ticketName}>{child.ticketName}</div>
+                                <div className="w-[100px] text-center text-sm pr-8">{child.consumeQty}</div>
+                                <div className="w-[180px] text-xs text-muted-foreground">{formatDateTime(child.modifiedDate)}</div>
+                                <div className="w-[120px] flex justify-center">
+                                    {isRowUpdating ? <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse"><Loader2 className="h-3 w-3 animate-spin" />Updating</div> : <StatusBadge status={child.status} className="h-5 text-[10px]" />}
+                                </div>
+                                <div className="w-[140px] flex justify-end pr-4">{renderDeactivateButton(child)}</div>
                             </div>
-                            <div className="w-[140px] flex justify-end pr-4">{renderDeactivateButton(child)}</div>
-                        </div>
-                    );
-                })}
+                        );
+                    })}
+                </div>
             </div>
         </div>
       );

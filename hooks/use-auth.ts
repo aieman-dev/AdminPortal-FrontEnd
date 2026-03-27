@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { type User, getCurrentUser, logout as authLogout } from "@/lib/auth"
 import { useRouter, usePathname } from "next/navigation"
 import { staffService} from "@/services/staff-services"
+import { logger } from "@/lib/logger"
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
@@ -41,7 +42,7 @@ export function useAuth() {
 
         if (isAuthError) {
           // ONLY logout if the server specifically told us the token is invalid
-          console.warn("Session expired. Logging out.");
+          logger.warn("Session expired. Logging out.");
           authLogout(); 
           setUser(null);
           window.location.href = "/login?error=session_expired";
@@ -49,7 +50,7 @@ export function useAuth() {
           // If the server is offline (502, 504, or Connection Refused), 
           // DO NOT log out. Just log a warning.
           // This allows the user to stay on the page until the backend comes back up.
-          console.error("Backend unreachable. Keeping session alive for now.", error);
+          logger.error("Backend unreachable. Keeping session alive for now.", { error });
         }
       }
     };

@@ -3,6 +3,7 @@
 
 import React from "react"
 import { SystemOffline } from "@/components/portal/system-offline"
+import { logger } from "@/lib/logger"
 
 interface Props {
   children: React.ReactNode
@@ -25,7 +26,7 @@ export class ModuleErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // You can log this to your Logger.ts here
-    console.error("Module Boundary Caught:", error, errorInfo)
+    logger.error("Module Boundary Caught:", { error, errorInfo })
   }
 
   handleReset = () => {

@@ -20,6 +20,7 @@ import { useAutoSearch } from "@/hooks/use-auto-search"
 import { usePagination } from "@/hooks/use-pagination"
 import { SearchField } from "@/components/shared-components/search-field"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { logger } from "@/lib/logger"
 
 export default function PackageListingTab() {
   const toast = useAppToast()
@@ -67,7 +68,7 @@ export default function PackageListingTab() {
             toast.info( "Search Complete", `Found ${totalRecords} packages.` );
         }
     } catch (error) {
-        console.error("Package Search Error:", error);
+        logger.error("Package Search Error:", { error });
         toast.error("Error",  "Failed to fetch package data.");
         setPackages([]);
     } finally {

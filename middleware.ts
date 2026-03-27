@@ -5,6 +5,7 @@ import { jwtVerify } from "jose";
 import { BACKEND_ROLE_MAP, ROLES } from "@/lib/constants";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { logger } from "@/lib/logger";
 
 // Initialize Redis and the Rate Limiter OUTSIDE the middleware function
 // This ensures the connection is cached across edge invocations
@@ -24,7 +25,7 @@ const ratelimit = new Ratelimit({
 async function getVerifiedPayload(token: string) {
   // 1. Fail securely if the secret is missing
   if (!process.env.JWT_SECRET) {
-     console.error("FATAL ERROR: JWT_SECRET is missing from environment variables.");
+     logger.error("FATAL ERROR: JWT_SECRET is missing from environment variables.");
      return null; 
   }
   
@@ -74,7 +75,7 @@ export async function middleware(request: NextRequest) {
       const { success, limit, reset, remaining } = await ratelimit.limit(ip);
 
       if (!success) {
-        console.warn(`Rate limit exceeded for IP: ${ip}`);
+        logger.warn(`Rate limit exceeded for IP: ${ip}`);
         return new NextResponse(
           JSON.stringify({ success: false, message: "Too many requests. Please try again later." }),
           { 
@@ -90,7 +91,7 @@ export async function middleware(request: NextRequest) {
       }
     } catch (error) {
       // Fail open: If Redis goes down, we don't want to lock everyone out of the portal
-      console.error("Upstash Redis Error:", error);
+      logger.error("Upstash Redis Error:", { error });
     }
   }
 
@@ -106,13 +107,13 @@ export async function middleware(request: NextRequest) {
 
   // CHECK EXPIRY: If token exists but is expired, treat it as missing
   if (accessToken && await isTokenExpired(accessToken)) {
-    console.log("Middleware: Token expired. Clearing variable to trigger refresh.");
+    logger.info("Middleware: Token expired. Clearing variable to trigger refresh.");
     accessToken = undefined; // Force refresh logic below
   }
 
   // AUTO-REFRESH: If Access Token missing/expired, but Refresh Token exists
   if (isPortalPage && !accessToken && refreshToken) {
-    console.log("Middleware: Attempting refresh...")
+    logger.info("Middleware: Attempting refresh...")
 
     try {
       // Call Backend to Refresh
@@ -153,14 +154,14 @@ export async function middleware(request: NextRequest) {
           expires: newExpiry,
         });
 
-        console.log("Middleware: Token refreshed successfully.");
+        logger.info("Middleware: Token refreshed successfully.");
         accessToken = newAccessToken;
     } else {
         // If backend rejects the refresh token, throw to the catch block
         throw new Error("Backend rejected refresh token");
       }
     } catch (error) {
-      console.error("Middleware: Refresh failed, forcing clean logout", error);
+      logger.error("Middleware: Refresh failed, forcing clean logout", { error });
       
       // Create a redirect response and nuke the bad cookies
       const failedRefreshRedirect = NextResponse.redirect(new URL("/login", request.url));
@@ -189,7 +190,7 @@ export async function middleware(request: NextRequest) {
 
     // 1. Protect Staff Management (Only MIS Superadmin)
     if (pathname.startsWith("/portal/staff-management") && role !== ROLES.MIS_SUPER) {
-      console.warn(`Security: Role ${role} attempted to access Restricted Path ${pathname}`);
+      logger.warn(`Security: Role ${role} attempted to access Restricted Path ${pathname}`);
       const redirectResponse = NextResponse.redirect(new URL("/portal", request.url));
       
       // Copy cookies over from the current response to the redirect response

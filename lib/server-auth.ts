@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { BACKEND_ROLE_MAP } from "@/lib/constants";
 import { decodeJwt } from "jose";
+import { logger } from "@/lib/logger"
 
 // Helper: Decode JWT string (Pure function, safe for anywhere)
 export function decodeUserRole(token: string | undefined): string {
@@ -17,7 +18,7 @@ export function decodeUserRole(token: string | undefined): string {
     // Map to Frontend Role (e.g., ITTP_Support -> IT_ADMIN)
     return BACKEND_ROLE_MAP[rawRole] || "Staff";
   } catch (e) {
-    console.error("Token decode error:", e);
+    logger.error("Token decode error:", { error: e });
     return "User";
   }
 }

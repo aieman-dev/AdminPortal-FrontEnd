@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { logger } from "@/lib/logger"
 import { 
   Bell, Check, Clock, AlertTriangle, 
   Info, XCircle, Inbox 
@@ -101,7 +102,7 @@ export function NotificationPopover({
             router.push(`/portal/staff-management?tab=audit&search=${targetId}`);
             break;
           default:
-            console.warn(`Unknown notification routing module: ${moduleCode}`);
+            logger.warn(`Unknown notification routing module: ${moduleCode}`);
             break;
         }
       } 

@@ -10,6 +10,7 @@ import { useAppToast } from "@/hooks/use-app-toast"
 import { useAutoSearch } from "@/hooks/use-auto-search"
 import { usePagination } from "@/hooks/use-pagination"
 import { PageHeader } from "@/components/portal/page-header"
+import { logger } from "@/lib/logger"
 
 // Services & Types
 import { carParkService } from "@/services/car-park-services" 
@@ -55,7 +56,7 @@ export default function SuperAppVisitor() {
          toast.info("Search Complete", `Found ${items.length} records.`)
       }
     } catch (error) {
-      console.error("Search Error:", error)
+      logger.error("Search Error:", { error });
       setData([])
       toast.error("Network Error", "Failed to connect to service.")
     } finally {

@@ -14,6 +14,7 @@ import { Account } from "@/type/themepark-support"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { useAutoSearch } from "@/hooks/use-auto-search"
 import { formatDate, getAccountAge } from "@/lib/formatter"
+import { logger } from "@/lib/logger"
 
 const LOCAL_STORAGE_KEY = 'accountMasterEmailSearch';
 
@@ -50,7 +51,7 @@ export default function AccountManagementTab() {
         toast.error("Search Failed", response.error || "Could not retrieve account list.")
       }
     } catch (error) {
-      console.error("Account Search Error:", error)
+      logger.error("Account Search Error:", { error });
       setAccounts([])
       toast.error("Network Error", "Failed to connect to the account search service.")
     } finally {

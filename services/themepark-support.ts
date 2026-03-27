@@ -399,7 +399,7 @@ export const itPoswfService = {
     
       return getContent<string>(response.data);
     } catch (error) {
-      console.error("Failed to fetch terminal types", error);
+        logger.error("Failed to fetch terminal types", { error });
       return []; 
     }
   },

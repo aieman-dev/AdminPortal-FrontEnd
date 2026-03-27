@@ -6,6 +6,7 @@ import { Menu, ChevronRight, Bell } from "lucide-react"
 import { ThemeToggle } from "./theme-toggle"
 import { APP_VERSION } from "@/lib/constants"
 import { NotificationPopover } from "@/components/portal/notification-popover"
+import { logger } from "@/lib/logger"
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -60,7 +61,7 @@ export function Header({
             personal={personal}
             onMarkAllRead={onMarkAllRead} 
             // Optional: You can implement single read later
-            onMarkAsRead={(id) => console.log("Mark single read", id)}
+            onMarkAsRead={(id) => logger.info("Mark single read", { id })}
         />
         
         {/* Divider */}

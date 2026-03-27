@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { Form } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod"; 
 import { packageFormSchema, PackageFormValues } from "@/lib/schemas/package-management";
+import { logger } from "@/lib/logger";
 
 // Components
 import StepIndicator from "@/components/modules/packages/StepIndicator";
@@ -101,7 +102,7 @@ const PackageFormPage = () => {
                 router.push("/portal/packages");
             }
         } catch (error) {
-            console.error("Fetch Error:", error);
+            logger.error("Fetch Error:", { error });
             toast.error("Error","Failed to load package details.");
         } finally {
             setIsLoadingData(false);
@@ -168,11 +169,11 @@ const PackageFormPage = () => {
           await packageService.saveDraft(servicePayload, finalImageID || "");
         }
         
-        console.log("Package saved as draft successfully");
+        logger.info("Package saved as draft successfully");
         setShowDraft(true);
 
     } catch (err) {
-        console.error("Save Draft error:", err);
+        logger.error("Save Draft error:", { error: err });
         toast.error( "Save Failed", err instanceof Error ? err.message : "Failed to save draft package.");
     } finally {
         setIsSubmitting(false);
@@ -226,11 +227,11 @@ const PackageFormPage = () => {
         await packageService.createPackage(servicePayload, finalImageID || "");
       }
       
-      console.log("Package created successfully");
+      logger.info("Package created successfully");
       setShowSuccess(true);
 
     } catch (err) {
-      console.error("Submit error:", err);
+      logger.error("Submit error:", { error: err });
       alert(`Error: ${err instanceof Error ? err.message : "Failed to submit package"}`);
     } finally {
       setIsSubmitting(false);

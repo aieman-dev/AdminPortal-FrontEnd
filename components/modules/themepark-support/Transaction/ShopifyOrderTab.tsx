@@ -14,6 +14,7 @@ import { itPoswfService } from "@/services/themepark-support"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { InputGroup, InputGroupAddon, InputGroupText, InputGroupInput } from "@/components/ui/input-group"
 import { useAutoSearch } from "@/hooks/use-auto-search"
+import { logger } from "@/lib/logger"
 
 interface ShopifyTableData extends ShopifyOrder {
     orderName?: string;
@@ -58,7 +59,7 @@ export default function ShopifyOrderTab() {
         toast.error("Search Failed", response.error || "Server error occurred.");
       }
     } catch (error) {
-        console.error("Search Error:", error)
+        logger.error("Search Error:", { error });
         setErrorMessage("An unexpected network error occurred.")
         toast.error("Error", "A network error occurred during the search.");
     } finally {

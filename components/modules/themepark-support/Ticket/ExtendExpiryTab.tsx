@@ -18,6 +18,7 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet"
 import { Label } from "@/components/ui/label"
 import { formatDate, formatDateTime } from "@/lib/formatter"
+import { logger } from "@/lib/logger"
 
 export default function ExtendExpiryTab() {
   const toast = useAppToast()
@@ -67,7 +68,7 @@ export default function ExtendExpiryTab() {
         toast.error("Search Failed", response.error || "Could not retrieve ticket list.");
       }
     } catch (error) {
-      console.error("Extend Search Error:", error);
+      logger.error("Extend Search Error:", { error });
       toast.error("Network Error", "Failed to connect.");
     } finally {
       setIsExtendSearching(false)

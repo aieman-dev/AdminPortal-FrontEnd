@@ -205,19 +205,21 @@ export default function SearchHistoryRecordTab() {
   const renderDetailRow = (group: GroupedInvoice) => {
       return (
         <div className="py-2 pl-4 ml-8 border-l-2 border-gray-200 bg-gray-50/50 dark:bg-gray-900/10 rounded-r-md my-2">
-            <div className="flex items-center px-2 py-2 border-b border-border/30 mb-1">
-                <div className="w-[60px] text-[10px] font-semibold text-muted-foreground uppercase">Trx ID</div>
-                <div className="flex-1 text-[10px] font-semibold text-muted-foreground uppercase">Attraction Name</div>
-                <div className="w-[120px] text-right text-[10px] font-semibold text-muted-foreground uppercase pr-4">Amount</div>
-            </div>
-            <div className="flex flex-col">
-                {group.items.map((item, index) => (
-                    <div key={`${item.trxID}-${index}`} className="flex items-center px-2 py-2 border-t border-border/30 first:border-0 hover:bg-white/40 dark:hover:bg-black/20 transition-colors">
-                        <div className="w-[60px] text-xs font-mono text-gray-600">{item.trxID}</div>
-                        <div className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200 truncate pr-4">{item.attractionName}</div>
-                        <div className="w-[120px] text-sm text-right text-gray-900 dark:text-gray-100 font-medium pr-4">RM {parseAmount(item.amount).toFixed(2)}</div>
-                    </div>
-                ))}
+            <div className="min-w-[500px]">
+                <div className="flex items-center px-2 py-2 border-b border-border/30 mb-1">
+                    <div className="w-[60px] text-[10px] font-semibold text-muted-foreground uppercase">Trx ID</div>
+                    <div className="flex-1 text-[10px] font-semibold text-muted-foreground uppercase">Attraction Name</div>
+                    <div className="w-[120px] text-right text-[10px] font-semibold text-muted-foreground uppercase pr-4">Amount</div>
+                </div>
+                <div className="flex flex-col">
+                    {group.items.map((item, index) => (
+                        <div key={`${item.trxID}-${index}`} className="flex items-center px-2 py-2 border-t border-border/30 first:border-0 hover:bg-white/40 dark:hover:bg-black/20 transition-colors">
+                            <div className="w-[60px] text-xs font-mono text-gray-600">{item.trxID}</div>
+                            <div className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200 truncate pr-4">{item.attractionName}</div>
+                            <div className="w-[120px] text-sm text-right text-gray-900 dark:text-gray-100 font-medium pr-4">RM {parseAmount(item.amount).toFixed(2)}</div>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
       );

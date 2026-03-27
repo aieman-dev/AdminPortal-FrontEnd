@@ -9,6 +9,7 @@ import { ShieldAlert } from "lucide-react";
 import { EmptyState } from "@/components/portal/empty-state";
 import { formatCurrency } from "@/lib/formatter";
 import { getDashboardRole } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 // Config & Types
 import { DASHBOARD_CONFIG, DashboardRole, MASTER_ACTIONS, MasterAction } from "@/config/dashboard";
@@ -67,7 +68,7 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
             setSystemStatus("200"); 
             setSystemLatency(`Response Time: ${latency}ms`);
         } catch (error) {
-            console.error("System Health Check Failed:", error);
+            logger.error("System Health Check Failed:", { error });
             const errCode = (error as any)?.statusCode || "500";
             setSystemStatus(String(errCode));
             setSystemStatus("Service Unavailable");
@@ -88,7 +89,7 @@ export default function DashboardClient({ initialPendingPackages }: DashboardCli
           const count = await dashboardService.getUnsyncedCount();
           setUnsyncedCount(count);
         } catch (error) {
-          console.error("Failed to load unsynced packages:", error);
+          logger.error("Failed to load unsynced packages:", { error });
         }
       }
     };

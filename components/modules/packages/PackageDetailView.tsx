@@ -131,10 +131,10 @@ export default function PackageDetailView({ id, source }: PackageDetailViewProps
         }
       } catch (error:any) {
         if (error.name === 'AbortError') {
-            console.log(`Fetch aborted for package ${id}`);
+            logger.info(`Fetch aborted for package ${id}`);
             return; 
         }
-        console.error("Error:", error);
+        logger.error("Error:", { error });
         toast.error("Error", "An unexpected error occurred.");
       } finally {
         if (!controller.signal.aborted) {

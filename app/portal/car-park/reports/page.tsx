@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/portal/page-header"
 import { carParkService } from "@/services/car-park-services"
 import { ReportDefinition } from "@/type/car-park"
 import { useAppToast } from "@/hooks/use-app-toast"
+import { logger } from "@/lib/logger"
 
 export default function ReportsPage() {
     const router = useRouter()
@@ -29,7 +30,7 @@ export default function ReportsPage() {
             setAllReports(data)
             setFilteredReports(data)
         } catch (error) {
-            console.error("Reports Error:", error);
+            logger.error("Reports Error:", { error });
             toast.error("Error", "Failed to load report list.")
         } finally {
             setIsLoading(false)

@@ -40,7 +40,7 @@ export default function GlobalError({
     const newId = `ERR-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
     setErrorId(newId)
 
-    // 2. Log to Console
+    // 2. Log to logger
     logger.error(`[${newId}] Global Error Caught:`, error)
 
     // 3. Safety Cleanup

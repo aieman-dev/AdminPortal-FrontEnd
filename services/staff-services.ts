@@ -12,7 +12,12 @@ import {
   StaffListPayload,
   SearchUserPayload,
   AuditLogResponse,
-  AuditLogListPayload
+  AuditLogListPayload,
+  GetMeResponse,
+  GenericMessageResponse,
+  UpdateRolePayload,
+  ResetPasswordPayload,
+  
 } from "@/type/staff";
 import { get } from "lodash";
 
@@ -32,7 +37,7 @@ const ENDPOINTS = {
 
 
 // MAPPERS: Normalize Data here
-const mapToStaff = (raw: any): StaffMember => {
+const mapToStaff = (raw: unknown): StaffMember => {
   const result = StaffMemberSchema.safeParse(raw);
   if (!result.success) {
     logger.warn("Zod Mapping Mismatch", { type: "StaffMember", error: result.error });
@@ -50,7 +55,7 @@ const mapToStaff = (raw: any): StaffMember => {
   return result.data;
 };
 
-const mapToSearchedUser = (raw: any): SearchedUser => {
+const mapToSearchedUser = (raw: unknown): SearchedUser => {
   const result = SearchedUserSchema.safeParse(raw);
   if (!result.success) {
     logger.warn("Zod Mapping Mismatch", { type: "SearchedUser", error: result.error });
@@ -70,13 +75,13 @@ const mapToSearchedUser = (raw: any): SearchedUser => {
 // SERVICE IMPLEMENTATION
 export const staffService = {
   getMe: async (): Promise<StaffMember> => {
-    const response = await apiClient.get<any>(ENDPOINTS.GET_ME);
+    const response = await apiClient.get<{ content: GetMeResponse }>(ENDPOINTS.GET_ME);
     
     if (!response.success || !response.data) {
         throw new Error(response.error || "Failed to load user profile");
     }
 
-    const data = getDataObject<any>(response.data);
+    const data = getDataObject<GetMeResponse>(response.data);
 
     // Map Account/me response to StaffMember interface
     return {
@@ -93,7 +98,7 @@ export const staffService = {
   
   searchUsers: async (query: string): Promise<SearchedUser[]> => {
     const payload: SearchUserPayload = { query };
-    const response = await apiClient.post<any>(ENDPOINTS.SEARCH_USER, payload);
+    const response = await apiClient.post<{ content: BackendSearchedUserDTO[] }>(ENDPOINTS.SEARCH_USER, payload);
     
     if (!response.success || !response.data) {
         throw new Error(response.error || "Failed to search users");
@@ -103,56 +108,55 @@ export const staffService = {
     return rawList.map(mapToSearchedUser);
   },
 
-  assignRole: async (accId: number, roles: string, password: string, expiryDate?: Date | null): Promise<{ message: string }> => {
+  assignRole: async (accId: number, roles: string, password: string, expiryDate?: Date | null): Promise<GenericMessageResponse> => {
     const formattedDate = expiryDate ? expiryDate.toISOString() : "";
     const payload: AssignRolePayload = { accId, roles, password, expiryDate: formattedDate };
-    const response = await apiClient.post<{ message: string }>(ENDPOINTS.ASSIGN_ROLE, payload);
+    const response = await apiClient.post<{ content: GenericMessageResponse }>(ENDPOINTS.ASSIGN_ROLE, payload);
     
     if (!response.success) {
         throw new Error(response.error || "Failed to assign role");
     }
-    return response.data!;
+    return getDataObject<GenericMessageResponse>(response.data);
   },
 
-  updateStaffRole: async (payload: { roleId: number | string, roleName: string, expiryDate: string | null, recordStatus: string }) => {
-      const response = await apiClient.post<{ message: string }>(ENDPOINTS.UPDATE_ROLE, payload);
+  updateStaffRole: async (payload: UpdateRolePayload): Promise<GenericMessageResponse> => {
+      const response = await apiClient.post<{ content: GenericMessageResponse }>(ENDPOINTS.UPDATE_ROLE, payload);
       
       if (!response.success) {
           throw new Error(response.error || "Failed to update staff role");
       }
-      return response.data;
+      return getDataObject<GenericMessageResponse>(response.data);
   },
 
-  resetStaffPassword: async (accId: number | string, newPassword: string) => {
-      const payload = { accID: accId, newPassword: newPassword };
-      const response = await apiClient.post<{ message: string }>(ENDPOINTS.RESET_PASSWORD, payload);
+  resetStaffPassword: async (payload: ResetPasswordPayload) : Promise<GenericMessageResponse> => {
+      const response = await apiClient.post<{ content: GenericMessageResponse }>(ENDPOINTS.RESET_PASSWORD, payload);
       
       if (!response.success) {
           throw new Error(response.error || "Failed to reset password");
       }
-      return response.data;
+      return getDataObject<GenericMessageResponse>(response.data);
   },
 
   getStaffList: async (query: string = ""): Promise<StaffMember[]> => {
     const payload: StaffListPayload = { Query: query };
-    const response = await apiClient.post<any>(ENDPOINTS.STAFF_LIST, payload);
+    const response = await apiClient.post<{ content: BackendStaffDTO[] }>(ENDPOINTS.STAFF_LIST, payload);
     
     if (!response.success || !response.data) {
       logger.warn("Staff list fetch returned empty/failed", { error: response.error })
       throw new Error(response.error || "Failed to fetch staff list.");
     }
     
-    const rawList = getContent<BackendStaffDTO>(response.data);
+    const rawList = getDataObject<BackendStaffDTO[]>(response.data);
     return rawList.map(mapToStaff);
   },
 
   getAllAuditLogs: async (payload: AuditLogListPayload): Promise<AuditLogResponse | null> => {
-    const response = await apiClient.post<any>(ENDPOINTS.AUDIT_LOG_LIST, payload);
+    const response = await apiClient.post<{ content: AuditLogResponse }>(ENDPOINTS.AUDIT_LOG_LIST, payload);
     if (!response.success || !response.data) {
       throw new Error(response.error || "Failed to fetch audit logs.");
     }
 
-    const content = getDataObject<any>(response.data);
+    const content = getDataObject<AuditLogResponse>(response.data);
     const totalRecords = content.totalRecords || 0;
     const pageSize = content.pageSize || payload.pageSize;
     const totalPages = Math.ceil(totalRecords / pageSize);
@@ -167,7 +171,7 @@ export const staffService = {
   },
 
   getUserAuditLogs: async (userId: string | number, page: number = 1, size: number = 20): Promise<AuditLogResponse | null> => {
-    const response = await apiClient.get<any>(`${ENDPOINTS.AUDIT_LOG_USER}/${userId}?page=${page}&size=${size}`);
+    const response = await apiClient.get<{ content: AuditLogResponse }>(`${ENDPOINTS.AUDIT_LOG_USER}/${userId}?page=${page}&size=${size}`);
     if (!response.success || !response.data) {
       throw new Error(response.error || "Failed to fetch user audit logs.");
     }
@@ -176,11 +180,11 @@ export const staffService = {
 
   getAuditModules: async (): Promise<string[]> => {
     try {
-      const response = await apiClient.get<any>(ENDPOINTS.AUDIT_MODULES);
+      const response = await apiClient.get<{ content: string[] }>(ENDPOINTS.AUDIT_MODULES);
       if (!response.success || !response.data) {
         throw new Error(response.error || "Failed to fetch audit modules.");
       }
-      return getContent<string>(response.data);
+      return getDataObject<string[]>(response.data);
 
     } catch (error) {
       logger.error("Failed to fetch audit modules", { error });

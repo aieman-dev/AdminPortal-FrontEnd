@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Search, RotateCcw, Save, User, Briefcase, Mail, Loader2, CheckCircle2, UserPlus, X } from "lucide-react"
-
+import { logger } from "@/lib/logger"
 import { PageHeader } from "@/components/portal/page-header"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -58,7 +58,7 @@ export default function NewStaffNonCPPage() {
                 const data = await hrService.getDepartments();
                 setDepartments(data);
             } catch (error) {
-                console.error("Failed to load departments", error);
+                logger.error("Failed to load departments", { error });
                 toast.error("Error", "Could not load departments");
             }
         };

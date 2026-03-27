@@ -4,6 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Ban, ShieldCheck } from "lucide-react"
 import { LoaderState } from "@/components/ui/loader-state"
 import dynamic from "next/dynamic"
+import { FEATURE_FLAGS } from "@/lib/config"
 
 // Lazy load tabs for performance
 const BlacklistTab = dynamic(() => import("@/components/modules/car-park/tabs/BlacklistTab"), {
@@ -19,7 +20,6 @@ export default function AccessControlPage() {
 
     return (
         <div className="space-y-6">
-    
             <PageHeader 
                 title="Access Control" 
                 description="Manage blocked users (Blacklist) and exempted users (Whitelist)." 
@@ -36,16 +36,19 @@ export default function AccessControlPage() {
                             Blocked Listing
                         </TabsTrigger>
                         
-                        {/* Whitelist tab is currently disabled as the feature is not fully implemented yet. Uncomment when ready.
-                        <div className="w-2" />
-                        <TabsTrigger 
-                            value="whitelist" 
-                            className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-4 py-2.5 text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px -ml-px relative z-10"
-                        >
-                            <ShieldCheck className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> 
-                            Whitelist
-                        </TabsTrigger>
-                        */}
+                        {/* Conditionally render the trigger based on the flag */}
+                        {FEATURE_FLAGS.ENABLE_WHITELIST && (
+                            <>
+                                <div className="w-2" />
+                                <TabsTrigger 
+                                    value="whitelist" 
+                                    className="rounded-t-lg rounded-b-none border border-b-0 border-border bg-muted/50 px-4 py-2.5 text-sm whitespace-nowrap data-[state=active]:bg-card data-[state=active]:border-b-card data-[state=active]:shadow-sm -mb-px -ml-px relative z-10"
+                                >
+                                    <ShieldCheck className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" /> 
+                                    Whitelist
+                                </TabsTrigger>
+                            </>
+                        )}
                     </TabsList>
                 </div>
 
@@ -53,9 +56,12 @@ export default function AccessControlPage() {
                     <BlacklistTab />
                 </TabsContent>
 
-                <TabsContent value="whitelist" className={tabTransitionClass}>
-                    <WhitelistTab />
-                </TabsContent>
+                {FEATURE_FLAGS.ENABLE_WHITELIST && (
+                    <TabsContent value="whitelist" className={tabTransitionClass}>
+                        <WhitelistTab />
+                    </TabsContent>
+                )}
+
             </Tabs>
         </div>
     )

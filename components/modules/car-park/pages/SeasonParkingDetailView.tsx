@@ -16,6 +16,7 @@ import { SYSTEM_TERMINAL_ID } from "@/lib/constants"
 import { cn, isUserInside } from "@/lib/utils"
 import { carParkService } from "@/services/car-park-services"
 import { CarParkPackage,  ParkingDetailData, ParkingDetailStatus, CarParkPhase, CarParkUnit } from "@/type/car-park"
+import { logger } from "@/lib/logger"
 
 // Import existing UI components
 import { ParkingStatusDetail } from "@/components/modules/car-park/ParkingStatusDetail"
@@ -112,7 +113,7 @@ export function SeasonParkingDetailView({ qrId, backPath, backLabel, moduleName 
                 setStatusInfo(status);
             }
         } catch (error) {
-            console.error("Load Error:", error);
+            logger.error("Load Error:", { error });
             toast.error("Error", "Failed to load details.");
         } finally {
             setIsLoading(false);
@@ -127,7 +128,11 @@ export function SeasonParkingDetailView({ qrId, backPath, backLabel, moduleName 
         try {
             const unitsData = await carParkService.getUnits(phaseId);
             setUnits(unitsData);
-        } catch (error) { console.error(error); } finally { setLoadingUnits(false); }
+        } catch (error) {
+            logger.error("Failed to load units:", { error }); 
+        } finally { 
+            setLoadingUnits(false);
+        }
     };
 
     // --- Actions ---

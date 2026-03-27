@@ -6,6 +6,7 @@ import { settingService, type BroadcastItem } from "@/services/setting-services"
 import { dashboardService } from "@/services/dashboard-service"
 import { type KioskStatus, type DashboardSummary } from "@/type/dashboard"
 import { useAuth } from "@/hooks/use-auth"
+import { logger } from "@/lib/logger"
 
 interface DashboardContextType {
   // Alerts & Notifications (Init only)
@@ -46,7 +47,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       const kiosks = await dashboardService.getKioskStatus()
       setKioskData(kiosks)
     } catch (error) {
-      console.error("Kiosk Poll Error", error);
+      logger.error("Kiosk Poll Error", { error });
     } finally {
       setIsKioskRefreshing(false)
     }
@@ -60,7 +61,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       const summaryData = await dashboardService.getSummary("ThisWeek");
       setSummary(summaryData);
     } catch (error) {
-      console.error("Stats Poll Error", error);
+      logger.error("Stats Poll Error", { error });
     }
   }, [isAuthenticated]);
 
@@ -82,7 +83,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       setKioskData(kiosks)
       setSummary(summaryData)
     } catch (error) {
-        console.error("Initial Load Error", error);
+        logger.error("Initial Load Error", { error });
     } finally {
       setIsLoading(false)
     }
@@ -129,11 +130,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (typeof navigator !== 'undefined' && 'setAppBadge' in navigator) {
       if (unreadCount > 0) {
         navigator.setAppBadge(unreadCount).catch((error) => {
-           console.error("Failed to set app badge:", error);
+           logger.error("Failed to set app badge:", { error });
         });
       } else {
         if ('clearAppBadge' in navigator) {
-            navigator.clearAppBadge().catch(console.error);
+            navigator.clearAppBadge().catch((error) => {
+                logger.error("Failed to clear app badge:", { error });
+            } );
         }
       }
     }

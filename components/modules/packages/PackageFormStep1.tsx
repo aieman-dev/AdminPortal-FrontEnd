@@ -8,6 +8,7 @@ import { packageService } from "@/services/package-services"
 import { NATIONALITY_OPTIONS } from "@/lib/constants"; 
 import { getProxiedImageUrl } from "@/lib/utils";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { logger } from "@/lib/logger";
 
 // UI Components
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
@@ -58,7 +59,10 @@ const PackageFormStep1: React.FC<Props> = ({ form, onNext }) => {
             value: c.ageCode || c.displayText, 
             label: `${c.displayText}${c.description ? ` (${c.description})` : ""}`
         })));
-      } catch (err) { console.error(err); } finally { setLoadingAges(false); }
+      } catch (err) { 
+            logger.error("Error fetching creation data:", { error: err }); } 
+        finally { 
+            setLoadingAges(false); }
     };
     fetchCreationData();
   }, []);
@@ -72,7 +76,9 @@ const PackageFormStep1: React.FC<Props> = ({ form, onNext }) => {
              id: String(img.imageID), name: img.fileName || "Untitled", url: getProxiedImageUrl(img.imgUrl) 
         }));
         setImageOptions(mappedImages);
-      } catch (err) { console.error(err); } finally { setLoadingImages(false); }
+      } catch (err) { 
+        logger.error("Error fetching images:", { error: err }); 
+      } finally { setLoadingImages(false); }
     };
     fetchImages();
   }, []);

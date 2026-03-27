@@ -14,7 +14,7 @@ import { getProxiedImageUrl } from "@/lib/utils";
 import { formatDate } from "@/lib/formatter";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useDebounce } from "@/hooks/use-debounce";
-import { Button } from "@/components/ui/button"; 
+import { logger } from "@/lib/logger";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { EmptyState } from "@/components/portal/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -229,7 +229,7 @@ export default function PackagesPage() {
         if (!targetId) setSelectedPackageIds(new Set());
         
     } catch (error : any) {
-        console.log("Submit Error Debug:", error); 
+        logger.error("Submit Error:", { error });
         const cleanMessage = error.message || "An unexpected error occurred.";
         const lowerCaseError = cleanMessage.toLowerCase();
 
@@ -244,7 +244,7 @@ export default function PackagesPage() {
             toast.error( "Operation Failed", cleanMessage);
         }
         
-        console.error("Action Error:", error);
+        logger.error("Action Error:", { error });
     } finally {
         setIsProcessing(false);
         setActionState({ type: null, targetId: null, isOpen: false });

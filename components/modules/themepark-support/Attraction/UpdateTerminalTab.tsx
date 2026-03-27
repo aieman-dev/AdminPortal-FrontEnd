@@ -22,6 +22,7 @@ import { formatDate } from "@/lib/formatter";
 import { SearchField } from "@/components/shared-components/search-field"
 import { DataTable, type TableColumn } from "@/components/shared-components/data-table" 
 import { useIsMobile } from "@/hooks/use-mobile"
+import { logger } from "@/lib/logger"
 
 // --- HELPER COMPONENT ---
 const UuidHoverCell = ({ uuid, row, toast }: { uuid: string, row: Terminal, toast: any }) => {
@@ -111,7 +112,7 @@ export default function UpdateTerminalTab() {
             toast.error("Search Failed", response.error || "Could not retrieve terminals.");
         }
     } catch (error) {
-        console.error("Terminal Search Error:", error);
+        logger.error("Terminal Search Error:", { error });
         toast.error("Network Error", "Failed to connect to search service.");
     } finally {
         setIsTerminalSearching(false)
@@ -170,7 +171,7 @@ export default function UpdateTerminalTab() {
             throw new Error(response.error || "API returned an error during update.");
         }
     } catch (error: any) {
-        console.error("Terminal Update Error:", error);
+        logger.error("Terminal Update Error:", { error });
         toast.error( "Update Failed", error.message || "An unexpected network error occurred.");
     } finally {
         setIsUpdating(false);

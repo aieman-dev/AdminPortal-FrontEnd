@@ -8,6 +8,7 @@ import { type PasswordData } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support"
 import { useAppToast } from "@/hooks/use-app-toast"
 import { useAutoSearch } from "@/hooks/use-auto-search"
+import { logger } from "@/lib/logger"
 
 export default function UpdateQrPasswordTab() {
   const toast = useAppToast()
@@ -44,7 +45,7 @@ export default function UpdateQrPasswordTab() {
             toast.error("Search Failed", response.error || "No password found.");
         }
     } catch (error) {
-        console.error("QR Search Error:", error);
+        logger.error("QR Search Error:", { error });
         toast.error("Network Error", "Failed to connect to the search service.");
     } finally {
       setIsQrSearching(false);
@@ -70,7 +71,7 @@ export default function UpdateQrPasswordTab() {
             toast.error("Reset Failed", response.error || "Could not reset password.");
         }
     } catch (error) {
-        console.error("QR Reset Error:", error);
+        logger.error("QR Reset Error:", { error });
         toast.error("Network Error", "Failed to connect to the reset service.");
     } finally {
       setIsResetting(false);

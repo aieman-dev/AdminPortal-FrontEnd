@@ -9,6 +9,7 @@ import { useAppToast } from "@/hooks/use-app-toast"
 import { useAutoSearch } from "@/hooks/use-auto-search"
 import { itPoswfService } from "@/services/themepark-support"
 import { SearchField } from "@/components/shared-components/search-field" // <--- Import Standard Component
+import { logger } from "@/lib/logger"
 
 export default function ResyncTransactionTab() {
   const toast = useAppToast()
@@ -54,7 +55,7 @@ export default function ResyncTransactionTab() {
             }
         }
     } catch (error) {
-        console.error("Resync Error:", error);
+        logger.error("Resync Error:", { error });
         toast.error("Resync Failed", error instanceof Error ? error.message : "An unexpected error occurred.");
     } finally {
         setIsExecuting(false);

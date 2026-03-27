@@ -26,6 +26,7 @@ import {
 import { usePagination } from "@/hooks/use-pagination"
 import { cn } from "@/lib/utils"
 import { formatDateTime } from "@/lib/formatter"
+import { logger } from "@/lib/logger"
 
 export default function ReportViewerPage() {
     const searchParams = useSearchParams();
@@ -92,10 +93,10 @@ const validateFilters = () => {
             } catch (error: any) {
                 // Ignore AbortErrors (They are intentional)
                 if (error.name === 'AbortError') {
-                    console.log('Fetch aborted');
+                    logger.info("Meta Load Aborted:", { reportCode });
                     return;
                 }
-                console.error("Meta Load Error:", error);
+                logger.error("Meta Load Error:", { error, reportCode });
                 toast.error("Config Error", "Failed to load report definition.");
             } finally {
                 if (!signal.aborted) setIsMetaLoading(false);

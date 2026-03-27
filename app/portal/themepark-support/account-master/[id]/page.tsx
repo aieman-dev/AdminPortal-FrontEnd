@@ -6,6 +6,7 @@ import { AccountDetailsClient } from "@/app/portal/themepark-support/account-mas
 import { Account } from "@/type/themepark-support"
 import { itPoswfService } from "@/services/themepark-support" 
 import { Skeleton } from "@/components/ui/skeleton"
+import { logger } from "@/lib/logger"
 
 // --- CUSTOM SKELETON LOADER ---
 const AccountDetailSkeleton = () => (
@@ -97,7 +98,7 @@ export default function AccountDetailsPage({ params: { id } }: { params: { id: s
       if (response.success && response.data) {
         setAccount(response.data); 
       } else {
-        console.error("Failed to load account details:", response.error);
+        logger.error("Failed to load account details:", { error: response.error });
         setAccount(null);
       }
       setLoading(false);

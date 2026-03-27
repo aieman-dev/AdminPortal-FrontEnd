@@ -27,6 +27,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { logger } from "@/lib/logger"
 
 export default function ApplicationReviewPage() {
     const router = useRouter()
@@ -137,7 +138,7 @@ export default function ApplicationReviewPage() {
                     }
                 }
             } catch (error) {
-                console.error("Init Error:", error);
+                logger.error("Init Error:", { error });
                 toast.error("Error", "Failed to load application data.");
             } finally {
                 setIsLoadingData(false);
@@ -154,7 +155,7 @@ export default function ApplicationReviewPage() {
             const data = await carParkService.getUnits(value);
             setUnits(data);
         } catch (error) {
-            console.error(error);
+            logger.error("Failed to fetch units:", { error });
         } finally {
             setLoadingUnits(false);
         }

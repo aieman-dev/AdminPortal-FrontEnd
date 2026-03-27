@@ -12,6 +12,7 @@ import { itPoswfService } from "@/services/themepark-support"
 import { type BalanceDetail, type BalanceTransaction } from "@/type/themepark-support"
 import { formatCurrency } from "@/lib/formatter";
 import { useAppToast } from "@/hooks/use-app-toast"
+import { logger } from "@/lib/logger"
 
 export default function ActivateBalancePage() {
   const toast = useAppToast()
@@ -36,7 +37,7 @@ export default function ActivateBalancePage() {
         toast.error( "Search Failed", response.error || "No balance details found for this email.")
       }
     } catch (error) {
-        console.error("Search Error:", error)
+        logger.error("Search Error:", { error })
         toast.error( "Network Error","Failed to connect to the server.")
     } finally {
       setIsSearching(false)

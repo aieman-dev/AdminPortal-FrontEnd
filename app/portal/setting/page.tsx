@@ -31,6 +31,7 @@ import { settingService, BroadcastPayload } from "@/services/setting-services"
 import { ROLES } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import ExpirySelector, { ExpiryData } from "@/components/portal/ExpirySelector"
+import { logger } from "@/lib/logger"
 
 // 1. Zod Schema
 const broadcastSchema = z.object({
@@ -96,7 +97,7 @@ export default function SettingsPage() {
             });
 
         } catch (error) {
-            console.error("Failed to load profile:", error);
+            logger.error("Failed to load profile:", { error });
         } finally {
             setIsLoading(false);
         }
