@@ -21,6 +21,10 @@ import {
     ParkingHistoryPayload,
     ParkingHistoryResponse
  } from "@/type/hr";
+ import {
+    RawAccountDTO, VerifyUserResponse, BasicMessageResponse,
+    PaginatedBackendResponse, RawPassDetailDTO, RawCarParkAppListItemDTO, RawCarParkAppDetailDTO, RawActivePassItemDTO
+} from "@/type/shared-api";
 
 const ENDPOINTS = {
     // Shared / Account Lookup
@@ -48,7 +52,7 @@ const ENDPOINTS = {
 
     // Feature 4: Staff Parking List (Season Pass / Visitor)
     QR_LISTING: "Carpark/cards/active",
-    CHECK_STATUS: "Carpark/pass/detail",
+    QR_ID: "Carpark/pass/detail",
     MANUAL_ENTRY: "CarPark/access/manual-entry",
     CHECK_BALANCE: "support/balance/check",
     PARKING_HISTORY: "CarPark/history",
@@ -71,7 +75,7 @@ export interface BackendResponse<T> {
 }
 
 // --- MAPPERS ---
-const mapToAccount = (raw: any): Account => ({
+const mapToAccount = (raw: RawAccountDTO): Account => ({
     id: String(raw.accID),
     accId: String(raw.accID),
     email: raw.email || "N/A",
@@ -94,24 +98,24 @@ export const hrService = {
     // SHARED UTILITIES & ACCOUNT LOOKUP
     searchSuperAppAccounts: async (query: string): Promise<Account[]> => {
         const payload = { email: query }; 
-        const response = await apiClient.post<BackendResponse<any[] | any>>(ENDPOINTS.SEARCH_ACCOUNTS, payload);
+        const response = await apiClient.post<{ content: RawAccountDTO[] | RawAccountDTO}>(ENDPOINTS.SEARCH_ACCOUNTS, payload);
 
         if (!response.success) throw new Error(response.error || "Failed to search accounts.");
 
-        const content = response.data?.content || response.data?.data || response.data;
-        let items = [];
+        const content = getDataObject<RawAccountDTO[] | RawAccountDTO>(response.data);
+        let items : RawAccountDTO[] = [];
         
         if (Array.isArray(content)) items = content;
-        else if (content && content.accID) items = [content];
+        else if (content && typeof content === 'object' && 'accID' in content) items = [content as RawAccountDTO];
 
         return items.map(mapToAccount);
     },
 
     getSuperAppAccount: async (accId: string | number) : Promise<Account | null> => {
         const payload = { accID: Number(accId) };
-        const response = await apiClient.post<BackendResponse<any>>(ENDPOINTS.GET_ACCOUNT_DETAILS, payload);
+        const response = await apiClient.post<{ content: RawAccountDTO }>(ENDPOINTS.GET_ACCOUNT_DETAILS, payload);
         if (!response.success || !response.data) throw new Error(response.error || "Failed to load account details.");
-        const data = response.data?.content || response.data?.data || response.data;
+        const data = getDataObject<RawAccountDTO>(response.data);   
         return mapToAccount(data);
     },
 
@@ -119,11 +123,11 @@ export const hrService = {
     //  NEW STAFF TAGGING (NON-CP)
     verifyUser: async (type: "qr" | "email", term: string) => {
         const payload = { searchValue: term, isEmail: type === "email" };
-        const response = await apiClient.post<BackendResponse<any>>(ENDPOINTS.VERIFY_USER, payload);
+        const response = await apiClient.post<{ content: VerifyUserResponse }>(ENDPOINTS.VERIFY_USER, payload);
         
         if (!response.success) throw new Error(response.error || "User verification failed");
         
-        const data = response.data?.content || response.data;
+        const data = getDataObject<VerifyUserResponse>(response.data);
         if (!data) throw new Error("No user data found");
 
         return {
@@ -138,9 +142,9 @@ export const hrService = {
     },
 
     getDepartments: async (): Promise<CarParkDepartment[]> => {
-        const response = await apiClient.get<BackendResponse<CarParkDepartment[]>>(ENDPOINTS.GET_DEPARTMENTS);
+        const response = await apiClient.get<{ content: CarParkDepartment[] }>(ENDPOINTS.GET_DEPARTMENTS);
         if (!response.success) throw new Error(response.error || "Failed to retrieve departments.");
-        return response.data?.content || response.data as any || [];
+        return getDataObject<CarParkDepartment[]>(response.data) || [];
     },
 
     submitStaffTag: async (data: { email: string, fullName: string, hp?: string, staffNo: string, department: string }) => {
@@ -151,11 +155,10 @@ export const hrService = {
             departmentCode: data.department,
         };
 
-        const response = await apiClient.post<BackendResponse<{message: string}>>(ENDPOINTS.SUBMIT_TAG, payload);
+        const response = await apiClient.post<{ content: BasicMessageResponse }>(ENDPOINTS.SUBMIT_TAG, payload);
 
         if (!response.success) {
-             const content = response.data?.content;
-             const errorMessage = content?.message || response.error || "Staff tagging failed";
+             const errorMessage = getDataObject<BasicMessageResponse>(response.data)?.message || "Staff tagging failed";
              throw new Error(errorMessage);
         }
         return response.data;
@@ -171,13 +174,13 @@ export const hrService = {
             pageSize: pageSize
         };
 
-        const response = await apiClient.post<any>(ENDPOINTS.STAFF_LIST, payload);
+        const response = await apiClient.post<{ content : { staff: any[], totalRecords: number, pageNumber: number } }>(ENDPOINTS.STAFF_LIST, payload);
         
         if (!response.success || !response.data) {
             throw new Error(response.error || "Failed to load staff list.");
         }
         
-        const content = getDataObject<any>(response.data);
+        const content = getDataObject<{ staff: any[], totalRecords: number, pageNumber: number }>(response.data);
         return {
             items: content.staff || [],
             totalCount: content.totalRecords || 0,
@@ -187,20 +190,20 @@ export const hrService = {
     },
 
     getStaffDetail: async (staffId: number): Promise<StaffDetail | null> => {
-        const response = await apiClient.get<any>(`${ENDPOINTS.STAFF_DETAIL}/${staffId}`);
+        const response = await apiClient.get<{ content: StaffDetail }>(`${ENDPOINTS.STAFF_DETAIL}/${staffId}`);
         if (!response.success || !response.data) throw new Error(response.error || "Failed to load staff detail.");
         return getDataObject<StaffDetail>(response.data);
     },
 
     
     updateStaff: async (payload: UpdateStaffPayload) => {
-        const response = await apiClient.put(ENDPOINTS.STAFF_UPDATE, payload);
+        const response = await apiClient.put<{ content : BasicMessageResponse }>(ENDPOINTS.STAFF_UPDATE, payload);
         if (!response.success) throw new Error(response.error || "Update failed");
         return response.data;
     },
 
     deleteStaff: async (staffId: number | string) => {
-        const response = await apiClient.delete(`${ENDPOINTS.STAFF_DELETE}/${staffId}`);
+        const response = await apiClient.delete<{ content: BasicMessageResponse }>(`${ENDPOINTS.STAFF_DELETE}/${staffId}`);
         if (!response.success) {throw new Error(response.error || "Delete failed");}
         return response.data;
     },
@@ -209,20 +212,20 @@ export const hrService = {
     // =========================================================
     // NEW STAFF REGISTRATION (WITH PARKING)
     getPhases: async () => {
-        const response = await apiClient.get<any>(ENDPOINTS.GET_PHASES);
+        const response = await apiClient.get<{ content: any[] }>(ENDPOINTS.GET_PHASES);
         if (!response.success) throw new Error(response.error || "Failed to retrieve phases.");
         return response.data?.content || [];
     },
 
     getUnits: async (phaseId: string | number) => {
         if (!phaseId) return [];
-        const response = await apiClient.get<any>(`${ENDPOINTS.GET_UNITS}/${phaseId}`);
+        const response = await apiClient.get<{ content: any[] }>(`${ENDPOINTS.GET_UNITS}/${phaseId}`);
         if (!response.success) throw new Error(response.error || "Failed to retrieve units.");
         return response.data?.content || [];
     },
 
     getPackages: async () => {
-        const response = await apiClient.get<any>(ENDPOINTS.GET_PACKAGES);
+        const response = await apiClient.get<{ content: any[] }>(ENDPOINTS.GET_PACKAGES);
         if (!response.success) throw new Error(response.error || "Failed to retrieve packages.");
         return response.data?.content || [];
     },
@@ -271,10 +274,10 @@ export const hrService = {
             tandemEmail: null 
         };
         
-        const response = await apiClient.post<any>(ENDPOINTS.REGISTER, payload);
+        const response = await apiClient.post<{ content : BasicMessageResponse }>(ENDPOINTS.REGISTER, payload);
 
         if (!response.success) {
-            const content = response.data?.content;
+            const content = getDataObject<BasicMessageResponse>(response.data);
             if (content?.errors) {
                 const firstField = Object.keys(content.errors)[0];
                 const firstMsg = content.errors[firstField][0];
@@ -291,16 +294,17 @@ export const hrService = {
     
     getQrListing: async (pageNumber: number, pageSize: number, searchQuery: string = "") => {
         const payload: ActivePassesPayload = { pageNumber, pageSize, searchQuery };
-        const response = await apiClient.post<any>(ENDPOINTS.QR_LISTING, payload);
+        const response = await apiClient.post<{ content : PaginatedBackendResponse<RawActivePassItemDTO> }>(ENDPOINTS.QR_LISTING, payload);
 
         if (!response.success) throw new Error(response.error || "Failed to load passes.");
-        const data = response.data?.content || response.data;
+        const data = getDataObject<PaginatedBackendResponse<RawActivePassItemDTO>>(response.data);
         
         return {
             items: data.items || [],
             totalCount: data.totalCount || 0,
             totalPages: data.totalPages || 0,
-            pageNumber: data.pageNumber || pageNumber
+            pageNumber: data.pageNumber || pageNumber,
+            pageSize: data.pageSize || pageSize
         } as ActivePassesResponse;
     },
 
@@ -310,7 +314,7 @@ export const hrService = {
         else if (params.accId) payload.AccID = String(params.accId);
 
         try {
-            const response = await apiClient.post<any>(ENDPOINTS.CHECK_STATUS, payload);
+            const response = await apiClient.post<any>(ENDPOINTS.QR_ID, payload);
 
             if (!response.success) {
                 const errorData = response.data; 
@@ -398,10 +402,10 @@ export const hrService = {
             startDate: payload.startDate,
             endDate: payload.endDate
         };
-        const response = await apiClient.post<any>(ENDPOINTS.PARKING_HISTORY, apiPayload);
+        const response = await apiClient.post<{ content : PaginatedBackendResponse<any> }>(ENDPOINTS.PARKING_HISTORY, apiPayload);
         if (!response.success) throw new Error(response.error || "Failed to load parking history.");
         
-        const data = response.data?.content || response.data;
+        const data = getDataObject<PaginatedBackendResponse<any>>(response.data);
         return {
             items: data.items || [],
             totalCount: data.totalCount || 0,
@@ -413,7 +417,7 @@ export const hrService = {
 
     // Pass Actions
     assignManualEntry: async (payload: ManualEntryPayload) => {
-        const response = await apiClient.post<any>(ENDPOINTS.MANUAL_ENTRY, payload);
+        const response = await apiClient.post<{ content : BasicMessageResponse }>(ENDPOINTS.MANUAL_ENTRY, payload);
         if (!response.success) {
             const errorObj: any = new Error(response.error || "Failed to assign manual entry.");
             errorObj.content = response.data?.content || response.data; 
@@ -423,28 +427,28 @@ export const hrService = {
     },
 
     updateSeasonPass: async (payload: any) => {
-        const response = await apiClient.put<any>(ENDPOINTS.UPDATE_PASS, payload);
+        const response = await apiClient.put<{ content : BasicMessageResponse }>(ENDPOINTS.UPDATE_PASS, payload);
         if (!response.success) throw new Error(response.error || "Failed to update pass.");
         return response.data;
     },
 
     blockSeasonPass: async (cardId: number, reason: string) => {
         const payload = { cardId, reason, isBlocked: true };
-        const response = await apiClient.post<any>(ENDPOINTS.BLOCK_PASS, payload);
+        const response = await apiClient.post<{ content : BasicMessageResponse }>(ENDPOINTS.BLOCK_PASS, payload);
         if (!response.success) throw new Error(response.error || "Failed to block pass.");
         return response.data;
     },
 
     unblockSeasonPass: async (cardId: number, adminStaffId: number, reason: string = "Manual Unblock") => {
         const payload = { cardId, adminStaffId, reason, isBlocked: false };
-        const response = await apiClient.post<any>(ENDPOINTS.BLOCK_PASS, payload);
+        const response = await apiClient.post<{ content : BasicMessageResponse }>(ENDPOINTS.BLOCK_PASS, payload);
         if (!response.success) throw new Error(response.error || "Failed to unblock pass.");
         return response.data;
     },
 
     deleteSeasonPass: async (cardId: number, adminStaffId: number, reason: string) => {
         const payload = { cardId, adminStaffId, reason };
-        const response = await apiClient.post<any>(ENDPOINTS.DELETE_PASS, payload);
+        const response = await apiClient.post<{ content : BasicMessageResponse }>(ENDPOINTS.DELETE_PASS, payload);
         if (!response.success) throw new Error(response.error || "Failed to delete pass.");
         return response.data;
     },
@@ -452,11 +456,11 @@ export const hrService = {
     // =========================================================
     //  REPORTS
     generateReport: async (payload: ReportPayload): Promise<ReportResponse> => {
-        const response = await apiClient.post<any>(ENDPOINTS.EXECUTE_REPORT, payload);
+        const response = await apiClient.post<{ content : PaginatedBackendResponse<any> }>(ENDPOINTS.EXECUTE_REPORT, payload);
         if (!response.success || !response.data) {
              throw new Error(response.error || "Failed to execute report.");
         }
-        const content = getDataObject<any>(response.data);
+        const content = getDataObject<PaginatedBackendResponse<any>>(response.data);
         return {
             items: content.items || [],
             totalCount: content.totalCount || 0,

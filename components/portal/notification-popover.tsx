@@ -198,7 +198,7 @@ export function NotificationPopover({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b shrink-0">
           <div className="font-semibold text-sm">Notifications</div>
-          {unreadCount > 0 && (
+          {allNotifications.length > 0 && (
             <Button 
                 variant="ghost" 
                 size="sm" 

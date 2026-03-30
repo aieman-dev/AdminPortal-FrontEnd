@@ -33,6 +33,10 @@ import {
     BlockedUserResponse,
     WhitelistedUser
  } from "@/type/car-park";
+ import {
+    RawAccountDTO, VerifyUserResponse, BasicMessageResponse,
+    PaginatedBackendResponse, RawPassDetailDTO, RawCarParkAppListItemDTO, RawCarParkAppDetailDTO
+} from "@/type/shared-api";
 
 const ENDPOINTS = {
     SEARCH_ACCOUNTS: "support/account/search",
@@ -51,7 +55,6 @@ const ENDPOINTS = {
     QR_ID : "Carpark/pass/detail",
     MANUAL_ENTRY: "CarPark/access/manual-entry",
     CHECK_BALANCE: "support/balance/check",
-    CHECK_STATUS: "Carpark/pass/detail",
     PARKING_HISTORY: "CarPark/history",
     UPDATE_PASS: "CarPark/pass/update",
     DELETE_PASS: "CarPark/pass/delete",
@@ -75,7 +78,7 @@ const ENDPOINTS = {
 };
 
 // Ensure this mapper matches your Account interface
-const mapToAccount = (raw: any): Account => ({
+const mapToAccount = (raw: RawAccountDTO): Account => ({
     id: String(raw.accID),
     accId: String(raw.accID),
     email: raw.email || "N/A",
@@ -107,29 +110,27 @@ const cleanAccessDate = (str: string | undefined) => {
 export const carParkService = {
     searchSuperAppAccounts: async (query: string): Promise<Account[]> => {
         const payload = { email: query }; 
-        const response = await apiClient.post<any>(ENDPOINTS.SEARCH_ACCOUNTS, payload);
+        const response = await apiClient.post<{ content: RawAccountDTO[] }>(ENDPOINTS.SEARCH_ACCOUNTS, payload);
 
         if (!response.success) {
              throw new Error(response.error || "Failed to search accounts.");
         }
 
-        const content = response.data?.content || response.data?.data || response.data;
-        let items = [];
+        const content = getDataObject<RawAccountDTO[] | RawAccountDTO>(response.data);
+        let items : RawAccountDTO[] = [];
         
-        if (Array.isArray(content)) {
-            items = content;
-        } else if (content && content.accID) {
-            items = [content];
-        }
+        if (Array.isArray(content)) items = content;
+        else if (content && typeof content === 'object' && 'accID' in content) items = [content as RawAccountDTO];
 
         return items.map(mapToAccount);
     },
 
     getSuperAppAccount: async (accId: string | number) : Promise<Account | null> => {
         const payload = { accID: Number(accId) };
-        const response = await apiClient.post<any>(ENDPOINTS.GET_ACCOUNT_DETAILS, payload);
+        const response = await apiClient.post<{ content: RawAccountDTO }>(ENDPOINTS.GET_ACCOUNT_DETAILS, payload);
         if (!response.success || !response.data) throw new Error(response.error || "Failed to retrieve account details.");
-        const data = response.data?.content || response.data?.data || response.data;
+
+        const data = getDataObject<RawAccountDTO>(response.data);
         return mapToAccount(data);
     },
 
@@ -160,11 +161,11 @@ export const carParkService = {
             isEmail: type === "email"
         };
 
-        const response = await apiClient.post<any>(ENDPOINTS.VERIFY_USER, payload);
+        const response = await apiClient.post<{ content : VerifyUserResponse }>(ENDPOINTS.VERIFY_USER, payload);
         
         if (!response.success) throw new Error(response.error || "User verification failed");
         
-        const data = response.data?.content || response.data;
+        const data = getDataObject<VerifyUserResponse>(response.data);
         if (!data) throw new Error("No user data found");
 
         return {
@@ -179,28 +180,28 @@ export const carParkService = {
     },
 
     getPhases: async () => {
-        const response = await apiClient.get<any>(ENDPOINTS.GET_PHASES);
+        const response = await apiClient.get<{ content: any[] }>(ENDPOINTS.GET_PHASES);
         if (!response.success) throw new Error(response.error || "Failed to fetch phases.");
-        return response.data?.content || [];
+        return getDataObject<any[]>(response.data) || [];
     },
 
     getUnits: async (phaseId: string | number) => {
         if (!phaseId) return [];
-        const response = await apiClient.get<any>(`${ENDPOINTS.GET_UNITS}/${phaseId}`);
+        const response = await apiClient.get<{ content: any[] }>(`${ENDPOINTS.GET_UNITS}/${phaseId}`);
         if (!response.success) throw new Error(response.error || "Failed to fetch units.");
-        return response.data?.content || [];
+        return getDataObject<any[]>(response.data) || [];
     },
 
     getPackages: async () => {
-        const response = await apiClient.get<any>(ENDPOINTS.GET_PACKAGES);
+        const response = await apiClient.get<{ content: any[] }>(ENDPOINTS.GET_PACKAGES);
         if (!response.success) throw new Error(response.error || "Failed to fetch packages.");
-        return response.data?.content || [];
+        return getDataObject<any[]>(response.data) || [];
     },
 
     getDepartments: async (): Promise<CarParkDepartment[]> => {
-        const response = await apiClient.get<any>(ENDPOINTS.GET_DEPARTMENTS);
+        const response = await apiClient.get<{ content: CarParkDepartment[] }>(ENDPOINTS.GET_DEPARTMENTS);
         if (!response.success) throw new Error(response.error || "Failed to fetch departments.");
-        return response.data?.content || response.data || [];
+        return getDataObject<CarParkDepartment[]>(response.data) || [];
     },
     
     submitRegistration: async (form: any, adminStaffId: string | number) => {
@@ -251,12 +252,12 @@ export const carParkService = {
         logger.debug("Submitting Payload:", payload); 
         logger.debug("Payload Data:", JSON.stringify(payload, null, 2));
         
-        const response = await apiClient.post<any>(ENDPOINTS.REGISTER, payload);
+        const response = await apiClient.post<{ content: BasicMessageResponse }>(ENDPOINTS.REGISTER, payload);
 
         if (!response.success) {
             logger.error("RAW RESPONSE:", JSON.stringify(response, null, 2));
 
-            const content = response.data?.content;
+            const content = getDataObject<BasicMessageResponse>(response.data);
 
             if (content?.errors) {
                 const firstField = Object.keys(content.errors)[0];
@@ -279,12 +280,12 @@ export const carParkService = {
             searchQuery
         };
 
-        const response = await apiClient.post<any>(ENDPOINTS.QR_LISTING, payload);
+        const response = await apiClient.post<{ content : PaginatedBackendResponse<any> }>(ENDPOINTS.QR_LISTING, payload);
 
         if (!response.success) {
             throw new Error(response.error || "Failed to fetch QR listing.");
         }
-        const data = response.data?.content || response.data;
+        const data = getDataObject<PaginatedBackendResponse<any>>(response.data);
         
         return {
             items: data.items || [],
@@ -297,15 +298,14 @@ export const carParkService = {
 
     getQrListingID: async (params: { qrId?: string | number; accId?: string | number }): Promise<PassDetailResult> => {
         const payload: Record<string, string> = {};
-        if (params.qrId) payload.qrId = String(params.qrId);
-        else if (params.accId) payload.accId = String(params.accId);
+        if (params.qrId) payload.QrID = String(params.qrId);
+        else if (params.accId) payload.AccID = String(params.accId);
 
         try {
-            const response = await apiClient.post<any>(ENDPOINTS.CHECK_STATUS, payload);
+            const response = await apiClient.post<{ content : RawPassDetailDTO | BasicMessageResponse}>(ENDPOINTS.QR_ID, payload);
 
             if (!response.success) {
-                const errorData = response.data; 
-                const errContent = errorData?.content || errorData;
+                const errContent = getDataObject<BasicMessageResponse>(response.data);
                 const errMsg = response.error || errContent?.error || "";
                 
                 if (!params.qrId && (errMsg.includes("Conflict") || errMsg.includes("Active Pass Found"))) {
@@ -314,7 +314,7 @@ export const carParkService = {
                 throw new Error(errMsg || "Failed to retrieve pass details.");
             }
 
-            const raw = response.data.content || response.data;
+            const raw = getDataObject<RawPassDetailDTO>(response.data);
 
             // 1. Map to ParkingDetailData (Form Data)
             const data: ParkingDetailData = {
@@ -380,10 +380,10 @@ export const carParkService = {
     },
 
     assignManualEntry: async (payload: ManualEntryPayload) => {
-        const response = await apiClient.post<any>(ENDPOINTS.MANUAL_ENTRY, payload);
+        const response = await apiClient.post<{ content: BasicMessageResponse }>(ENDPOINTS.MANUAL_ENTRY, payload);
         if (!response.success) {
             const errorObj: any = new Error(response.error || "Failed to assign manual entry.");
-            errorObj.content = response.data?.content || response.data; 
+            errorObj.content = getDataObject<BasicMessageResponse>(response.data);
             throw errorObj;
         }
         return response.data;
@@ -399,7 +399,7 @@ export const carParkService = {
             amount: 0
         };
 
-        const response = await apiClient.post(ENDPOINTS.MANUAL_ENTRY, payload);
+        const response = await apiClient.post<{ content: BasicMessageResponse }>(ENDPOINTS.MANUAL_ENTRY, payload);
         
         if (!response.success) {
             throw new Error(response.error || "Failed to force exit.");
@@ -416,13 +416,13 @@ export const carParkService = {
             endDate: payload.endDate
         };
 
-        const response = await apiClient.post<any>(ENDPOINTS.PARKING_HISTORY, apiPayload);
+        const response = await apiClient.post<{ content: PaginatedBackendResponse<any> }>(ENDPOINTS.PARKING_HISTORY, apiPayload);
 
         if (!response.success) {
             return { items: [], totalCount: 0, pageNumber: 1, pageSize: 10, totalPages: 0 };
         }
 
-        const data = response.data?.content || response.data;
+        const data = getDataObject<PaginatedBackendResponse<any>>(response.data);
         return {
             items: data.items || [],
             totalCount: data.totalCount || 0,
@@ -433,10 +433,10 @@ export const carParkService = {
     },
 
     updateSeasonPass: async (payload: any) => {
-        const response = await apiClient.put<any>(ENDPOINTS.UPDATE_PASS, payload);
+        const response = await apiClient.put<{ content: BasicMessageResponse }>(ENDPOINTS.UPDATE_PASS, payload);
         
         if (!response.success) {
-             const errorMsg = response.data?.message || response.error || "Failed to update pass.";
+             const errorMsg = getDataObject<BasicMessageResponse>(response.data)?.message || "Failed to update pass.";
              throw new Error(errorMsg);
         }
         return response.data;
@@ -444,11 +444,10 @@ export const carParkService = {
 
     blockSeasonPass: async (cardId: number, reason: string) => {
         const payload = { cardId, reason, isBlocked: true };
-        const response = await apiClient.post<any>(ENDPOINTS.BLOCK_PASS, payload);
+        const response = await apiClient.post<{ content: BasicMessageResponse }>(ENDPOINTS.BLOCK_PASS, payload);
         
         if (!response.success) {
-             const content = response.data?.content || response.data;
-             const errorMsg = content?.error || content?.message || response.error || "Failed to block pass.";
+             const errorMsg = getDataObject<BasicMessageResponse>(response.data)?.message || "Failed to block pass.";
              throw new Error(errorMsg);
         }
         return response.data;
@@ -456,11 +455,10 @@ export const carParkService = {
 
     unblockSeasonPass: async (cardId: number, adminStaffId: number, reason: string = "Manual Unblock") => {
         const payload = { cardId, adminStaffId, reason, isBlocked: false };
-        const response = await apiClient.post<any>(ENDPOINTS.BLOCK_PASS, payload);
+        const response = await apiClient.post<{ content: BasicMessageResponse }>(ENDPOINTS.BLOCK_PASS, payload);
         
         if (!response.success) {
-             const content = response.data?.content || response.data;
-             const errorMsg = content?.error || content?.message || response.error || "Failed to unblock pass.";
+             const errorMsg = getDataObject<BasicMessageResponse>(response.data)?.message || "Failed to unblock pass.";
              throw new Error(errorMsg);
         }
         return response.data;
@@ -468,11 +466,10 @@ export const carParkService = {
 
     deleteSeasonPass: async (cardId: number, adminStaffId: number, reason: string) => {
         const payload = { cardId, adminStaffId, reason };
-        const response = await apiClient.post<any>(ENDPOINTS.DELETE_PASS, payload);
+        const response = await apiClient.post<{ content: BasicMessageResponse }>(ENDPOINTS.DELETE_PASS, payload);
         
         if (!response.success) {
-             const content = response.data?.content || response.data;
-             const errorMsg = content?.error || content?.message || response.error || "Failed to delete pass.";
+             const errorMsg = getDataObject<BasicMessageResponse>(response.data)?.message || "Failed to delete pass.";
              throw new Error(errorMsg);
         }
         return response.data;
@@ -480,10 +477,10 @@ export const carParkService = {
 
 //-------------- Car Park Reports ---------------
     getReports: async (): Promise<ReportDefinition[]> => {
-            const response = await apiClient.get<any>(ENDPOINTS.GET_REPORTS);
+            const response = await apiClient.get<{ content: any }>(ENDPOINTS.GET_REPORTS);
             if (!response.success) throw new Error(response.error || "Failed to fetch reports list.");
 
-            const rawList = getContent<any>(response.data);
+            const rawList = getDataObject<any[]>(response.data);
 
             return rawList.map((item, index) => ({
                 id: index + 1,
@@ -496,22 +493,19 @@ export const carParkService = {
 
         getReportMetadata: async (reportName: string, options?: RequestInit): Promise<ReportMetadata | null> => {
         const url = `${ENDPOINTS.GET_REPORT_META}/${reportName}/meta`;
-        const response = await apiClient.get<any>(url, options);
+        const response = await apiClient.get<{ content: ReportMetadata }>(url, options);
         if (!response.success || !response.data) throw new Error(response.error || "Failed to load report metadata.");
 
-        const rootContent = response.data?.content || response.data;
-        const actualData = rootContent?.content || rootContent;
-
-        return actualData as ReportMetadata;
+        return getDataObject<ReportMetadata>(response.data);
     },
 
         generateReport: async (payload: ReportPayload): Promise<ReportResponse> => {
-        const response = await apiClient.post<any>(ENDPOINTS.EXECUTE_REPORT, payload);
+        const response = await apiClient.post<{content : PaginatedBackendResponse<any>}>(ENDPOINTS.EXECUTE_REPORT, payload);
         if (!response.success || !response.data) {
              throw new Error(response.error || "Failed to generate report.");
         }
 
-        const content = getDataObject<any>(response.data);
+        const content = getDataObject<PaginatedBackendResponse<any>>(response.data);
         
         return {
             items: content.items || [],
@@ -528,13 +522,13 @@ export const carParkService = {
         const payload = {pageNumber, pageSize, searchQuery: searchQuery || ""};
 
         try {
-            const response = await apiClient.post<any>(ENDPOINTS.GET_APPLICATIONS, payload);
+            const response = await apiClient.post<{ content : PaginatedBackendResponse<RawCarParkAppListItemDTO>}>(ENDPOINTS.GET_APPLICATIONS, payload);
 
             if (!response.success) {
                 throw new Error(response.error || "Failed to fetch applications.");
             }
 
-            const data = getDataObject<any>(response.data);
+            const data = getDataObject<PaginatedBackendResponse<RawCarParkAppListItemDTO>>(response.data);
             const rawItems = data.items || [];
 
             const items = rawItems.map((item: any) => ({
@@ -564,13 +558,13 @@ export const carParkService = {
     },
 
     getApplicationById: async (id: string | number): Promise<CarParkApplicationDetail | null> => {
-        const response = await apiClient.get<any>(`${ENDPOINTS.GET_APPLICATION_DETAIL}/${id}`);
+        const response = await apiClient.get<{ content : RawCarParkAppDetailDTO }>(`${ENDPOINTS.GET_APPLICATION_DETAIL}/${id}`);
         
         if (!response.success || !response.data) {
             throw new Error(response.error || "Failed to load application details.");
         }
 
-        const content = getDataObject<any>(response.data);
+        const content = getDataObject<RawCarParkAppDetailDTO>(response.data);
         
         return {
             applicationId: content.applicationId,
@@ -596,7 +590,7 @@ export const carParkService = {
     },
 
     updateApplication: async (payload: ApplicationUpdatePayload) => {
-        const response = await apiClient.post<any>(ENDPOINTS.UPDATE_APPLICATION, payload);
+        const response = await apiClient.post<{ content : BasicMessageResponse}>(ENDPOINTS.UPDATE_APPLICATION, payload);
         if (!response.success) {
              throw new Error(response.error || "Failed to update application.");
         }
@@ -604,7 +598,7 @@ export const carParkService = {
     },
 
     approveApplication: async (payload: ApplicationApprovePayload) => {
-        const response = await apiClient.post<any>(ENDPOINTS.APPROVE_APPLICATION, payload);
+        const response = await apiClient.post<{ content : BasicMessageResponse}>(ENDPOINTS.APPROVE_APPLICATION, payload);
         if (!response.success) {
              throw new Error(response.error || "Failed to approve application.");
         }
@@ -618,7 +612,7 @@ export const carParkService = {
             reason: payload.reason 
         };
         
-        const response = await apiClient.post<any>(ENDPOINTS.REJECT_APPLICATION, apiPayload);
+        const response = await apiClient.post<{ content : BasicMessageResponse}>(ENDPOINTS.REJECT_APPLICATION, apiPayload);
         if (!response.success) {
              throw new Error(response.error || "Failed to reject application.");
         }
@@ -632,14 +626,14 @@ export const carParkService = {
             pageSize
         };
 
-        const response = await apiClient.post<any>(ENDPOINTS.EXECUTE_REPORT, payload);
+        const response = await apiClient.post<{ content : PaginatedBackendResponse<any> }>(ENDPOINTS.EXECUTE_REPORT, payload);
         const emptyResult = { items: [], totalCount: 0, totalPages: 0, pageNumber, pageSize };
 
         if (!response.success || !response.data) {
              return emptyResult;
         }
 
-        const content = getDataObject<any>(response.data);
+        const content = getDataObject<PaginatedBackendResponse<any>>(response.data);
         const rawItems = content.items || [];
 
         const items = rawItems.map((item: any) => ({
