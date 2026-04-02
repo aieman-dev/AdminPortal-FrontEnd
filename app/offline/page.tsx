@@ -1,7 +1,33 @@
 // app/offline/page.tsx
 "use client";
 
+import { useEffect, useState } from "react";
+
 export default function OfflineFallback() {
+  const [isChecking, setIsChecking] = useState(false);
+
+  // Auto-reconnect when the browser detects the network is back online
+  useEffect(() => {
+    const handleOnline = () => {
+      window.location.reload();
+    };
+
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, []);
+
+  const handleReconnect = () => {
+    setIsChecking(true);
+    
+    // Add a small delay for visual feedback, then forcefully reload
+    setTimeout(() => {
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set('retry', Date.now().toString());
+      window.location.href = currentUrl.toString();
+    }, 600);
+  };
+
+
   return (
     <>
       <style dangerouslySetInnerHTML={{__html: `
@@ -101,14 +127,19 @@ export default function OfflineFallback() {
           box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3);
         }
         
-        button:hover {
+        button:hover:not(:disabled) {
           background-color: var(--primary-hover);
           transform: translateY(-2px);
           box-shadow: 0 6px 8px -1px rgba(79, 70, 229, 0.4);
         }
         
-        button:active {
+        button:active:not(:disabled) {
           transform: translateY(1px);
+        }
+
+        button:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
         }
         
         @keyframes fade-in {
@@ -119,6 +150,14 @@ export default function OfflineFallback() {
         @keyframes pulse-ring {
           0% { transform: scale(0.8); opacity: 0.5; }
           100% { transform: scale(1.3); opacity: 0; }
+        }
+
+        @keyframes spin {
+          100% { transform: rotate(360deg); }
+        }
+
+        .spin {
+          animation: spin 1s linear infinite;
         }
       `}} />
       
@@ -138,12 +177,12 @@ export default function OfflineFallback() {
           It looks like you're currently offline. Please check your network connection, and the portal will resume working.
         </p>
         
-        <button onClick={() => window.location.reload()}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <button onClick={handleReconnect} disabled={isChecking}>
+          <svg className={isChecking ? "spin" : ""} xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
             <path d="M3 3v5h5"></path>
           </svg>
-          Try Reconnecting
+          {isChecking ? "Checking..." : "Try Reconnecting"}
         </button>
       </div>
     </>

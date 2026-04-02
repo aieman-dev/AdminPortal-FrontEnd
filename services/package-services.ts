@@ -3,25 +3,25 @@
 import { logger } from "@/lib/logger";
 import { apiClient, ApiResponse, getContent, getDataObject } from "@/lib/api-client";
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
-import { DashboardSummaryDTO } from "@/type/packages";
 import { 
     Package, 
     PackageFormData, 
     ImageItem, 
     PackageDuplicateResponse, 
-    PackageItem,
-    BackendPackageDTO,
+    BackendPackageSummaryDTO,
+    BackendPackageDetailDTO,
+    CreationDataDTO,
     CreatePackagePayload,
     UpdatePackagePayload,
-    PackageFilterPayload,
-    UpdateStatusPayload
+    DashboardSummaryDTO
 } from "@/type/packages"; 
 import { 
     ItPoswfPackage, 
     UnsyncedPackageDTO, 
     SelectableUnsyncPackage 
 } from "@/type/themepark-support";
-import { transformToFrontend, AgeCategoryMapData } from "@/lib/transformers/package-transformer";
+import {transformSummaryToFrontend, transformDetailToFrontend, AgeCategoryMapData } from "@/lib/transformers/package-transformer";
+import { BasicMessageResponse } from "@/type/shared-api";
 
 // 1. ENDPOINTS: Direct Backend Paths 
 const ENDPOINTS = {
@@ -30,7 +30,7 @@ const ENDPOINTS = {
 
   // Creation
   CREATE: "Package/create",
-  EDIT: "",
+  EDIT: "Package/update",
   DRAFT: "Package/draft",
   BULK_SUBMIT: "Package/submitDraft",
   SEARCH_IMAGES: "Package/images/search",
@@ -57,11 +57,11 @@ let ageCategoryCache: Record<string, AgeCategoryMapData> | null = null;
 const getAgeCategoryMap = async (): Promise<Record<string, AgeCategoryMapData>> => {
   if (ageCategoryCache) return ageCategoryCache;
   try {
-    const response = await apiClient.get<any>(ENDPOINTS.CREATION_DATA);
-    const data = getDataObject<any>(response.data);
+    const response = await apiClient.get<{content: CreationDataDTO}>(ENDPOINTS.CREATION_DATA);
+    const data = getDataObject<CreationDataDTO>(response.data);
     if (response.success && data?.ageCategories) {
       const map: Record<string, AgeCategoryMapData> = {};
-      data.ageCategories.forEach((c: any) => {
+      data.ageCategories.forEach((c) => {
          if(c.ageCode) map[c.ageCode] = { displayText: c.displayText, description: c.description || "" };
       });
       ageCategoryCache = map;
@@ -83,9 +83,9 @@ export const packageService = {
 
   //  DASHBOARD SUMMARY
   getDashboardSummary: async (filter: string = "ThisWeek"): Promise<DashboardSummaryDTO | null> => {
-    const response = await apiClient.get<DashboardSummaryDTO>(`Package/dashboard-summary?filter=${filter}`);
+    const response = await apiClient.get<{content: DashboardSummaryDTO}>(`Package/dashboard-summary?filter=${filter}`);
     if (!response.success) throw new Error(response.error);
-    return response.data!;
+    return getDataObject<DashboardSummaryDTO>(response.data);
   },
   
   //  UPLOAD IMAGE (Still uses specific proxy for FormData)
@@ -117,19 +117,19 @@ export const packageService = {
     };
   },
 
-  getCreationData: async () => {
-    const response = await apiClient.get<any>(ENDPOINTS.CREATION_DATA);
+  getCreationData: async () : Promise<CreationDataDTO> => {
+    const response = await apiClient.get<{content: CreationDataDTO}>(ENDPOINTS.CREATION_DATA);
     
     if (!response.success || !response.data) {
       logger.error("Failed to load creation data:", response.error);
       return { attractions: [], ageCategories: [] };
     }
     
-    const data = getDataObject<any>(response.data); 
+    const data = getDataObject<CreationDataDTO>(response.data); 
     
     return {
-        attractions: data.attractions || [],
-        ageCategories: data.ageCategories || []
+        attractions: data?.attractions || [],
+        ageCategories: data?.ageCategories || []
     };
   },
 
@@ -187,24 +187,9 @@ export const packageService = {
   // Placeholder for Submit Draft API
   submitDraft: async (ids: number[]) => {
     const payload = { packageIds: ids };
-
-    try {
-        const response = await apiClient.post(ENDPOINTS.BULK_SUBMIT, payload) as any;
-        
-        if (response.statusCode === 400 || response.success === false) {
-            const error: any = new Error(response.message || "Submission failed");
-            
-            error.content = response.content; 
-            error.response = { data: response }; 
-            
-            throw error;
-        }
-
-        return response.data;
-
-    } catch (error) {
-        throw error;
-    }
+    const response = await apiClient.post<{ content: BasicMessageResponse }>(ENDPOINTS.BULK_SUBMIT, payload);
+    if (!response.success) throw new Error(response.error || "Submission failed");
+    return getDataObject<BasicMessageResponse>(response.data);
   },
 
   //  GET LIST
@@ -238,12 +223,12 @@ export const packageService = {
     }
 
     const rawData = response.data;
-    let dataArray: BackendPackageDTO[] = getContent<BackendPackageDTO>(rawData);
-    const totalRecords = rawData?.content?.size || 0;
+    let items: BackendPackageSummaryDTO[] = rawData.content || [];
+    const totalRecords = rawData?.size || 0;
     const totalPages = totalRecords > 0 ? Math.ceil(totalRecords / PAGE_SIZE) : 1;
 
     return {
-        packages: dataArray.map(p => transformToFrontend(p, ageMap)),
+        packages: items.map(p => transformSummaryToFrontend(p, ageMap)),
         totalPages, 
         totalRecords
     }
@@ -254,34 +239,34 @@ export const packageService = {
     const ageMap = await getAgeCategoryMap();
     const payload = { Id: id, Source: source || null };
     
-    const response = await apiClient.post<any>(ENDPOINTS.GET_ONE, payload, options);
+    const response = await apiClient.post<{ content: BackendPackageDetailDTO }>(ENDPOINTS.GET_ONE, payload, options);
     
     if (!response.success || !response.data) return null;
-    const data = getDataObject<BackendPackageDTO>(response.data);
-    return transformToFrontend(data, ageMap);
+    const data = getDataObject<BackendPackageDetailDTO>(response.data);
+    return transformDetailToFrontend(data, ageMap);
   },
 
   // 6. ACTIONS (Status, Duplicate, Delete)
   updateStatus: async (id: number, status: string, remark?: string) => {
     const payload = { id: id, status: status, remark2: remark };
-    const response = await apiClient.put(ENDPOINTS.UPDATE_STATUS, payload);
+    const response = await apiClient.put<{ content: BasicMessageResponse }>(ENDPOINTS.UPDATE_STATUS, payload);
     if (!response.success) throw new Error(response.error || `Failed to update status to ${status}`);
-    return response.data;
+    return getDataObject<BasicMessageResponse>(response.data);
   },
 
   duplicatePackage: async (id: number): Promise<PackageDuplicateResponse> => {
-    const response = await apiClient.post<PackageDuplicateResponse>(ENDPOINTS.DUPLICATE, { id: id });
+    const response = await apiClient.post<{ content: PackageDuplicateResponse }>(ENDPOINTS.DUPLICATE, { id: id });
     if (!response.success || !response.data) throw new Error(response.error || "Duplicate failed");
-    return response.data;
+    return getDataObject<PackageDuplicateResponse>(response.data);
   },
 
   bulkDeletePackages: async (ids: number[]) => {
-    const response = await apiClient.put(ENDPOINTS.BULK_DELETE, { packageIds: ids });
+    const response = await apiClient.put<{ content: BasicMessageResponse }>(ENDPOINTS.BULK_DELETE, { packageIds: ids });
     if (!response.success) throw new Error(response.error || "Bulk delete failed");
-    return response.data;
+    return getDataObject<BasicMessageResponse>(response.data);
   },
 
-  // 7. IT-POSWF Specifics (Legacy Support / Migration)
+ // --- IT-POSWF SPECIFICS  ---
   getPackagesListing: async (searchQuery: string = "", page: number = 1) => {
     const payload = {
         status: "Active",
@@ -325,18 +310,18 @@ export const packageService = {
         newLastValidDate: lastValidDate.split('T')[0],
         remark: remark
     };
-    const response = await apiClient.post(ENDPOINTS.PACKAGE_EXTEND, payload);
+    const response = await apiClient.post<{ content: BasicMessageResponse }>(ENDPOINTS.PACKAGE_EXTEND, payload);
     if (!response.success) throw new Error(response.error || "Update failed");
-    return response.data;
+    return getDataObject<BasicMessageResponse>(response.data);
   },
 
   getUnsyncedPackages: async (packageType?: string, searchQuery: string = "") => {
       const payload = { packageType: packageType === "all" ? undefined : packageType };
-      const response = await apiClient.post<UnsyncedPackageDTO[]>(ENDPOINTS.BCOMPARE_SEARCH, payload);
+      const response = await apiClient.post<{ content: UnsyncedPackageDTO[] }>(ENDPOINTS.BCOMPARE_SEARCH, payload);
       
       if (!response.success || !response.data) return { success: false, error: response.error };
 
-      const rawList = getContent<UnsyncedPackageDTO>(response.data);
+      const rawList = getDataObject<UnsyncedPackageDTO[]>(response.data);
       let mapped: SelectableUnsyncPackage[] = rawList.map(p => ({
           id: String(p.packageID),
           packageId: p.packageID,
@@ -356,8 +341,8 @@ export const packageService = {
   },
 
   syncPackages: async (ids: number[]) => {
-      const response = await apiClient.post<{message: string}>(ENDPOINTS.BCOMPARE_SYNC, { packageIds: ids });
+      const response = await apiClient.post<{ content: BasicMessageResponse }>(ENDPOINTS.BCOMPARE_SYNC, { packageIds: ids });
       if (!response.success) return { success: false, error: response.error };
-      return response;
+      return { success: true, data: getDataObject<BasicMessageResponse>(response.data) };
   }
 };

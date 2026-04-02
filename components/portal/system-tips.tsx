@@ -75,7 +75,7 @@ export function SystemTips() {
             {/* MAIN CONTAINER */}
             {/* Desktop: Fixed Right-Top | Mobile: Fixed Bottom-Right (Trigger) or Bottom-Center (Card) */}
             <div className={`fixed z-50 pointer-events-none flex items-end justify-end
-                ${isMobile ? "bottom-0 left-0 right-0 p-4" : "top-24 right-0 h-auto items-start"}
+                ${isMobile ? "bottom-0 left-0 right-0 p-4" : "top-24 right-4 md:right-6 h-auto items-start"}
             `}>
                 <AnimatePresence mode="wait">
                     {!isVisible ? (
@@ -95,8 +95,8 @@ export function SystemTips() {
                             onClick={() => setIsVisible(true)}
                             className={`pointer-events-auto bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg group transition-colors flex items-center justify-center
                                 ${isMobile 
-                                    ? "h-12 w-12 rounded-full absolute bottom-6 right-4 shadow-xl" // Mobile: Round FAB
-                                    : "p-2 rounded-l-lg border-y border-l border-indigo-400 flex-col gap-2" // Desktop: Side Tab
+                                    ? "h-12 w-12 rounded-full absolute bottom-6 right-4 shadow-xl" 
+                                    : "p-2 rounded-xl border border-indigo-400/50 flex-col gap-2 shadow-[0_0_15px_rgba(79,70,229,0.3)]" 
                                 }
                             `}
                         >
@@ -120,8 +120,8 @@ export function SystemTips() {
                             transition={{ type: "spring", damping: 25, stiffness: 300 }}
                             className={`pointer-events-auto bg-card shadow-2xl overflow-hidden flex flex-col
                                 ${isMobile 
-                                    ? "w-full rounded-2xl border border-border mb-2" // Mobile: Floating Card at bottom
-                                    : "w-72 rounded-l-2xl border-l border-y border-border" // Desktop: Side Panel
+                                    ? "w-full rounded-2xl border border-border mb-2" 
+                                    : "w-72 rounded-2xl border border-border shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)]" 
                                 }
                             `}
                         >

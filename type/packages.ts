@@ -71,6 +71,7 @@ export interface ImageItem {
 
 export interface AgeCategory {
   ageCode: string;        
+  categoryName: string;
   displayText: string;    
   description?: string;
 }
@@ -82,38 +83,79 @@ export interface PackageDuplicateResponse {
 
 // --- BACKEND DTOs (Raw JSON from API) ---
 
-export interface BackendPackageDTO {
-    id: number;
-    name: string;           
-    packageType: string;
-    price: number;
-    point: number;
-    ageCategory?: string;
-    nationality: string;
-    imageUrl: string; 
-    status: string;
-    createdDate?: string;
-    effectiveDate?: string;
-    lastValidDate?: string;
-    validDays?: number;
-    dayPass?: number;
-    remark?: string;
-    remark2?: string;
-    submittedBy: string;
-    approvedBy: string;
-    reviewedDate?: string;
-    items?: BackendPackageItemDTO[];
+// Maps to C# PackageSummaryViewModel
+export interface BackendPackageSummaryDTO {
+  id: number;
+  name: string;
+  packageType: string;
+  entryQty: number;
+  ageCategory: string;
+  nationality: string | null;
+  imageUrl: string;
+  status: string;
+  price: number;
+  point: number;
+  createdDate: string;
+  reviewedDate: string;
+  submittedBy: string;
+  approvedBy: string;
 }
 
-export interface BackendPackageItemDTO {
-    attractionId?: number;
-    itemName?: string;
-    price?: number;
-    point?: number;
-    entryQty?: number;
-    itemType?: string;
-    nationality?: string;
-    category?: string;
+// Maps to C# PackageDetailViewModel
+export interface BackendPackageDetailDTO {
+  id: number;
+  name: string;
+  packageType: string;
+  totalEntryQty: number;
+  price: number;
+  point: number;
+  ageCategory: string;
+  nationality: string;
+  effectiveDate: string;
+  lastValidDate: string;
+  validDays: number;
+  dayPass: number;
+  status: string;
+  imageUrl: string;
+  remark: string;
+  remark2: string | null;
+  createdDate: string;
+  reviewedDate: string;
+  submittedBy: string;
+  approvedBy: string;
+  items: BackendPackageItemDetailDTO[];
+}
+
+// Maps to C# PackageItemDetail
+export interface BackendPackageItemDetailDTO {
+  itemName: string;
+  price: number;
+  point: number;
+  entryQty: number;
+  nationality: string;
+  ageCategory: string;
+  attractionId?: number;
+}
+
+
+export interface AttractionDTO {
+  attractionName: string;
+  terminalGroupID: number | null;
+  terminalID: number | null;
+  imageUrl: string | null;
+}
+
+export interface CreationDataDTO {
+  ageCategories: AgeCategory[];
+  attractions: AttractionDTO[];
+}
+
+export interface PagedImageResponseDTO {
+  totalRecords: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+  images: ImageItem[];
 }
 
 // --- PAYLOADS (For Sending Data) ---

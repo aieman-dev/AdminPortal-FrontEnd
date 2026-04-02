@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils"
 import { carParkFormSchema, CarParkFormValues } from "@/lib/schemas/car-park"
 import { NavigationGuard } from "@/components/portal/navigation-guard" 
 import { useNavigation } from "@/context/navigation-context"
-import { UniversalParkingForm } from "@/components/shared-components/UniversalParkingForm"
+import { UniversalParkingForm } from "@/components/shared-components/universal-parking/UniversalParkingForm";
 import { logger } from "@/lib/logger"
 
 export default function HRRegistrationPage() {
@@ -134,7 +134,7 @@ export default function HRRegistrationPage() {
             const result = await hrService.verifyUser(type, term)
             if (result.success && result.data) {
                 const d = result.data
-                setValue("accId", d.accId)
+                setValue("accId",Number(d.accId))
                 setValue("userEmail", d.email, { shouldValidate: true })
                 setValue("name", d.name, { shouldValidate: true })
                 setValue("mobileContact", d.mobile, { shouldValidate: true })
