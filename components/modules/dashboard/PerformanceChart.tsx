@@ -97,11 +97,11 @@ export function PerformanceChart({ data, loading, filter, onFilterChange }: Perf
                                     </pattern>
                                 </defs>
 
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                                <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
                                 
                                 <YAxis 
-                                    stroke="hsl(var(--muted-foreground))" 
+                                    stroke="var(--muted-foreground)" 
                                     fontSize={12} 
                                     tickLine={false} 
                                     axisLine={false} 
@@ -121,7 +121,9 @@ export function PerformanceChart({ data, loading, filter, onFilterChange }: Perf
                                                     <div className="flex items-center justify-between gap-4 mb-1">
                                                         <span className="font-semibold">{label}</span>
                                                         {isForecastBar && (
-                                                            <Badge variant="outline" className="h-5 px-1.5 text-[10px] border-purple-200 text-purple-700 bg-purple-50">Forecast</Badge>
+                                                            <Badge variant="outline" className="h-5 px-1.5 text-[10px] border-purple-200 text-purple-700 bg-purple-50 dark:border-purple-800 dark:text-purple-300 dark:bg-purple-900/30">
+                                                                Forecast
+                                                                </Badge>
                                                         )}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground mb-2">{data.fullDate}</p>
@@ -136,8 +138,14 @@ export function PerformanceChart({ data, loading, filter, onFilterChange }: Perf
                                 <Legend 
                                     verticalAlign="top" height={36} iconType="circle" onClick={handleLegendClick}
                                     formatter={(value) => {
-                                        const isVisible = visibleSeries[value as keyof typeof visibleSeries];
-                                        return <span className={`text-sm font-medium ml-1 ${!isVisible ? "text-muted-foreground opacity-50 decoration-slate-400 line-through" : "text-foreground"}`}>{value}</span>
+                                           const isVisible = visibleSeries[value as keyof typeof visibleSeries];
+                                        return (
+                                        <span 
+                                        className={`text-sm font-medium ml-1 ${!isVisible ? "opacity-50 decoration-slate-400 line-through" : ""}`}
+                                        style={{ color: isVisible ? "var(--foreground)" : "var(--muted-foreground)" }}
+                                    > {value}       
+                                    </span>
+                                        );
                                     }}
                                 />
 
