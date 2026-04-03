@@ -40,6 +40,8 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     if (isOpen) setInputValue("");
   }, [isOpen]);
 
+  if (!isOpen) return null;
+
   const currentDate = new Date().toLocaleString("en-GB", {
     day: "2-digit",
     month: "2-digit",
