@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { BACKEND_API_BASE } from "@/lib/config";
-import { jwtVerify } from "jose";
+import { decodeJwt } from "jose";
 import { BACKEND_ROLE_MAP, ROLES } from "@/lib/constants";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
@@ -21,19 +21,11 @@ const ratelimit = new Ratelimit({
   analytics: true, // Optional: Gives you cool charts in the Upstash dashboard
 });
 
-// ---  Verify and decode the token securely ---
+// ---  Decode the token to check expiration ---
 async function getVerifiedPayload(token: string) {
-  // 1. Fail securely if the secret is missing
-  if (!process.env.JWT_SECRET) {
-     logger.error("FATAL ERROR: JWT_SECRET is missing from environment variables.");
-     return null; 
-  }
-  
   try {
-     const secret = new TextEncoder().encode(process.env.JWT_SECRET || "");
-     const { payload } = await jwtVerify(token, secret);
+     const payload = decodeJwt(token);
      return payload;
-     
   } catch (e) {
     return null; 
   }
