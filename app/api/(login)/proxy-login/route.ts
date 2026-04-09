@@ -132,8 +132,24 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, user }, { status: 200 });
 
-  } catch (error) {
+  } catch (error: any) {
     logger.error("LOGIN PROXY FAILED:", error);
+
+    // Check if it's the exact firewall drop/timeout error we saw in the logs
+    if (error.code === 'UND_ERR_CONNECT_TIMEOUT' || error.message?.includes('timeout')) {
+        return NextResponse.json(
+            { message: "Backend API is unreachable. The server firewall might be blocking the connection." },
+            { status: 504 } // 504 Gateway Timeout
+        );
+    }
+
+    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+        return NextResponse.json(
+            { message: "Backend API is offline." },
+            { status: 502 } // 502 Bad Gateway
+        );
+    }
+
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }

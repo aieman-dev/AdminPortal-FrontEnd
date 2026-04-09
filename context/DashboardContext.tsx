@@ -2,7 +2,7 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
-import { settingService, type BroadcastItem } from "@/services/setting-services"
+import { settingService, type NotificationItem } from "@/services/setting-services"
 import { dashboardService } from "@/services/dashboard-service"
 import { type KioskStatus, type DashboardSummary } from "@/type/dashboard"
 import { useAuth } from "@/hooks/use-auth"
@@ -10,7 +10,7 @@ import { logger } from "@/lib/logger"
 
 interface DashboardContextType {
   // Alerts & Notifications (Init only)
-  broadcasts: BroadcastItem[]
+  broadcasts: NotificationItem[]
   personalNotifications: any[]
   unreadCount: number
   
@@ -32,7 +32,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   
   // State
-  const [broadcasts, setBroadcasts] = useState<BroadcastItem[]>([])
+  const [broadcasts, setBroadcasts] = useState<NotificationItem[]>([])
   const [personalNotifications, setPersonalNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [kioskData, setKioskData] = useState<KioskStatus[]>([])
